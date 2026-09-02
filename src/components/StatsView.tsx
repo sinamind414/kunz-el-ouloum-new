@@ -44,15 +44,18 @@ import {
 } from 'lucide-react';
 import { UserProgress, Unit } from '../types';
 import WeeklyReportShareModal from './WeeklyReportShareModal';
+import MethodologyGlobalStats from './MethodologyGlobalStats';
 import StreakCelebrationModal from './StreakCelebrationModal';
 import { playStreakMilestoneSound, playXPGainSound } from '../utils/audio';
 
 interface StatsViewProps {
   progress: UserProgress;
   units: Unit[];
+  /** Permet aux états vides d'envoyer l'élève vers la bonne rubrique */
+  onNavigate?: (tab: string) => void;
 }
 
-export default function StatsView({ progress, units }: StatsViewProps) {
+export default function StatsView({ progress, units, onNavigate }: StatsViewProps) {
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [showWeeklyShareModal, setShowWeeklyShareModal] = useState<boolean>(false);
   const [showStreakModal, setShowStreakModal] = useState<boolean>(false);
@@ -66,51 +69,60 @@ export default function StatsView({ progress, units }: StatsViewProps) {
   };
   
   // Weekly XP & Achievement Progress Data (Recharts)
+  // Weekly XP & Achievement Progress Data (Recharts) — 100 % réel.
+  // Plus AUCUNE donnée de démonstration : on reconstruit chaque jour à partir
+  // de l'historique réel (règle XP de l'app : +20 XP par bonne réponse).
   const weeklyPerformanceData = useMemo(() => {
     const dayNames = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
-    const todayDayIndex = (new Date().getDay() + 1) % 7; // Map Sun(0)->1, Sat(6)->0
-    
-    // Scale baseline based on user's current progress
-    const baseXP = Math.max(15, Math.round((progress.xp || 150) / 7));
     const targetDailyXP = 50;
     const targetCompletion = 100;
 
-    const mockDistribution = [0.75, 1.1, 0.9, 1.3, 0.8, 1.25, 1.0];
+    // Index réel : date (format stocké ar-DZ) -> XP/questions réel(le)s
+    const byDate = new Map<string, { xp: number; questions: number }>();
+    progress.quizScoreHistory.forEach(q => {
+      const cur = byDate.get(q.date) || { xp: 0, questions: 0 };
+      cur.xp += q.score * 20;           // règle XP réelle (App.tsx)
+      cur.questions += q.total;
+      byDate.set(q.date, cur);
+    });
+
+    // Fenêtre réelle : les 7 derniers jours (semaine commençant le samedi)
+    const today = new Date();
+    const realDays: { xp: number; questions: number; isToday: boolean }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const real = byDate.get(d.toLocaleDateString('ar-DZ'));
+      realDays.push({ xp: real?.xp ?? 0, questions: real?.questions ?? 0, isToday: i === 0 });
+    }
 
     return dayNames.map((day, idx) => {
-      const isToday = idx === todayDayIndex;
-      const isPast = idx <= todayDayIndex;
-      
-      let xpEarned = isPast ? Math.round(baseXP * mockDistribution[idx]) : 0;
-      let completionRate = isPast ? Math.min(130, Math.round((xpEarned / targetDailyXP) * 100)) : 0;
-      
-      // If it's today, reflect actual progress if available
-      if (isToday) {
-        if (progress.dailyGoals) {
-          const dg = progress.dailyGoals;
-          const curr = dg.type === 'minutes' ? dg.todayMinutes : dg.todayQuestions;
-          const target = dg.type === 'minutes' ? dg.targetMinutes : dg.targetQuestions;
-          completionRate = Math.min(150, Math.round((curr / Math.max(1, target)) * 100));
-        }
-        xpEarned = Math.max(xpEarned, Math.round(baseXP * 1.1));
-      }
+      const real = realDays[idx];
+      let xpEarned = real.xp;
+      let completionRate = Math.min(130, Math.round((xpEarned / targetDailyXP) * 100));
+      let studyMins = 0;
 
-      const questionsCount = isPast ? Math.max(2, Math.round(xpEarned / 8)) : 0;
-      const studyMins = isPast ? Math.max(5, Math.round(xpEarned / 3.5)) : 0;
+      if (real.isToday && progress.dailyGoals) {
+        const dg = progress.dailyGoals;
+        const curr = dg.type === 'minutes' ? dg.todayMinutes : dg.todayQuestions;
+        const target = dg.type === 'minutes' ? dg.targetMinutes : dg.targetQuestions;
+        completionRate = Math.max(completionRate, Math.min(150, Math.round((curr / Math.max(1, target)) * 100)));
+        if (dg.type === 'minutes') studyMins = dg.todayMinutes;
+      }
 
       return {
         day,
-        isToday,
-        isPast,
+        isToday: real.isToday,
+        isPast: true,
         'نقاط XP': xpEarned,
         'معدل الإنجاز %': completionRate,
         'الهدف المستهدف XP': targetDailyXP,
         'هدف الإنجاز %': targetCompletion,
-        questionsCount,
-        studyMins
+        questionsCount: real.questions,
+        studyMins,
       };
     });
-  }, [progress.xp, progress.dailyGoals]);
+  }, [progress.quizScoreHistory, progress.dailyGoals]);
 
   const totalWeeklyXP = useMemo(() => {
     return weeklyPerformanceData.reduce((acc, curr) => acc + (curr['نقاط XP'] || 0), 0);
@@ -127,6 +139,13 @@ export default function StatsView({ progress, units }: StatsViewProps) {
     return [...weeklyPerformanceData].sort((a, b) => b['نقاط XP'] - a['نقاط XP'])[0];
   }, [weeklyPerformanceData]);
 
+  // Activité réelle de la semaine (0 donnée inventée) :
+  // on n'affiche le graphique que s'il existe du vrai travail à montrer.
+  const hasWeeklyActivity = totalWeeklyXP > 0
+    || (progress.dailyGoals?.todayQuestions || 0) > 0
+    || (progress.dailyGoals?.todayMinutes || 0) > 0
+    || (progress.quizScoreHistory?.length || 0) > 0;
+
   // 1. Format data for the Spaced Repetition card status chart
   const cardData = [
     { name: 'إعادة', value: progress.flashcardStats.again, color: '#ba1a1a' },
@@ -135,14 +154,9 @@ export default function StatsView({ progress, units }: StatsViewProps) {
     { name: 'سهل', value: progress.flashcardStats.easy, color: '#2ecc71' }
   ].filter(item => item.value > 0);
 
-  // Fallback if no cards have been rated yet
+  // Fallback : aucun mock. On n'affiche le camembert que si des cartes
+  // ont réellement été évaluées (sinon : état vide honnête).
   const hasCardData = cardData.length > 0;
-  const mockCardData = [
-    { name: 'إعادة', value: 3, color: '#ba1a1a' },
-    { name: 'صعب', value: 5, color: '#506072' },
-    { name: 'جيد', value: 12, color: '#006d37' },
-    { name: 'سهل', value: 8, color: '#2ecc71' }
-  ];
 
   // 2. Format quiz history data
   const quizHistory = progress.quizScoreHistory.map((item, idx) => ({
@@ -152,11 +166,6 @@ export default function StatsView({ progress, units }: StatsViewProps) {
   }));
 
   const hasQuizHistory = quizHistory.length > 0;
-  const mockQuizHistory = [
-    { name: 'تركيب البروتين', 'النتيجة %': 75, scoreText: '3 / 4' },
-    { name: 'بنية البروتين', 'النتيجة %': 90, scoreText: '5 / 6' },
-    { name: 'دور البروتينات', 'النتيجة %': 60, scoreText: '3 / 5' }
-  ];
 
   // 3. Format quiz timeline progress (scores over time)
   const quizTimeline = progress.quizScoreHistory.map((item) => ({
@@ -167,12 +176,6 @@ export default function StatsView({ progress, units }: StatsViewProps) {
   }));
 
   const hasQuizTimeline = quizTimeline.length > 0;
-  const mockQuizTimeline = [
-    { date: '05/07', 'الدرجة %': 65, title: 'آليات تركيب البروتين', scoreText: '3/5' },
-    { date: '05/07', 'الدرجة %': 80, title: 'العلاقة بين البنية والوظيفة', scoreText: '4/5' },
-    { date: '06/07', 'الدرجة %': 75, title: 'الذات واللاذات', scoreText: '3/4' },
-    { date: '06/07', 'الدرجة %': 90, title: 'الاستجابة المناعية الخلطية', scoreText: '9/10' }
-  ];
 
   // Total lessons completed
   const completedUnitsCount = progress.completedUnits.length;
@@ -184,15 +187,13 @@ export default function StatsView({ progress, units }: StatsViewProps) {
     (progress.flashcardStats?.good || 0) + 
     (progress.flashcardStats?.easy || 0);
 
-  // 4. Mock Monthly Unit Progress Data for Recharts
-  const monthlyUnitProgress = [
-    { name: 'الأسبوع 1', 'تركيب البروتين': 20, 'بنية البروتين': 0, 'الأنزيمات': 0, 'المناعة': 0 },
-    { name: 'الأسبوع 2', 'تركيب البروتين': 50, 'بنية البروتين': 30, 'الأنزيمات': 0, 'المناعة': 0 },
-    { name: 'الأسبوع 3', 'تركيب البروتين': 80, 'بنية البروتين': 60, 'الأنزيمات': 20, 'المناعة': 0 },
-    { name: 'الأسبوع 4', 'تركيب البروتين': 100, 'بنية البروتين': 85, 'الأنزيمات': 50, 'المناعة': 10 }
-  ];
+  // 4. Niveau d'atteinte réel de chaque unité (progression sauvegardée localement)
+  const unitMastery = units.map(u => ({
+    name: u.title.length > 16 ? u.title.substring(0, 15) + '…' : u.title,
+    'الإتقان %': Math.round(u.progress),
+  }));
+  const hasUnitMastery = unitMastery.some(d => d['الإتقان %'] > 0);
 
-  const colors = ['#006d37', '#2ecc71', '#ff9a4a', '#ba1a1a', '#fed65b'];
 
 
   return (
@@ -303,11 +304,11 @@ export default function StatsView({ progress, units }: StatsViewProps) {
                   المخطط الأسبوعي لنقاط الخبرة (XP) ومعدلات الإنجاز
                 </h3>
                 <span className="bg-emerald-50 text-[#006d37] text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-200/60 hidden md:inline-block">
-                  مخطط Recharts تفاعلي
+                  من نشاطك الحقيقي فقط — بلا بيانات وهمية
                 </span>
               </div>
               <p className="text-xs text-[#506072] font-semibold mt-0.5">
-                تتبع وتيرة الاستذكار اليومي ونسب تحقيق الأهداف لبناء عادات التفوق
+                يُبنى حصرياً على نشاطك الفعلي (نتائج اختباراتك + أهداف اليوم) — أي إنجاز غير مسجل لا يظهر
               </p>
             </div>
           </div>
@@ -386,6 +387,7 @@ export default function StatsView({ progress, units }: StatsViewProps) {
         </div>
 
         {/* Dynamic Recharts Visualization Container */}
+        {hasWeeklyActivity ? (
         <div className="h-72 sm:h-80 w-full pt-2">
           <ResponsiveContainer width="100%" height="100%">
             {weeklyMetricTab === 'combined' ? (
@@ -567,6 +569,22 @@ export default function StatsView({ progress, units }: StatsViewProps) {
             )}
           </ResponsiveContainer>
         </div>
+        ) : (
+          <div className="h-72 sm:h-80 w-full pt-2 flex flex-col items-center justify-center text-center bg-[#f8fbfa] border border-dashed border-[#006d37]/30 rounded-3xl p-6">
+            <Activity className="w-10 h-10 text-[#006d37]/40 mb-3" />
+            <p className="font-black text-sm text-[#1f1c0b] mb-1.5">لا يوجد نشاط مسجل هذا الأسبوع بعد</p>
+            <p className="text-[11px] text-[#506072] font-semibold max-w-md leading-relaxed mb-4">
+              لا نعرض أرقاماً وهمية: هذا المخطط يُبنى فقط من نشاطك الحقيقي. ابدأ بحل أول اختبار حتى تظهر أعمدة تقدمك هنا.
+            </p>
+            <button
+              onClick={() => onNavigate?.('quiz')}
+              className="flex items-center gap-2 bg-[#006d37] hover:bg-[#005027] text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer"
+            >
+              <Target className="w-4 h-4" />
+              <span>ابدأ اختباراً الآن</span>
+            </button>
+          </div>
+        )}
 
         {/* Motivational Insight Footer with Share trigger */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/70 via-teal-50/70 to-amber-50/60 p-3 rounded-2xl border border-emerald-100 text-xs">
@@ -597,149 +615,200 @@ export default function StatsView({ progress, units }: StatsViewProps) {
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-[#006d37]" />
           <h3 className="font-extrabold text-base text-[#1f1c0b]">تطور مستوى الوحدات على مدار الشهر</h3>
+          <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0 mr-auto">بناء على نشاطك الحقيقي 100%</span>
         </div>
 
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={monthlyUnitProgress} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2dabf" strokeOpacity={0.3} />
-              <XAxis dataKey="name" stroke="#506072" fontSize={10} tickLine={false} />
-              <YAxis stroke="#506072" fontSize={10} tickLine={false} domain={[0, 100]} />
-              <Tooltip 
-                formatter={(value: any, name: any) => [`${value}%`, name]}
-                contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
-              />
-              <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontFamily: 'Noto Kufi Arabic', direction: 'rtl' }}/>
-              {Object.keys(monthlyUnitProgress[0])
-                .filter(key => key !== 'name')
-                .map((key, index) => (
-                  <Line 
-                    key={key}
-                    type="monotone" 
-                    dataKey={key} 
-                    stroke={colors[index % colors.length]} 
-                    strokeWidth={3}
-                    activeDot={{ r: 6 }} 
-                  />
-                ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {hasUnitMastery ? (
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={unitMastery} margin={{ top: 15, right: 15, left: -20, bottom: 15 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2dabf" strokeOpacity={0.3} />
+                <XAxis dataKey="name" stroke="#506072" fontSize={9} tickLine={false} interval={0} angle={-22} textAnchor="end" height={60} />
+                <YAxis stroke="#506072" fontSize={10} tickLine={false} domain={[0, 100]} unit="%" />
+                <Tooltip 
+                  formatter={(value: any) => [`${value}%`, 'الإتقان']}
+                  contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
+                />
+                <Bar dataKey="الإتقان %" radius={[6, 6, 0, 0]} maxBarSize={34}>
+                  {unitMastery.map((d, i) => (
+                    <Cell 
+                      key={i} 
+                      fill={d['الإتقان %'] >= 100 ? '#2ecc71' : d['الإتقان %'] >= 60 ? '#006d37' : d['الإتقان %'] > 0 ? '#ff9a4a' : '#d6dbe0'} 
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-72 w-full flex flex-col items-center justify-center text-center bg-[#f8fbfa] border border-dashed border-[#006d37]/30 rounded-3xl p-6">
+            <BookOpen className="w-10 h-10 text-[#006d37]/40 mb-3" />
+            <p className="font-black text-sm text-[#1f1c0b] mb-1.5">لم تُسجَّل أي وحدة بعد</p>
+            <p className="text-[11px] text-[#506072] font-semibold max-w-md leading-relaxed mb-4">
+              هذا المخطط يعرض تقدمك الحقيقي فقط. افتح مكتبة الدروس وابدأ أول وحدة ليظهر مستوى إتقانك هنا.
+            </p>
+            <button
+              onClick={() => onNavigate?.('lesson')}
+              className="flex items-center gap-2 bg-[#006d37] hover:bg-[#005027] text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>فتح مكتبة الدروس</span>
+            </button>
+          </div>
+        )}
       </section>
+
+      {/* ====== Suivi de la méthodologie : carnet de bord (100 % réel) ====== */}
+      <MethodologyGlobalStats onNavigate={onNavigate} />
 
       {/* Evolution Over Time LineChart */}
       <section className="bg-[#ffffff] border border-[#e2dabf]/60 rounded-3xl p-5 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-[#006d37]" />
-          <h3 className="font-extrabold text-base text-[#1f1c0b]">منحنى تطور المستوى العلمي عبر الزمن</h3>
+          <h3 className="font-extrabold text-base text-[#1f1c0b]">منحنى تطور مستواك العلمي عبر الزمن</h3>
+          <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0 mr-auto">نتائجك الحقيقية فقط</span>
         </div>
 
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={hasQuizTimeline ? quizTimeline : mockQuizTimeline} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2dabf" strokeOpacity={0.3} />
-              <XAxis dataKey="date" stroke="#506072" fontSize={10} tickLine={false} />
-              <YAxis stroke="#506072" fontSize={10} tickLine={false} domain={[0, 100]} />
-              <Tooltip 
-                formatter={(value: any, name: any, props: any) => [`${value}% (${props.payload.scoreText})`, 'النتيجة']}
-                labelFormatter={(label) => `التاريخ: ${label}`}
-                contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="الدرجة %" 
-                stroke="#006d37" 
-                strokeWidth={3}
-                activeDot={{ r: 8 }} 
-                dot={{ stroke: '#fed65b', strokeWidth: 2, r: 4, fill: '#006d37' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        {!hasQuizTimeline && (
-          <p className="text-[11px] text-[#506072] text-center bg-[#fff9ed] p-2 rounded-xl border border-[#fed65b]/30">
-            💡 يظهر المخطط البياني التجريبي أعلاه. قم بحل الاختبارات المتعددة لبناء منحنى تقدمك الحقيقي!
-          </p>
+        {hasQuizTimeline ? (
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={quizTimeline} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2dabf" strokeOpacity={0.3} />
+                <XAxis dataKey="date" stroke="#506072" fontSize={10} tickLine={false} />
+                <YAxis stroke="#506072" fontSize={10} tickLine={false} domain={[0, 100]} />
+                <Tooltip 
+                  formatter={(value: any, name: any, props: any) => [`${value}% (${props.payload.scoreText})`, 'النتيجة']}
+                  labelFormatter={(label) => `التاريخ: ${label}`}
+                  contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="الدرجة %" 
+                  stroke="#006d37" 
+                  strokeWidth={3}
+                  activeDot={{ r: 8 }} 
+                  dot={{ stroke: '#fed65b', strokeWidth: 2, r: 4, fill: '#006d37' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-64 w-full flex flex-col items-center justify-center text-center bg-[#f8fbfa] border border-dashed border-[#006d37]/30 rounded-3xl p-6">
+            <TrendingUp className="w-9 h-9 text-[#006d37]/40 mb-3" />
+            <p className="font-black text-sm text-[#1f1c0b] mb-1.5">منحنيك الحقيقي سيظهر هنا</p>
+            <p className="text-[11px] text-[#506072] font-semibold max-w-md leading-relaxed mb-4">
+              نعرض فقط نتائجك الفعلية — لا مبيانات تجريبية. حل ثلاثة اختبارات على الأقل لرسم خط تطورك عبر الزمن.
+            </p>
+            <button
+              onClick={() => onNavigate?.('quiz')}
+              className="flex items-center gap-2 bg-[#006d37] hover:bg-[#005027] text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer"
+            >
+              <Target className="w-4 h-4" />
+              <span>حل أول اختبار</span>
+            </button>
+          </div>
         )}
       </section>
-
-      <div className="grid md:grid-cols-2 gap-6">
         
-        {/* Quiz History Performance BarChart */}
+      <div className="grid md:grid-cols-2 gap-6">
+
+        {/* Quiz History Performance BarChart (données réelles uniquement) */}
         <div className="bg-[#ffffff] border border-[#e2dabf]/60 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-[#006d37]" />
             <h3 className="font-extrabold text-base text-[#1f1c0b]">نتائج التدريبات والاختبارات</h3>
           </div>
           
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hasQuizHistory ? quizHistory : mockQuizHistory} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                <XAxis dataKey="name" stroke="#506072" fontSize={10} tickLine={false} />
-                <YAxis stroke="#506072" fontSize={10} tickLine={false} domain={[0, 100]} />
-                <Tooltip 
-                  formatter={(value: any, name: any, props: any) => [`${value}% (${props.payload.scoreText || 'نموذجية'})`, 'الدرجة']}
-                  contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
-                />
-                <Bar dataKey="النتيجة %" fill="#006d37" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          {!hasQuizHistory && (
-            <p className="text-[11px] text-[#506072] text-center bg-[#fff9ed] p-2 rounded-xl border border-[#fed65b]/30">
-              💡 يظهر أعلاه تمثيل تجريبي. ابدأ بحل أول اختبار لتسجيل نتيجتك الحقيقية!
-            </p>
+          {hasQuizHistory ? (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={quizHistory} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#506072" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#506072" fontSize={10} tickLine={false} domain={[0, 100]} />
+                  <Tooltip 
+                    formatter={(value: any, name: any, props: any) => [`${value}% (${props.payload.scoreText || '—'})`, 'الدرجة']}
+                    contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
+                  />
+                  <Bar dataKey="النتيجة %" fill="#006d37" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 w-full flex flex-col items-center justify-center text-center bg-[#f8fbfa] border border-dashed border-[#006d37]/30 rounded-3xl p-6">
+              <Activity className="w-9 h-9 text-[#006d37]/40 mb-3" />
+              <p className="font-black text-sm text-[#1f1c0b] mb-1.5">لا توجد نتائج مسجلة بعد</p>
+              <p className="text-[11px] text-[#506072] font-semibold max-w-md leading-relaxed mb-4">
+                نعرض نتيجتك الحقيقية فقط — بلا أي نتيجة وهمية. أكمل أول اختبار لتسجيل نتيجتك هنا.
+              </p>
+              <button
+                onClick={() => onNavigate?.('quiz')}
+                className="flex items-center gap-2 bg-[#006d37] hover:bg-[#005027] text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer"
+              >
+                <Target className="w-4 h-4" />
+                <span>تسجيل أول نتيجة</span>
+              </button>
+            </div>
           )}
         </div>
-
-        {/* Flashcards SM-2 Distribution PieChart */}
         <div className="bg-[#ffffff] border border-[#e2dabf]/60 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-[#944a00]" />
             <h3 className="font-extrabold text-base text-[#1f1c0b]">مستويات تذكر بطاقات المراجعة</h3>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 h-64">
-            <div className="h-full flex-1 w-full max-w-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={hasCardData ? cardData : mockCardData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {(hasCardData ? cardData : mockCardData).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+          {hasCardData ? (
+            <div className="flex flex-col sm:flex-row items-center gap-4 h-64">
+              <div className="h-full flex-1 w-full max-w-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={cardData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {cardData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ direction: 'rtl', fontFamily: 'Noto Kufi Arabic', fontSize: 11, borderRadius: '12px', border: '1px solid #e2dabf' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
 
-            {/* Legend info lists */}
-            <div className="space-y-2 shrink-0 text-xs text-right w-full sm:w-auto">
-              {(hasCardData ? cardData : mockCardData).map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="font-bold text-[#1f1c0b]">{item.name}</span>
+              {/* Legend info lists */}
+              <div className="space-y-2 shrink-0 text-xs text-right w-full sm:w-auto">
+                {cardData.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="font-bold text-[#1f1c0b]">{item.name}</span>
+                    </div>
+                    <span className="text-[#506072] font-semibold">{item.value} بطاقة</span>
                   </div>
-                  <span className="text-[#506072] font-semibold">{item.value} بطاقة</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-          {!hasCardData && (
-            <p className="text-[11px] text-[#506072] text-center bg-[#fff9ed] p-2 rounded-xl border border-[#fed65b]/30">
-              💡 تظهر مستويات التذكر بالتكرار المتباعد بعد تقييمك للبطاقات الذكية.
-            </p>
+          ) : (
+            <div className="h-64 w-full flex flex-col items-center justify-center text-center bg-[#f8fbfa] border border-dashed border-[#006d37]/30 rounded-3xl p-6">
+              <Calendar className="w-9 h-9 text-[#944a00]/40 mb-3" />
+              <p className="font-black text-sm text-[#1f1c0b] mb-1.5">لم تُقيَّم أي بطاقة بعد</p>
+              <p className="text-[11px] text-[#506072] font-semibold max-w-md leading-relaxed mb-4">
+                مستويات التذكر (إعادة/صعب/جيد/سهل) تُبنى من تقييماتك الحقيقية للبطاقات — لا نعرض أرقاماً افتراضية.
+              </p>
+              <button
+                onClick={() => onNavigate?.('review')}
+                className="flex items-center gap-2 bg-[#006d37] hover:bg-[#005027] text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>المراجعة الذكية</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -1208,6 +1277,7 @@ export default function StatsView({ progress, units }: StatsViewProps) {
         onClose={() => setShowWeeklyShareModal(false)}
         progress={progress}
         units={units}
+        weeklyXP={totalWeeklyXP}
       />
 
       {/* Streak Milestone Celebration Modal */}

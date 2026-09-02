@@ -126,31 +126,31 @@ export default function App() {
   // Core progression state (persisted to localStorage)
   const [units, setUnits] = useState<Unit[]>(INITIAL_UNITS);
   const [flashcards, setFlashcards] = useState<Flashcard[]>(SVT_FLASHCARDS);
+  // Seed 100 % honnête : premier lancement = zéro réel.
+  // (plus aucune statistique de démonstration — tout s'écrit avec l'activité réelle)
   const [progress, setProgress] = useState<UserProgress>({
-    xp: 500,
-    streak: 12,
-    completedUnits: [1], // Unit 1 completed/unlocked
-    completedQuestionsCount: 24,
-    studyMinutes: 120,
+    xp: 0,
+    streak: 0,
+    completedUnits: [],
+    completedQuestionsCount: 0,
+    studyMinutes: 0,
     dailyGoals: {
       type: 'minutes',
       targetMinutes: 25,
       targetQuestions: 20,
       lastActiveDate: new Date().toISOString().split('T')[0],
-      todayMinutes: 12,
-      todayQuestions: 14,
-      streakDays: 3,
+      todayMinutes: 0,
+      todayQuestions: 0,
+      streakDays: 0,
       completedToday: false,
     },
     flashcardStats: {
-      again: 3,
-      hard: 5,
-      good: 12,
-      easy: 8
+      again: 0,
+      hard: 0,
+      good: 0,
+      easy: 0
     },
-    quizScoreHistory: [
-      { date: '2026-07-05', score: 4, total: 5, unitTitle: 'آليات تركيب البروتين' }
-    ]
+    quizScoreHistory: []
   });
 
   // Apply dark mode theme class to document element
@@ -166,14 +166,25 @@ export default function App() {
 
   // Load state from localStorage on startup
   useEffect(() => {
-    const savedUnits = localStorage.getItem('svt_units');
-    const savedFlashcards = localStorage.getItem('svt_flashcards');
-    const savedProgress = localStorage.getItem('svt_progress');
+    let savedUnits: Unit[] | null = null;
+    let savedFlashcards: Flashcard[] | null = null;
+    let savedProgress: UserProgress | null = null;
+    try {
+      const rawUnits = localStorage.getItem('svt_units');
+      const rawFlashcards = localStorage.getItem('svt_flashcards');
+      const rawProgress = localStorage.getItem('svt_progress');
+      if (rawUnits) savedUnits = JSON.parse(rawUnits);
+      if (rawFlashcards) savedFlashcards = JSON.parse(rawFlashcards);
+      if (rawProgress) savedProgress = JSON.parse(rawProgress);
+    } catch (e) {
+      console.warn('Données locales corrompues — réinitialisation aux valeurs par défaut:', e);
+      savedUnits = null; savedFlashcards = null; savedProgress = null;
+    }
 
-    if (savedUnits) setUnits(JSON.parse(savedUnits));
-    if (savedFlashcards) setFlashcards(JSON.parse(savedFlashcards));
+    if (savedUnits && Array.isArray(savedUnits) && savedUnits.length > 0) setUnits(savedUnits);
+    if (savedFlashcards && Array.isArray(savedFlashcards) && savedFlashcards.length > 0) setFlashcards(savedFlashcards);
     if (savedProgress) {
-      const parsed: UserProgress = JSON.parse(savedProgress);
+      const parsed: UserProgress = savedProgress;
       const today = new Date().toISOString().split('T')[0];
       
       // Ensure daily goals exist and date is synchronized
@@ -201,9 +212,13 @@ export default function App() {
 
   // Sync state to localStorage
   const saveToLocalStorage = (newUnits: Unit[], newCards: Flashcard[], newProgress: UserProgress) => {
-    localStorage.setItem('svt_units', JSON.stringify(newUnits));
-    localStorage.setItem('svt_flashcards', JSON.stringify(newCards));
-    localStorage.setItem('svt_progress', JSON.stringify(newProgress));
+    try {
+      localStorage.setItem('svt_units', JSON.stringify(newUnits));
+      localStorage.setItem('svt_flashcards', JSON.stringify(newCards));
+      localStorage.setItem('svt_progress', JSON.stringify(newProgress));
+    } catch (e) {
+      console.warn('Impossible de sauvegarder la progression localement:', e);
+    }
   };
 
   const handleUpdateDailyGoals = (newGoals: import('./types').DailyGoalConfig) => {
@@ -641,6 +656,7 @@ export default function App() {
                 <StatsView 
                   progress={progress}
                   units={units}
+                  onNavigate={(t) => setCurrentTab(t as typeof currentTab)}
                 />
               )}
 

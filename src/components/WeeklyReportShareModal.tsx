@@ -26,13 +26,16 @@ interface WeeklyReportShareModalProps {
   onClose: () => void;
   progress: UserProgress;
   units: Unit[];
+  /** XP réel de la semaine (calculé par StatsView) — 0 par défaut, jamais inventé */
+  weeklyXP?: number;
 }
 
 export default function WeeklyReportShareModal({
   isOpen,
   onClose,
   progress,
-  units
+  units,
+  weeklyXP = 0
 }: WeeklyReportShareModalProps) {
   const [studentName, setStudentName] = useState<string>('طالب بكالوريا متفوق');
   const [cardTheme, setCardTheme] = useState<'emerald' | 'gold' | 'night'>('emerald');
@@ -46,14 +49,13 @@ export default function WeeklyReportShareModal({
   const totalLessonsCount = completedUnits.length + (inProgressUnits.length > 0 ? inProgressUnits.length : 1);
 
   // Time calculations
-  const totalMinutes = progress.studyMinutes || 45;
+  const totalMinutes = progress.studyMinutes || 0; // zéro réel, jamais 45 inventées
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
   const timeFormatted = hours > 0 ? `${hours} س و ${mins} د` : `${mins} دقيقة`;
 
-  // Weekly XP estimate based on current progress
-  const weeklyXP = Math.max(120, Math.round((progress.xp || 150) * 0.7));
-  const questionsCompleted = progress.completedQuestionsCount || 18;
+  // XP réel de la semaine passé par StatsView (0 si aucune activité)
+  const questionsCompleted = progress.completedQuestionsCount || 0;
 
   // Calculate overall accuracy rate from quiz score history
   const averageAccuracy = progress.quizScoreHistory.length > 0
@@ -62,7 +64,7 @@ export default function WeeklyReportShareModal({
           progress.quizScoreHistory.length) *
           100
       )
-    : 88;
+    : 0;
 
   // Text summary to copy for sharing
   const shareText = `📊 تقرير أدائي الأسبوعي في منصة كنز العلوم (SVT BAC DZ) 🏆

@@ -11,6 +11,10 @@ import {
   ERROR_TAXONOMY, VerbCard, TrainingExercise 
 } from '../data/methodologyEngine';
 import { evaluateStudentProduction, ScoreReport } from '../utils/methodologyScorer';
+import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, ERROR_TAG_LABELS_AR } from '../utils/methodologyLog';
+import ProductionEvolutionPanel from './ProductionEvolutionPanel';
+import BoussolePanel from './BoussolePanel';
+import { BOUSSOLE_CAPS, BOUSSOLE_STAGES_META, groupErrorsByCap } from '../data/boussoleData';
 
 interface MethodologyProps {
   onBackToHome?: () => void;
@@ -52,6 +56,9 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   // Expanded verb in verbs_ref
   const [expandedVerbCardId, setExpandedVerbCardId] = useState<string | null>('verb_analyse_v1');
 
+  // Carnet de bord : historique des productions & diagnostic d'évolution
+  const [evolutionVersion, setEvolutionVersion] = useState(0); // bump pour rafraîchir le diagnostic
+
   // Local storage stats & matrix
   const [matrixScores, setMatrixScores] = useState<Record<string, Record<string, number>>>({
     verb_analyse_v1: { protein_synthesis: 92, enzymology: 85, immunology: 68, neuro_comm: 84 },
@@ -69,6 +76,13 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   const currentVerb = VERB_CARDS.find(v => v.id === selectedVerbId) || VERB_CARDS[0];
   const currentExercise = TRAINING_EXERCISES.find(e => e.id === selectedExerciseId) || TRAINING_EXERCISES[0];
+
+  // Diagnostic d'évolution : statistiques par verbe depuis le carnet de bord
+  const evolutionStats: VerbEvolutionStats[] = React.useMemo(
+    () => VERB_CARDS.map(v => getVerbEvolution(v.id)).filter((s): s is VerbEvolutionStats => s !== null),
+    [evolutionVersion]
+  );
+  const currentVerbStats = getVerbEvolution(selectedVerbId);
 
   // Timer Effect for Stage 4
   useEffect(() => {
@@ -115,6 +129,18 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     });
     const rep = evaluateStudentProduction(selectedVerbId, fullText, undefined, 2);
     setScoreReport(rep);
+    // Carnet de bord : archiver la production complétée (diagnostic d'évolution)
+    logProduction({
+      verbId: selectedVerbId,
+      verbAr: currentVerb.verbAr,
+      theme: currentExercise.theme,
+      stage: 2,
+      text: fullText,
+      icm: rep.icm,
+      criteriaSummary: rep.criteriaResults.map(c => ({ label: c.label, passed: c.passed })),
+      errorTags: rep.detectedErrors.map(e => e.tag),
+    });
+    setEvolutionVersion(v => v + 1);
   };
 
   // Submit Stage 3 or 4
@@ -126,6 +152,21 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     };
     const rep = evaluateStudentProduction(selectedVerbId, studentText, draft, currentStage);
     setScoreReport(rep);
+
+    // Carnet de bord : archiver le brouillon complet de l'élève (texte + résumé)
+    const fullDraft = `${studentText}${draftVerb || draftSteps || draftFinalSentence ? `\n— البطاقة: ${[draftVerb, draftSteps, draftFinalSentence].filter(Boolean).join(' · ')}` : ''}`.trim();
+    logProduction({
+      verbId: selectedVerbId,
+      verbAr: currentVerb.verbAr,
+      theme: currentExercise.theme,
+      stage: currentStage === 4 ? 4 : 3,
+      text: fullDraft,
+      icm: rep.icm,
+      criteriaSummary: rep.criteriaResults.map(c => ({ label: c.label, passed: c.passed })),
+      errorTags: rep.detectedErrors.map(e => e.tag),
+      durationSec: isTimerRunning ? timerSeconds : undefined,
+    });
+    setEvolutionVersion(v => v + 1);
 
     // Update matrix score & error counters
     if (currentExercise.theme) {
@@ -147,6 +188,27 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
         return nextCounters;
       });
     }
+  };
+
+  // Reprendre un brouillon archivé (diagnostic → simulateur)
+  const handleResumeDraft = (entry: ProductionLogEntry) => {
+    setSelectedVerbId(entry.verbId);
+    const ex = TRAINING_EXERCISES.find(e => e.verbId === entry.verbId && e.theme === entry.theme)
+      || TRAINING_EXERCISES.find(e => e.verbId === entry.verbId)
+      || TRAINING_EXERCISES[0];
+    setSelectedExerciseId(ex.id);
+    setCurrentStage(entry.stage === 2 ? 2 : 4);
+    // Restaurer le texte (retirer le résumé « البطاقة » stocké après la ligne)
+    const restoredText = entry.text.split('\n— البطاقة:')[0];
+    setStudentText(restoredText);
+    const draftPart = entry.text.includes('— البطاقة:') ? entry.text.split('— البطاقة:')[1].split(' · ') : [];
+    setDraftVerb(draftPart[0] || '');
+    setDraftSteps(draftPart[1] || '');
+    setDraftFinalSentence(draftPart[2] || '');
+    setIsDraftCompleted(!!restoredText);
+    setScoreReport(null);
+    setActiveTab('simulator');
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Reset exercise
@@ -208,7 +270,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
             }`}
           >
             <Zap className="w-4 h-4" />
-            <span>محاكي التدريب (المراحل الأربعة)</span>
+            <span>بوصلة NSOE · المحاكي</span>
           </button>
 
           <button
@@ -220,7 +282,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>فهرس الأفعال الـ 8 والنماذج</span>
+            <span>فهرس الأفعال الـ 12 والنماذج</span>
           </button>
 
           <button
@@ -232,7 +294,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>مصفوفة الإتقان ودفتر الأخطاء</span>
+            <span>مصفوفة الإتقان وخريطة الرياح</span>
           </button>
 
           <button
@@ -277,6 +339,25 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                 القاعدة: لا نسحب وسيلتي مساعدة في نفس الوقت
               </div>
             </div>
+
+            {/* Indicateur d'évolution du verbe sélectionné */}
+            {currentVerbStats && (
+              <div className="flex flex-wrap items-center gap-2 pt-1 px-1">
+                <span className="text-[10px] font-black text-gray-500 dark:text-gray-400">تطورك في هذا الفعل:</span>
+                <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full px-2 py-0.5">
+                  {currentVerbStats.attempts} محاولات
+                </span>
+                <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full px-2 py-0.5">
+                  آخر علامة: {currentVerbStats.last}%
+                </span>
+                {currentVerbStats.delta !== null && (
+                  <span className={`text-[10px] font-black rounded-full px-2 py-0.5 ${currentVerbStats.delta > 0 ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300' : currentVerbStats.delta < 0 ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                    {currentVerbStats.delta > 0 ? '▲ +' : currentVerbStats.delta < 0 ? '▼ ' : '＝ '}{currentVerbStats.delta}
+                  </span>
+                )}
+                <span className="text-[9px] text-gray-400 dark:text-gray-600 font-bold">(محفوظ محلياً — شخّص تطورك في «مصفوفة الإتقان»)</span>
+              </div>
+            )}
 
             {/* 4 Stages Pills */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
@@ -1075,6 +1156,15 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Diagnostic d'évolution : brouillons archivés + progression dans le temps */}
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-5">
+            <ProductionEvolutionPanel
+              stats={evolutionStats}
+              onResume={handleResumeDraft}
+              onRefresh={() => setEvolutionVersion(v => v + 1)}
+            />
           </div>
 
         </section>
