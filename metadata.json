@@ -1,0 +1,6 @@
+{
+  "name": "Kunz El Ouloum",
+  "description": "منصة كنز العلوم التفاعلية لمراجعة وتدريب مادة العلوم الطبيعية والحياة لشهادة البكالوريا بالجزائر بالذكاء الاصطناعي والتكرار المتباعد.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
