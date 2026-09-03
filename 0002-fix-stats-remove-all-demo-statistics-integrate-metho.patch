@@ -1,7 +1,7 @@
 From c9ccaef744d0a401d7b41099631e2b1cd4b339fe Mon Sep 17 00:00:00 2001
 From: sinamind414 <sinamind414@users.noreply.github.com>
 Date: Wed, 2 Sep 2026 19:40:32 +0000
-Subject: [PATCH 2/4] fix(stats): remove all demo statistics + integrate
+Subject: [PATCH 2/6] fix(stats): remove all demo statistics + integrate
  methodology tracking in progress tab
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

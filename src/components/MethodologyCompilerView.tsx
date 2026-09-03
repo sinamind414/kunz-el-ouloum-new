@@ -13,8 +13,10 @@ import {
 import { evaluateStudentProduction, ScoreReport } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, ERROR_TAG_LABELS_AR } from '../utils/methodologyLog';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
-import BoussolePanel from './BoussolePanel';
-import { BOUSSOLE_CAPS, BOUSSOLE_STAGES_META, groupErrorsByCap } from '../data/boussoleData';
+import StepFlow from './StepFlow';
+import SwitchGateModal from './SwitchGateModal';
+import ErrorMap from './ErrorMap';
+import { BOUSSOLE_STEPS, REGLE_D_OR_AR, getStepData } from '../data/boussoleData';
 
 interface MethodologyProps {
   onBackToHome?: () => void;
@@ -270,7 +272,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
             }`}
           >
             <Zap className="w-4 h-4" />
-            <span>بوصلة NSOE · المحاكي</span>
+            <span>بوصلة NSOE</span>
           </button>
 
           <button

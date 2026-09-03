@@ -494,7 +494,7 @@ export default function App() {
            currentTab === 'review' ? 'المراجعة الذكية' : 
            currentTab === 'stats' ? 'لوحة الإحصائيات' : 
            currentTab === 'badges' ? 'الأوسمة والإنجازات' : 
-           currentTab === 'methodology' ? 'منهجية الإجابة' : 
+           currentTab === 'methodology' ? 'بوصلة' : 
            currentTab === 'bootcamp' ? 'تحدي البكالوريا' : 
            currentTab === 'lesson' ? 'الدرس التفاعلي' : 
            currentTab === 'mindmap' ? 'الخرائط الذهنية (D3)' :

@@ -1,142 +1,87 @@
 // ============================================================
-// BOUSSOLE NSOE — بوصلة الإجابة (شمال · جنوب · غرب · شرق)
-// Les 4 caps = les 4 stades du simulateur, racontés comme un voyage.
-// Contenu 100 % aligné sur le livre officiel (manhadjiya vérifié).
+// BOUSSOLE SVT v2 — بوصلة الإجابة · 4 خطوات + مفتاح واحد
 // ============================================================
 
-export type CapId = 'north' | 'south' | 'west' | 'east';
-
-export interface BoussoleCap {
-  id: CapId;
-  num: number;
+export interface BoussoleStep {
+  num: 1 | 2 | 3 | 4;
   ar: string;
-  fr: string;
-  word: string;
+  wordAr: string;
   color: string;
-  colorSoft: string;
-  icon: string;
-  gestureAr: string;
-  questionAr: string;
-  stepsAr: string[];
-  motorAr: string;
+  errorTag: string;
 }
 
-export const BOUSSOLE_CAPS: BoussoleCap[] = [
+export const BOUSSOLE_STEPS: BoussoleStep[] = [
   {
-    id: 'north',
     num: 1,
-    ar: 'الشمال',
-    fr: 'NORD',
-    word: 'انْظُرْ',
-    color: '#2563eb',
-    colorSoft: '#dbeafe',
-    icon: '✋',
-    gestureAr: 'أرفع يدي نحو الأفق',
-    questionAr: 'ماذا يُطلب منّي بالضبط؟',
-    stepsAr: [
-      'أقرأ التعليمة 3 مرات',
-      'أحدد فعل الأداء (حلّل؟ فسّر؟)',
-      'ألوّن الكلمات المفتاحية والمشكل',
-    ],
-    motorAr: '« من لا يعرف وجهته لا يصل »',
+    ar: 'اقرأْ',
+    wordAr: 'أحدد فعل الأداء والكلمات المفتاحية',
+    color: '#1d4ed8',
+    errorTag: 'verb_confusion'
   },
   {
-    id: 'south',
     num: 2,
-    ar: 'الجنوب',
-    fr: 'SUD',
-    word: 'اجْمَعْ',
+    ar: 'اجمعْ',
+    wordAr: 'أربط المعطيات بالوحدات',
     color: '#059669',
-    colorSoft: '#d1fae5',
-    icon: '👇',
-    gestureAr: 'أخفض يدي نحو الأرض',
-    questionAr: 'ماذا أملك؟',
-    stepsAr: [
-      'كل وثيقة = معطى + وحدته',
-      'أرقامنا دائماً بوحدتها (غ/ل، %, د)',
-      'أكتب مكتسباتي من الدرس في سطرين',
-    ],
-    motorAr: '« السفينة لا تبحر بلا مؤن »',
+    errorTag: 'missing_unit'
   },
   {
-    id: 'west',
     num: 3,
-    ar: 'الغرب',
-    fr: 'OUEST',
-    word: 'اغُصْ',
+    ar: 'اربطْ',
+    wordAr: 'أقرأ الوثيقة ثم أستنتج',
     color: '#d97706',
-    colorSoft: '#fef3c7',
-    icon: '👈',
-    gestureAr: 'أمدّ يدي وأمسح الأفق',
-    questionAr: 'كيف أصل؟',
-    stepsAr: [
-      'أربط المعطى بالمكتسب (علاقة أو آلية)',
-      'أستعمل: لأن، وبالتالي، بينما، في حين',
-      'كل تأكيد يبدأ بـ «انطلاقاً من الوثيقة…»',
-    ],
-    motorAr: '« العبور يكون بالدليل لا بالظن »',
+    errorTag: 'missing_reference'
   },
   {
-    id: 'east',
     num: 4,
-    ar: 'الشرق',
-    fr: 'EST',
-    word: 'أَشْرِقْ',
-    color: '#f59e0b',
-    colorSoft: '#fef9c3',
-    icon: '👉',
-    gestureAr: 'أرفع يدي نحو الفجر',
-    questionAr: 'ما خلاصتي؟ وهل تحققتُ؟',
-    stepsAr: [
-      'جملة ختامية تعيد صياغة المطلوب',
-      'الفحص: وحدة ✓ فعل ✓ سند ✓ خاتمة ✓',
-      'أقرأ جملتي الأخيرة بصوت خافت',
-    ],
-    motorAr: '« الخلاصة هي الفجر الذي يجيب عن الشمال »',
-  },
+    ar: 'اختمْ',
+    wordAr: 'أعيد صياغة المطلوب كحقيقة علمية',
+    color: '#7c3aed',
+    errorTag: 'missing_conclusion'
+  }
 ];
 
-export function capForStage(stage: number): CapId | null {
-  if (stage >= 1 && stage <= 4) return BOUSSOLE_CAPS[stage - 1].id;
-  return null;
+export function getStepData(step: number): BoussoleStep | undefined {
+  return BOUSSOLE_STEPS.find(s => s.num === step);
 }
 
-export function getCap(capId: CapId): BoussoleCap {
-  return BOUSSOLE_CAPS.find(c => c.id === capId)!;
+export function getStepByTag(tag: string): BoussoleStep | undefined {
+  return BOUSSOLE_STEPS.find(s => s.errorTag === tag);
 }
 
-export const VENT_CAP_MAP: Record<string, CapId> = {
-  verb_confusion: 'north',
-  missing_unit: 'south',
-  comparison_without_criteria: 'south',
-  missing_reference: 'west',
-  premature_interpretation: 'west',
-  conditional_hypothesis: 'west',
-  unbalanced_comparison: 'west',
-  missing_conclusion: 'east',
+export const ERROR_TAG_LABELS_AR: Record<string, string> = {
+  missing_unit: 'غياب الوحدة القياسية',
+  missing_reference: 'تأكيد دون سند',
+  premature_interpretation: 'التفسير المبكر أثناء التحليل',
+  conditional_hypothesis: 'فرضية بصيغة الشك',
+  missing_conclusion: 'غياب الجملة الختامية',
+  verb_confusion: 'الخلط بين أفعال الأداء',
+  comparison_without_criteria: 'مقارنة بلا معايير',
+  unbalanced_comparison: 'مقارنة غير متوازنة'
 };
-
-export function groupErrorsByCap(errorTags: string[]): { capId: CapId; tags: string[] }[] {
-  const map: Record<CapId, string[]> = { north: [], south: [], west: [], east: [] };
-  errorTags.forEach(tag => {
-    const cap = VENT_CAP_MAP[tag];
-    if (cap) map[cap].push(tag);
-  });
-  return BOUSSOLE_CAPS.map(c => ({ capId: c.id, tags: map[c.id] }));
-}
-
-export const BOUSSOLE_RITUAL = [
-  { capId: 'north' as CapId, gesture: 'نظرة إلى الأفق' },
-  { capId: 'south' as CapId, gesture: 'جمع من الأرض' },
-  { capId: 'west' as CapId, gesture: 'مسح البحر' },
-  { capId: 'east' as CapId, gesture: 'يد نحو الفجر' },
-];
 
 export const REGLE_D_OR_AR = '« لا خاتمةَ قبل حُجّة، ولا حُجّةَ قبل مُعطى، ولا مُعطى قبلَ فَهْمِ السؤال »';
 
-export const BOUSSOLE_STAGES_META = [
-  { num: 1, title: 'شمال · انْظُرْ', sub: 'النمذجة', desc: 'تحديد المطلوب ثم تلوين خطوات الخبير' },
-  { num: 2, title: 'جنوب · اجْمَعْ', sub: 'الإكمال', desc: 'جمع المعطيات والوحدات في الشكل الجاهز' },
-  { num: 3, title: 'غرب · اغُصْ', sub: 'إنتاج موجّه', desc: 'الاستدلال مع بوصلة مفتوحة (مساعدة متاحة)' },
-  { num: 4, title: 'شرق · أَشْرِقْ', sub: 'محاكاة البكالوريا', desc: 'رحلة كاملة مؤقتة + خاتمة وفحص' },
+export const PHRASE_TYPES = [
+  {
+    step: 2,
+    ar: 'انطلاقًا من الوثيقة (…) نلاحظ أنّ …',
+    hint: 'القيمة + الوحدة'
+  },
+  {
+    step: 3,
+    ar: 'وهذا <b>لأنّ</b> … <b>وبالتالي</b> …',
+    hint: 'السبب + النتيجة'
+  },
+  {
+    step: 4,
+    ar: '<b>ومنه نستنتج أنّ</b> …',
+    hint: 'إعادة صياغة المطلوب'
+  }
 ];
+
+export const TIME_RULES = {
+  quart: 'الرُّبع الأول: اقرأ + اجمع',
+  half: 'النِّصف: الربط (أو الكتابة إن كان مغلقًا)',
+  quarter: 'الرُّبع الأخير: اختم + الفحص'
+};
