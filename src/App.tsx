@@ -44,6 +44,7 @@ import CombatTrainerView from './components/CombatTrainerView';
 import CombatChallengePortal from './components/CombatChallengePortal';
 import BadgesView from './components/BadgesView';
 import LessonTwoView from './components/LessonTwoView';
+import LessonsView from './components/LessonsView';
 import MindMapView from './components/MindMap/MindMapView';
 import { 
   startPirateMusic, 
@@ -61,7 +62,7 @@ export default function App() {
   });
 
   // Navigation tab state
-  const [currentTab, setCurrentTab] = useState<'splash' | 'home' | 'review' | 'stats' | 'chat' | 'methodology' | 'bootcamp' | 'badges' | 'lesson' | 'mindmap' | 'teacher'>('splash');
+  const [currentTab, setCurrentTab] = useState<'splash' | 'home' | 'review' | 'stats' | 'chat' | 'methodology' | 'bootcamp' | 'badges' | 'lesson' | 'workshop' | 'mindmap' | 'teacher'>('splash');
   const [activeMindMapUnitId, setActiveMindMapUnitId] = useState<number>(1);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [studentName, setStudentName] = useState<string | null>(null);
@@ -520,7 +521,8 @@ export default function App() {
            currentTab === 'badges' ? 'الأوسمة والإنجازات' : 
            currentTab === 'methodology' ? 'بوصلة' : 
            currentTab === 'bootcamp' ? 'تحدي البكالوريا' : 
-           currentTab === 'lesson' ? 'الدرس التفاعلي' : 
+            currentTab === 'lesson' ? 'الدروس' :
+            currentTab === 'workshop' ? 'الورشة التفاعلية' : 
            currentTab === 'mindmap' ? 'الخرائط الذهنية (D3)' :
             currentTab === 'chat' ? 'المرشد الذكي' :
             currentTab === 'teacher' ? 'لوحة المتابعة' :
@@ -588,6 +590,19 @@ export default function App() {
           >
             <BookOpen className="w-5 h-5" />
             <span>الدروس</span>
+          </button>
+
+          {/* Workshop Tab (leçon interactive Transcription) */}
+          <button
+            onClick={() => setCurrentTab('workshop')}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
+              currentTab === 'workshop'
+                ? 'bg-[#2ecc71]/15 text-[#006d37]'
+                : 'text-[#504441] hover:bg-[#fff9ed] hover:text-[#006d37]'
+            }`}
+          >
+            <BookOpen className="w-5 h-5" />
+            <span>الورشة التفاعلية</span>
           </button>
 
           {/* Flashcards / Revision Tab */}
@@ -724,6 +739,10 @@ export default function App() {
               )}
 
               {currentTab === 'lesson' && (
+                <LessonsView />
+              )}
+
+              {currentTab === 'workshop' && (
                 <LessonTwoView />
               )}
 
