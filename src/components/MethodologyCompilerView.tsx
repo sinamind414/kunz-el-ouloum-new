@@ -4,11 +4,11 @@ import {
   Target, Sparkles, BookOpen, Layers, CheckCircle2, AlertTriangle, 
   Clock, ShieldAlert, ArrowLeft, ArrowRight, RotateCcw, 
   HelpCircle, Check, X, Award, ChevronDown, ChevronUp, Cpu, 
-  Calendar, FileText, CheckSquare, Zap, Eye, Lightbulb, Compass
+  Calendar, FileText, CheckSquare, Zap, Eye, Lightbulb, Compass, Key
 } from 'lucide-react';
 import { 
   VERB_CARDS, UNIVERSAL_GRAMMAR_RULES, TRAINING_EXERCISES, 
-  ERROR_TAXONOMY, VerbCard, TrainingExercise, Switch, StepId 
+  ERROR_TAXONOMY, VerbCard, TrainingExercise, Switch, StepId, STEP_NAMES_AR 
 } from '../data/methodologyEngine';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, ERROR_TAG_LABELS_AR } from '../utils/methodologyLog';
@@ -868,74 +868,99 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                 </div>
               </div>
 
-              {/* Switch Line */}
-              {scoreReport.switchLine && (
-                <div className={`p-4 rounded-2xl border text-xs space-y-2 ${
-                  scoreReport.switchLine.violated
-                    ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40'
-                    : scoreReport.switchLine.choiceCorrect
-                    ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40'
-                    : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
-                }`}>
-                  <div className="flex items-center gap-2 font-bold">
-                    <Zap className="w-4 h-4" />
-                    <span>
-                      خطأ السوتش — الحقيقة: <span className="font-black text-lg">{scoreReport.switchLine.truth === 'open' ? 'مفتوح' : 'مغلق'}</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {scoreReport.switchLine.choice !== null && (
-                      <span>
-                        الاختيار: <span className="font-black">{scoreReport.switchLine.choice === 'open' ? 'مفتوح' : 'مغلق'}</span>
+              {/* 🔑 Ligne interrupteur */}
+              {scoreReport.switchLine && (() => {
+                const s = scoreReport.switchLine;
+                const switchTone = (s: typeof s) =>
+                  s.violated ? 'red'
+                  : s.choiceCorrect === false ? 'amber'
+                  : 'emerald';
+                const TONE = {
+                  red:     'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-200',
+                  amber:   'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-200',
+                  emerald: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200',
+                  muted:   'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400',
+                } as const;
+                const swAr = (s: 'open' | 'closed') => (s === 'open' ? 'مفتوح' : 'مغلق');
+                return (
+                  <div dir="rtl" className={`p-4 rounded-2xl border text-sm space-y-2 ${TONE[switchTone(s)]}`}>
+                    <div className="flex items-center gap-2 font-bold">
+                      <Key className="w-4 h-4" />
+                      <span>المفتاح</span>
+                      <span className="mx-1 text-gray-400">·</span>
+                      <span>الفعل: <span className="font-black">{swAr(s.truth)}</span></span>
+                      <span className="text-xs font-normal opacity-70">
+                        {s.truth === 'open' ? '— «لأنّ» مطلوبة' : '— لا «لأنّ»'}
                       </span>
-                    )}
-                    {scoreReport.switchLine.choiceCorrect !== null && (
-                      <span className={scoreReport.switchLine.choiceCorrect ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>
-                        {scoreReport.switchLine.choiceCorrect ? '✓ صحيح' : '✗ خاطئ'}
-                      </span>
-                    )}
-                  </div>
-                  {scoreReport.switchLine.remedyAr && (
-                    <div className="pt-1 text-emerald-700 dark:text-emerald-400 font-bold">
-                      <span>الإجراء العلاجي: </span>
-                      <span>{scoreReport.switchLine.remedyAr}</span>
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="flex items-center gap-4 flex-wrap text-xs">
+                      {s.choice !== null && (
+                        <span>
+                          اختيارك: <span className="font-black">{swAr(s.choice)}</span>{' '}
+                          <span className="font-bold">{s.choiceCorrect ? '✓' : '✗'}</span>
+                        </span>
+                      )}
+                      <span className="font-bold">
+                        {s.violated ? `✗ ${ERROR_TAXONOMY[s.truth === 'closed' ? 'premature_interpretation' : 'unsupported_claim'].nameAr}`
+                                    : '✓ احترمتَ الفعل'}
+                      </span>
+                    </div>
+                    {s.remedyAr && (
+                      <div className="pt-1 border-t border-current/10 font-bold">
+                        الدواء: <span className="font-normal">{s.remedyAr}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
-              {/* Step Report Bar */}
-              <div className="space-y-2">
+              {/* Les 4 étapes */}
+              <div dir="rtl" className="space-y-2">
                 <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <Layers className="w-4 h-4" />
-                  <span>تقرير الخطوات الأربع:</span>
+                  <span>الخطوات الأربع</span>
                 </h4>
                 <div className="grid grid-cols-4 gap-2">
-                  {scoreReport.stepReport.map((sl: StepLine) => (
-                    <div
-                      key={sl.step}
-                      className={`p-3 rounded-xl border text-center text-xs ${
-                        !sl.applicable
-                          ? 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400'
-                          : sl.passed
-                          ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200'
-                          : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-200'
-                      }`}
-                    >
-                      <div className="font-black text-lg mb-1">{sl.step}</div>
-                      <div className="font-bold text-[10px]">
-                        {sl.passed ? '✓ مُستوفى' : !sl.applicable ? 'غير مطبق' : '✗ خاطئ'}
-                      </div>
-                      {sl.errorTags.length > 0 && (
-                        <div className="mt-1 text-[9px] font-mono space-y-0.5">
-                          {sl.errorTags.map((tag, ti) => (
-                            <div key={ti} className="bg-red-200/60 dark:bg-red-900/60 px-1 rounded">{tag}</div>
-                          ))}
+                  {scoreReport.stepReport.map((sl: StepLine) => {
+                    const tone = !sl.applicable ? 'muted' : sl.passed ? 'emerald' : 'red';
+                    const isSwitchStep = sl.step === 3;
+                    const truth = scoreReport.switchLine.truth;
+                    return (
+                      <div key={sl.step} className={`p-3 rounded-xl border text-center text-xs ${TONE[tone]}`}>
+                        <div className="font-black text-lg leading-none">{sl.step}</div>
+                        <div className="font-bold text-sm mt-1">{STEP_NAMES_AR[sl.step]}</div>
+                        {isSwitchStep && (
+                          <div className={`mt-1 inline-block px-1.5 rounded text-[10px] font-bold ${
+                            truth === 'open' ? 'bg-emerald-200/60 dark:bg-emerald-900/60' : 'bg-gray-200/80 dark:bg-gray-700 line-through'
+                          }`}>
+                            «لأنّ»
+                          </div>
+                        )}
+                        <div className="mt-1 font-bold text-[11px]">
+                          {!sl.applicable ? 'لا تُكتب هنا' : sl.passed ? '✓' : '✗'}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {sl.errorTags.length > 0 && (
+                          <div className="mt-1 space-y-0.5 text-[11px]">
+                            {sl.errorTags.map(tag => (
+                              <div key={tag} className="bg-red-200/60 dark:bg-red-900/60 px-1 rounded">
+                                {ERROR_TAXONOMY[tag]?.nameAr ?? 'ملاحظة منهجية'}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+                {(() => {
+                  const first = scoreReport.stepReport.find(s => s.applicable && !s.passed && s.remedyAr);
+                  return first ? (
+                    <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border text-sm">
+                      <span className="font-bold">ابدأ بالخطوة {first.step} ({STEP_NAMES_AR[first.step]}) : </span>
+                      {first.remedyAr}
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               {/* Criteria hits list */}
