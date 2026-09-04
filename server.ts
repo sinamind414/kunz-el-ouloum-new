@@ -53,7 +53,12 @@ type Teacher = {
 
 const DB_FILE = process.env.KUNZ_DB_FILE || path.join(process.cwd(), "data", "students.json");
 const TEACHER_DB_FILE = process.env.KUNZ_TEACHER_DB_FILE || path.join(process.cwd(), "data", "teachers.json");
-const JWT_SECRET = process.env.JWT_SECRET || "boussole-local-secret-change-in-prod";
+// Sécurité : pas de secret par défaut. Le serveur refuse de démarrer sans JWT_SECRET explicite.
+if (!process.env.JWT_SECRET) {
+  console.error("REFUS DE DÉMARRAGE : JWT_SECRET manquant. Définissez-le dans .env (ex. openssl rand -hex 32).");
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function readDb(): { students: Student[]; entries: ProductionEntry[]; activities: ActivityEntry[]; resetCodes: PasswordResetCode[] } {
   try {
@@ -254,7 +259,7 @@ async function startServer() {
       const activities = db.activities.filter((e) => e.studentId === student.id);
       const quizEvents = activities.filter((e) => e.type === 'quiz');
       const missionEvents = activities.filter((e) => e.type === 'mission');
-      const avgQuizPercent = quizEvents.length ? Math.round(quizEvents.reduce((s, e) => s + (e.payload?.percent || 0), 0) / quizEvents.length) : null;
+      const avgQuizPercent = quizEvents.length ? Math.round(quizEvents.reduce((s, e) => s + (Number(e.payload?.percent) || 0), 0) / quizEvents.length) : null;
       const avgIcm = entries.length ? Math.round(entries.reduce((s, e) => s + e.icm, 0) / entries.length) : 0;
       const dominantErrors = entries.flatMap((e) => e.errorTags).reduce<Record<string, number>>((acc, tag) => {
         acc[tag] = (acc[tag] || 0) + 1;

@@ -18,16 +18,27 @@ const gotoStage3 = () => {
 };
 
 describe('B2 · isolation du gate au stade 3', () => {
-  it("avant le clic : gate visible, ni StepBar ni critères ni zone d'écriture", () => {
+  it("avant le clic : gate visible, ni StepBar ni critères ni zone d'écriture, aucun « لا تُكتب هنا »", () => {
     render(<MethodologyCompilerView />);
     gotoStage3();
     expect(screen.getByText(GATE_MARK)).toBeTruthy();
     expect(screen.queryByText(STEP_BAR_MARK)).toBeNull();
     expect(screen.queryByText(CRITERIA_MARK)).toBeNull();
     expect(screen.queryByPlaceholderText(/اكتب صياغتك/)).toBeNull();
+    // le path du verbe (donc l'interrupteur) ne doit pas fuiter avant le clic
+    expect(screen.queryByText(/لا تُكتب هنا/)).toBeNull();
   });
 
-  it('après le clic « نعم — مفتوح » : gate fermé, sections rendues', () => {
+  it('les deux boutons du gate sont neutres : aucune classe rouge/verte au survol', () => {
+    render(<MethodologyCompilerView />);
+    gotoStage3();
+    const btnClosed = screen.getByText('لا — مغلق').closest('button')!;
+    const btnOpen = screen.getByText('نعم — مفتوح').closest('button')!;
+    expect(btnClosed.className).not.toMatch(/red|emerald/);
+    expect(btnOpen.className).not.toMatch(/red|emerald/);
+  });
+
+  it('après le clic « نعم — مفتوح » : gate fermé, sections rendues, moules visibles', () => {
     render(<MethodologyCompilerView />);
     gotoStage3();
     fireEvent.click(screen.getByText('نعم — مفتوح'));
