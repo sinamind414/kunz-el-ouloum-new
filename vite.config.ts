@@ -11,6 +11,10 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    test: {
+      environment: 'jsdom',
+      include: ['src/**/__tests__/**/*.test.{ts,tsx}'],
+    },
     build: {
       rollupOptions: {
         output: {

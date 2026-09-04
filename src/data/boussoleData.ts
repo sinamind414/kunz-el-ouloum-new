@@ -1,4 +1,4 @@
-import { Switch, VERB_CARDS_V2 } from './methodologyEngine';
+import { Switch, VERB_CARDS_V2, ERROR_TAXONOMY } from './methodologyEngine';
 
 export interface BoussoleStep {
   num: 1 | 2 | 3 | 4;
@@ -98,8 +98,6 @@ export const SWITCH_OPEN_VERBS = VERB_CARDS_V2.filter(c => c.switch === 'open').
 
 export const SWITCH_CLOSED_VERBS = VERB_CARDS_V2.filter(c => c.switch === 'closed').map(c => c.id);
 
-import { Switch, VERB_CARDS_V2 } from './methodologyEngine';
-
 export type SwitchState = Switch;
 
 export function getSwitchForVerb(verbId: string): SwitchState {
@@ -118,17 +116,12 @@ export interface ErrorAddress {
   switch: 'switch';
 }
 
-export const ERROR_ADDRESS_MAP: Record<string, '1' | '2' | '3' | '4' | 'switch'> = {
-  missing_unit: '2',
-  missing_reference: '2',
-  premature_interpretation: 'switch',
-  conditional_hypothesis: '3',
-  missing_conclusion: '4',
-  verb_confusion: '1',
-  comparison_without_criteria: '2',
-  unbalanced_comparison: '3',
-  unsupported_claim: '3',
-};
+// Dérivé de ERROR_TAXONOMY[*].step — une seule adresse par erreur (constat #5 v1).
+// Aucune recopie manuelle : si la taxonomie bouge, l'adresse suit.
+export const ERROR_ADDRESS_MAP: Record<string, '1' | '2' | '3' | '4' | 'switch'> =
+  Object.fromEntries(
+    Object.entries(ERROR_TAXONOMY).map(([code, item]) => [code, String(item.step) as '1' | '2' | '3' | '4' | 'switch'])
+  );
 
 export function errorAddressAr(addr: '1' | '2' | '3' | '4' | 'switch'): string {
   const map: Record<typeof addr, string> = {

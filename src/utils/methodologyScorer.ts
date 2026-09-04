@@ -83,7 +83,6 @@ export function evaluateStudentProduction(
 
   const numbers = Array.from(text.replace(DOC_NUMBER_RE, ' ').matchAll(NUMBER_RE));
   const bare = bareNumbers(text);
-  const allNumbersHaveUnits = numbers.length > 0 && bare.length === 0;
 
   if (sw === 'closed' && CLOSED_FORBIDDEN_RE.test(text)) {
     detected.add('premature_interpretation');
@@ -132,7 +131,7 @@ export function evaluateStudentProduction(
         feedback = passed ? 'تمت تسمية طرفي المقارنة.' : `تنبيه: « ${compass} » - سمِّ الطرفين قبل المقارنة.`;
         break;
       case 'an_c2':
-        passed = allNumbersHaveUnits;
+        passed = bare.length === 0;
         feedback = passed ? 'تم تفكيك المعطيات وإرفاق القيم بالوحدات القياسية.' : `تنبيه: « ${compass} » - كل رقم متبوعاً بوحدته (غ/ل، %، دقيقة).`;
         break;
       case 'an_c3':

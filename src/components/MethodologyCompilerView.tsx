@@ -6,16 +6,34 @@ import {
   HelpCircle, Check, X, Award, ChevronDown, ChevronUp, Cpu, 
   Calendar, FileText, CheckSquare, Zap, Eye, Lightbulb, Compass, Key
 } from 'lucide-react';
-import { 
-  VERB_CARDS, UNIVERSAL_GRAMMAR_RULES, TRAINING_EXERCISES, 
-  ERROR_TAXONOMY, VerbCard, TrainingExercise, Switch, StepId, STEP_NAMES_AR, getVerbCardV2
+import {
+  VERB_CARDS, UNIVERSAL_GRAMMAR_RULES, TRAINING_EXERCISES,
+  ERROR_TAXONOMY, TrainingExercise, Switch, StepId, STEP_NAMES_AR, STEP_TEMPLATES, VERB_CARDS_V2, getVerbCardV2
 } from '../data/methodologyEngine';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
-import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, ERROR_TAG_LABELS_AR } from '../utils/methodologyLog';
+import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry } from '../utils/methodologyLog';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
-import StepFlow from './StepFlow';
-import ErrorMap from './ErrorMap';
-import { BOUSSOLE_STEPS, REGLE_D_OR_AR, getStepData } from '../data/boussoleData';
+import BoussoleCard from './BoussoleCard';
+import { TIME_RULES, getStepData } from '../data/boussoleData';
+
+// B1 · tons du rapport + libellés interrupteur au niveau module (le bloc « 4 étapes » les lit hors closure)
+const TONE = {
+  red:     'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-200',
+  amber:   'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-200',
+  emerald: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200',
+  muted:   'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400',
+} as const;
+type ToneKey = keyof typeof TONE;
+const switchTone = (s: SwitchLine): ToneKey =>
+  s.violated ? 'red'
+  : s.choiceCorrect === false ? 'amber'
+  : 'emerald';
+const swAr = (s: Switch): string => (s === 'open' ? 'مفتوح' : 'مغلق');
+
+// m2 · seuil d'automatisation unique (code + texte d'aide)
+const AUTOMATION_THRESHOLD = 90;
+
+const REVIEW_GAPS = [1, 3, 7, 16, 30];
 
 interface MethodologyProps {
   onBackToHome?: () => void;
@@ -23,7 +41,7 @@ interface MethodologyProps {
 
 export default function MethodologyCompilerView({ onBackToHome }: MethodologyProps) {
   // Navigation Tabs: 'engine_rules' (Couche 0) | 'verbs_ref' (Fiches) | 'simulator' (4 Stades) | 'mastery_matrix' (Analytics & Erreurs)
-  const [activeTab, setActiveTab] = useState<'simulator' | 'verbs_ref' | 'engine_rules' | 'mastery_matrix'>('simulator');
+  const [activeTab, setActiveTab] = useState<'simulator' | 'verbs_ref' | 'engine_rules' | 'mastery_matrix' | 'boussole_card'>('simulator');
 
   // Selected Verb & Exercise for Training
   const [selectedVerbId, setSelectedVerbId] = useState<string>('verb_analyse_v1');
@@ -34,7 +52,6 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   // Stage 1: Modelage State
   const [highlightedSteps, setHighlightedSteps] = useState<Record<number, boolean>>({});
-  const [activeHighlighterColor, setActiveHighlighterColor] = useState<string>('blue');
 
   // Stage 2: Complétion State
   const [clozeAnswers, setClozeAnswers] = useState<Record<string, string>>({});
@@ -43,7 +60,6 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   // Stage 3 & 4: Production States
   const [studentText, setStudentText] = useState<string>('');
   const [selectedEvidenceForCriterion, setSelectedEvidenceForCriterion] = useState<Record<string, boolean>>({});
-  const [isBoussoleOpen, setIsBoussoleOpen] = useState<boolean>(true);
 
   // Stage 4: 90 Seconds Draft & Timer
   const [timerSeconds, setTimerSeconds] = useState<number>(180);
@@ -62,20 +78,10 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   // Carnet de bord : historique des productions & diagnostic d'évolution
   const [evolutionVersion, setEvolutionVersion] = useState(0); // bump pour rafraîchir le diagnostic
 
-  // Local storage stats & matrix
-  const [matrixScores, setMatrixScores] = useState<Record<string, Record<string, number>>>({
-    verb_analyse_v1: { protein_synthesis: 92, enzymology: 85, immunology: 68, neuro_comm: 84, regulations: 0, energy_transformations: 0, geodynamics: 0 },
-    verb_explain_v1: { protein_synthesis: 71, enzymology: 88, immunology: 64, neuro_comm: 79, regulations: 0, energy_transformations: 0, geodynamics: 0 },
-    verb_compare_v1: { protein_synthesis: 80, enzymology: 90, immunology: 87, neuro_comm: 62, regulations: 0, energy_transformations: 0, geodynamics: 0 },
-    verb_hypothesis_v1: { protein_synthesis: 75, enzymology: 80, immunology: 70, neuro_comm: 65, regulations: 0, energy_transformations: 0, geodynamics: 0 }
-  });
+  // m1 · aucune statistique fictive : le carnet (localStorage) est la seule source
+  const [matrixScores, setMatrixScores] = useState<Record<string, Record<string, number>>>({});
 
-  const [weeklyErrorCounters, setWeeklyErrorCounters] = useState<Record<string, number>>({
-    missing_unit: 4,
-    premature_interpretation: 3,
-    missing_reference: 2,
-    missing_conclusion: 1
-  });
+  const [weeklyErrorCounters, setWeeklyErrorCounters] = useState<Record<string, number>>({});
 
   const currentVerb = VERB_CARDS.find(v => v.id === selectedVerbId) || VERB_CARDS[0];
   const currentExercise = TRAINING_EXERCISES.find(e => e.id === selectedExerciseId) || null;
@@ -86,6 +92,56 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     [evolutionVersion]
   );
   const currentVerbStats = getVerbEvolution(selectedVerbId);
+
+  // B2 · écran interrupteur : tant que le gate est ouvert, seuls contexte + gate sont rendus
+  const gateOpen = currentStage === 3 && showSwitchGate;
+
+  // m3 · bouton de dev réservé au développement
+  const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+
+  // m1 · header = dernier ICM du carnet, ou « — » si aucune production
+  const lastIcm: number | null = React.useMemo(() => {
+    const logs = getProductionLogs();
+    return logs.length ? logs[logs.length - 1].icm : null;
+  }, [evolutionVersion]);
+
+  // m1 · calendrier calculé depuis le carnet : prochaine révision par verbe (J+1/3/7/16/30)
+  const reviewSchedule = React.useMemo(() => {
+    const byVerb = new Map<string, ProductionLogEntry[]>();
+    getProductionLogs().forEach(e => {
+      const arr = byVerb.get(e.verbId) || [];
+      arr.push(e);
+      byVerb.set(e.verbId, arr);
+    });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const items: { verbAr: string; gap: number; nextDate: Date; due: boolean; daysLeft: number }[] = [];
+    byVerb.forEach(entries => {
+      const sorted = [...entries].sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+      const last = sorted[sorted.length - 1];
+      const gap = REVIEW_GAPS[Math.min(sorted.length - 1, REVIEW_GAPS.length - 1)];
+      const nextDate = new Date(last.dateISO);
+      nextDate.setHours(0, 0, 0, 0);
+      nextDate.setDate(nextDate.getDate() + gap);
+      const daysLeft = Math.round((nextDate.getTime() - today.getTime()) / 86400000);
+      items.push({ verbAr: last.verbAr, gap, nextDate, due: daysLeft <= 0, daysLeft: Math.max(0, daysLeft) });
+    });
+    return items.sort((a, b) => a.nextDate.getTime() - b.nextDate.getTime());
+  }, [evolutionVersion]);
+
+  // Mineur · placeholder de l'éditeur dérivé des moules du verbe (filtré par card.path)
+  const editorPlaceholder = React.useMemo(() => {
+    const card = getVerbCardV2(selectedVerbId);
+    if (!card) return 'اكتب صياغتك المنهجية الكاملة هنا...';
+    const parts: string[] = [];
+    if (card.path.includes(2)) parts.push(STEP_TEMPLATES[2][0]);
+    if (card.path.includes(3)) {
+      const mold = (STEP_TEMPLATES[3] as unknown as Record<string, string[]>)[card.step3Mode]?.[0];
+      if (mold) parts.push(mold);
+    }
+    if (card.path.includes(4)) parts.push(STEP_TEMPLATES[4][0]);
+    return `اكتب صياغتك المنهجية الكاملة هنا...\n${parts.join('\n')}`;
+  }, [selectedVerbId]);
 
   // Timer Effect for Stage 4
   useEffect(() => {
@@ -116,17 +172,6 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
        setIsTimerRunning(false);
      }
    };
-
-  // Submit Stage 1
-  const handleCheckStage1 = () => {
-    if (!currentExercise) return;
-    const totalSegments = currentExercise.stage1.segments.length;
-    const count = Object.keys(highlightedSteps).length;
-    if (count >= totalSegments) {
-      const rep = evaluateStudentProduction(selectedVerbId, currentExercise.stage1.expertAnswer, undefined, 1, { switchChoice });
-      setScoreReport(rep);
-    }
-  };
 
   // Submit Stage 2
   const handleCheckStage2 = () => {
@@ -185,7 +230,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
       icm: rep.icm,
       criteriaSummary: rep.criteriaResults.map(c => ({ label: c.label, passed: c.passed })),
       errorTags: rep.detectedErrors.map(e => e.tag),
-      durationSec: isTimerRunning ? timerSeconds : undefined,
+      durationSec: currentStage === 4 && currentExercise ? Math.max(0, currentExercise.stage4.timeLimitSec - timerSeconds) : undefined,
     });
     setEvolutionVersion(v => v + 1);
 
@@ -228,6 +273,9 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
     setDraftFinalSentence(draftPart[2] || '');
     setIsDraftCompleted(!!restoredText);
     setScoreReport(null);
+    // M2 · aucun choix résiduel : l'interrupteur se rejoue à chaque verbe (jamais de choiceCorrect au bac)
+    setSwitchChoice(null);
+    setShowSwitchGate(false);
     setActiveTab('simulator');
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -239,6 +287,9 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
     setClozeAnswers({});
     setClozeSubmitted(false);
     setScoreReport(null);
+    // M2 · changer de verbe/exercice au stade 3 rouvre le gate (le choix ne survit pas)
+    setSwitchChoice(null);
+    if (currentStage === 3) setShowSwitchGate(true);
     setDraftVerb('');
     setDraftSteps('');
     setDraftFinalSentence('');
@@ -271,7 +322,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           <div className="flex items-center gap-3 bg-black/20 backdrop-blur-md p-3 rounded-2xl border border-white/15">
             <div className="text-center px-3 border-l border-white/20">
               <span className="block text-[11px] text-white/80 font-bold">مؤشر ICM الحالي</span>
-              <span className="text-xl md:text-2xl font-black text-[#fed65b]">88%</span>
+              <span className="text-xl md:text-2xl font-black text-[#fed65b]">{lastIcm === null ? '—' : `${lastIcm}%`}</span>
             </div>
             <div className="text-center px-3">
               <span className="block text-[11px] text-white/80 font-bold">المرحلة النشطة</span>
@@ -291,7 +342,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             }`}
           >
             <Zap className="w-4 h-4" />
-            <span>بوصلة NSOE</span>
+            <span>الخطوات الأربع</span>
           </button>
 
           <button
@@ -303,7 +354,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>فهرس الأفعال الـ 12 والنماذج</span>
+            <span>فهرس الأفعال الثمانية والنماذج</span>
           </button>
 
           <button
@@ -315,7 +366,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>مصفوفة الإتقان وخريطة الرياح</span>
+            <span>مصفوفة الإتقان</span>
           </button>
 
           <button
@@ -328,6 +379,18 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           >
             <Compass className="w-4 h-4" />
             <span>قواعد الإجابة الـ 4 (الطبقة 0)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('boussole_card')}
+            className={`px-4 py-2 rounded-xl font-bold text-xs md:text-sm whitespace-nowrap transition-all flex items-center gap-2 ${
+              activeTab === 'boussole_card'
+                ? 'bg-white text-[#006d37] shadow-md'
+                : 'bg-white/15 text-white hover:bg-white/25'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>بطاقة البوصلة (للطباعة)</span>
           </button>
         </div>
       </header>
@@ -438,11 +501,21 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             </div>
           </div>
 
-{/* StepBar — stages 1-3, hidden at stage 4 */}
-          {currentStage >= 1 && currentStage <= 3 && currentExercise && (() => {
+{/* StepBar — stages 1-3, masquée tant que le gate est ouvert (B2) */}
+          {currentStage >= 1 && currentStage <= 3 && currentExercise && !gateOpen && (() => {
             const card = getVerbCardV2(selectedVerbId);
             if (!card) return null;
             const lampState = currentStage === 3 ? (switchChoice ?? 'pending') : card.switch;
+            // Mineur · la case affiche le moule de l'étape, pas un « ✓ » qui se lit comme « fait »
+            const moldForStep = (step: StepId): string => {
+              if (step === 1) return 'المطلوب: ………';
+              if (!card.path.includes(step)) return 'لا تُكتب هنا';
+              if (step === 2) return STEP_TEMPLATES[2][0];
+              if (step === 4) return STEP_TEMPLATES[4][0];
+              const mold = (STEP_TEMPLATES[3] as unknown as Record<string, string[]>)[card.step3Mode]?.[0];
+              if (mold) return `«${mold}»`;
+              return lampState === 'open' ? '«لأنّ» مطلوبة' : 'لا «لأنّ»';
+            };
             return (
               <div dir="rtl" className="space-y-2 mb-4">
                 <div className="grid grid-cols-4 gap-2">
@@ -454,7 +527,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     return (
                       <div key={step} className={`p-3 rounded-xl border text-center text-xs ${
                         !applicable ? 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400'
-                        : isStep3 ? (isStep3Open ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' : isStep3Pending ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40' : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40')
+                        : isStep3 ? (isStep3Open ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' : isStep3Pending ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40' : 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400')
                         : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200'
                       }`}>
                         <div className="font-black text-lg leading-none">{step}</div>
@@ -466,18 +539,22 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                             «لأنّ»
                           </div>
                         )}
-                        <div className="mt-1 font-bold text-[11px]">
-                          {!applicable ? 'لا تُكتب هنا' : '✓'}
+                        <div className="mt-1 font-bold text-[11px] leading-relaxed">
+                          {moldForStep(step)}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                {/* Mineur · §8 : le Miftah est montré ET justifié */}
+                <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400 text-center">
+                  {card.switch === 'open' ? 'الفعل يطلب الآلية ← «لأنّ» مطلوبة' : 'الفعل يطلب الوصف ← لا «لأنّ»'}
+                </div>
               </div>
             );
           })()}
 
-          {/* Switch Gate — stage 3 only, no skip, no pre-color */}
+          {/* Switch Gate — stage 3 only, no skip, no pre-color (B2 : boutons neutres) */}
           {showSwitchGate && currentStage === 3 && currentExercise && (() => {
             const card = getVerbCardV2(selectedVerbId);
             if (!card) return null;
@@ -490,21 +567,19 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => { setSwitchChoice('closed'); setShowSwitchGate(false); }}
-                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all font-bold text-center"
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
-                    <div className="text-2xl mb-1">🚫</div>
                     <div>لا — مغلق</div>
                   </button>
                   <button
                     onClick={() => { setSwitchChoice('open'); setShowSwitchGate(false); }}
-                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all font-bold text-center"
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
-                    <div className="text-2xl mb-1">✅</div>
                     <div>نعم — مفتوح</div>
                   </button>
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-400">
-                  <span>الخطوة 3 ({STEP_NAMES_AR[3]}) — السوتش يحدد إذا كنت ستستخدم «لأنّ»</span>
+                  <span>الخطوة 3 ({STEP_NAMES_AR[3]}) — المفتاح يحدّد هل تكتب «لأنّ»</span>
                 </div>
               </div>
             );
@@ -586,45 +661,60 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 </div>
               </div>
 
-              {/* Steps Legend */}
+              {/* Steps Legend — couleurs Boussole via stepMap (pas le n° brut) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                {currentExercise.stage1.segments.map((seg, idx) => (
-                  <div 
-                    key={idx} 
+                {currentExercise.stage1.segments.map((seg, idx) => {
+                  const mappedStep = (getVerbCardV2(selectedVerbId)?.stepMap?.[seg.stepNumber - 1] ?? seg.stepNumber) as StepId;
+                  const boussoleColor = getStepData(mappedStep)?.color ?? '#10b981';
+                  const isDone = highlightedSteps[seg.stepNumber];
+                  return (
+                  <div
+                    key={idx}
+                    style={isDone ? { borderColor: boussoleColor, backgroundColor: `${boussoleColor}14` } : undefined}
                     className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
-                      highlightedSteps[seg.stepNumber] 
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300' 
+                      isDone
+                        ? 'text-gray-800 dark:text-gray-200'
                         : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 text-gray-700 dark:text-gray-300'
                     }`}
                   >
-                    <span>الخطوة {seg.stepNumber}: {currentVerb.structureSteps[idx] || 'خطوة هيكلية'}</span>
-                    {highlightedSteps[seg.stepNumber] ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: boussoleColor }} />
+                      <span>{STEP_NAMES_AR[mappedStep]}: {(currentVerb.structureSteps[idx] || 'خطوة هيكلية').replace(/^\d+\.\s*/, '')}</span>
+                    </span>
+                    {isDone ? (
+                      <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: boussoleColor }} />
                     ) : (
                       <span className="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600"></span>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
-              {/* Expert Answer with Clickable Segments */}
+              {/* Expert Answer with Clickable Segments — même couleur stepMap que la légende */}
               <div className="p-5 bg-gray-50 dark:bg-[#121614] rounded-2xl border border-gray-200 dark:border-gray-800 space-y-3 leading-relaxed text-sm md:text-base">
                 {currentExercise.stage1.segments.map((seg, idx) => {
                   const isMarked = highlightedSteps[seg.stepNumber];
+                  const mappedStep = (getVerbCardV2(selectedVerbId)?.stepMap?.[seg.stepNumber - 1] ?? seg.stepNumber) as StepId;
+                  const boussoleColor = getStepData(mappedStep)?.color ?? '#10b981';
                   return (
                     <motion.div
                       key={idx}
                       whileHover={{ scale: 1.01 }}
                       onClick={() => setHighlightedSteps(prev => ({ ...prev, [seg.stepNumber]: true }))}
+                      style={isMarked ? { borderColor: boussoleColor, backgroundColor: `${boussoleColor}1A` } : undefined}
                       className={`p-3 rounded-xl cursor-pointer border transition-all ${
-                        isMarked 
-                          ? `${seg.colorClass} border-transparent shadow-sm` 
+                        isMarked
+                          ? 'shadow-sm text-gray-800 dark:text-gray-200'
                           : 'bg-white dark:bg-[#1b221e] border-gray-200 dark:border-gray-700 hover:border-emerald-400 text-gray-800 dark:text-gray-200'
                       }`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold text-gray-400 mb-1">
-                        <span>الخطوة {seg.stepNumber} (انقر للتحديد)</span>
-                        {isMarked && <span className="text-emerald-600 font-bold">تم التعرف عليها ✓</span>}
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: boussoleColor }} />
+                          <span>{STEP_NAMES_AR[mappedStep]} (انقر للتحديد)</span>
+                        </span>
+                        {isMarked && <span className="font-bold" style={{ color: boussoleColor }}>تم التعرف عليها ✓</span>}
                       </div>
                       <p className="font-medium whitespace-pre-line">{seg.text}</p>
                     </motion.div>
@@ -634,7 +724,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
 
               <div className="flex items-center justify-between pt-2">
                 <button
-                  onClick={() => setHighlightedSteps({ 1: true, 2: true, 3: true, 4: true })}
+                  onClick={() => currentExercise && setHighlightedSteps(Object.fromEntries(currentExercise.stage1.segments.map(s => [s.stepNumber, true])))}
                   className="text-xs font-bold text-gray-500 hover:text-emerald-600"
                 >
                   كشف جميع الخطوات
@@ -710,8 +800,8 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             </div>
           )}
 
-          {/* STAGE 3 & 4: GUIDED & CONSTRAINED PRODUCTION */}
-          {(currentStage === 3 || currentStage === 4) && currentExercise && (
+          {/* STAGE 3 & 4: GUIDED & CONSTRAINED PRODUCTION (masqué tant que le gate est ouvert) */}
+          {(currentStage === 3 || currentStage === 4) && currentExercise && !gateOpen && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Main Writing Area (8 cols on lg) */}
@@ -751,7 +841,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                           type="text"
                           value={draftSteps}
                           onChange={(e) => setDraftSteps(e.target.value)}
-                          placeholder="الـ 4 خطوات المتوقعة"
+                          placeholder="المطلوب (≤ ٥ كلمات)"
                           className="bg-black/20 border border-white/20 rounded-lg p-2 text-white placeholder-white/60 text-xs outline-none"
                         />
                         <input
@@ -761,7 +851,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                             setDraftFinalSentence(e.target.value);
                             if (draftVerb && draftSteps && e.target.value) setIsDraftCompleted(true);
                           }}
-                          placeholder="الهدف من الجملة الختامية"
+                          placeholder="الخاتمة المتوقعة"
                           className="bg-black/20 border border-white/20 rounded-lg p-2 text-white placeholder-white/60 text-xs outline-none"
                         />
                       </div>
@@ -785,18 +875,20 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     rows={8}
                     value={studentText}
                     onChange={(e) => setStudentText(e.target.value)}
-                    placeholder={`اكتب صياغتك المنهجية الكاملة هنا...\nمثال: تمثل الوثيقة... حيث نلاحظ في المجال الأول... الاستنتاج: ...`}
+                    placeholder={editorPlaceholder}
                     className="w-full bg-gray-50 dark:bg-[#121614] border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm md:text-base text-gray-900 dark:text-white font-medium leading-relaxed focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
 
                    {/* Actions & Submit */}
                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                     <button
-                       onClick={() => currentExercise && setStudentText(currentExercise.stage1.expertAnswer)}
-                       className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-600"
-                     >
-                       إدراج نص تجريبي للاختبار
-                     </button>
+                      {isDev && (
+                        <button
+                          onClick={() => currentExercise && setStudentText(currentExercise.stage1.expertAnswer)}
+                          className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-600"
+                        >
+                          إدراج نص تجريبي للاختبار
+                        </button>
+                      )}
 
                     <div className="flex items-center gap-2">
                       <button
@@ -808,7 +900,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                       </button>
                       <button
                         onClick={handleSubmitProduction}
-                        disabled={studentText.trim().length === 0}
+                        disabled={studentText.trim().length === 0 || (currentStage === 4 && !isDraftCompleted)}
                         className="px-6 py-2.5 bg-[#006d37] hover:bg-[#00562b] disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-md flex items-center gap-2"
                       >
                         <Sparkles className="w-4 h-4 text-[#fed65b]" />
@@ -820,14 +912,15 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
 
               </div>
 
-              {/* Sidebar: Checklist-Boussole with Self-Proof (4 cols on lg) */}
+              {/* Colonne latérale : critères au stade 3, chrono au stade 4 (M1 : bac sans carte) */}
               <div className="lg:col-span-4 space-y-4">
+              {currentStage === 3 && (
                 <div className="bg-white dark:bg-[#161c18] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm sticky top-4">
                   <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3 mb-3">
                     <div className="flex items-center gap-2">
                       <Compass className="w-5 h-5 text-emerald-600" />
                       <div>
-                        <h4 className="font-black text-sm text-gray-900 dark:text-white">البوصلة المنهجية</h4>
+                        <h4 className="font-black text-sm text-gray-900 dark:text-white">معايير الفعل</h4>
                         <span className="text-[11px] text-gray-400">توجيه قبلي وتأكيد بالإثبات</span>
                       </div>
                     </div>
@@ -874,17 +967,24 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     })}
                   </div>
 
-
-                            <span className="ml-1">
-                              {switchChoice === 'open' ? '«لأنّ» مطلوبة' : 'لا «لأنّ»'}
-                            </span>
-                          </span>
-                        )}
-</div>
-                    )}
-
-                  </div>
                 </div>
+              )}
+              {currentStage === 4 && (
+                <div className="bg-white dark:bg-[#161c18] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm sticky top-4 space-y-3">
+                  <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <h4 className="font-black text-sm text-gray-900 dark:text-white">الزمن (يتناسب مع النقاط)</h4>
+                  </div>
+                  <div className="font-mono text-2xl font-black text-center bg-gray-50 dark:bg-[#121614] rounded-xl py-2 text-gray-900 dark:text-white">
+                    {Math.floor(timerSeconds / 60)}:{(timerSeconds % 60).toString().padStart(2, '0')}
+                  </div>
+                  <ul className="space-y-1.5 text-xs font-bold text-gray-700 dark:text-gray-300">
+                    <li className="flex items-start gap-2"><span>⏳</span><span>{TIME_RULES.quart}</span></li>
+                    <li className="flex items-start gap-2"><span>✍️</span><span>{TIME_RULES.half}</span></li>
+                    <li className="flex items-start gap-2"><span>✅</span><span>{TIME_RULES.quarter}</span></li>
+                  </ul>
+                </div>
+              )}
               </div>
             </div>
           )}
@@ -941,17 +1041,6 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               {/* 🔑 Ligne interrupteur */}
               {scoreReport.switchLine && (() => {
                 const s = scoreReport.switchLine;
-                const switchTone = (s: typeof s) =>
-                  s.violated ? 'red'
-                  : s.choiceCorrect === false ? 'amber'
-                  : 'emerald';
-                const TONE = {
-                  red:     'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-200',
-                  amber:   'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-200',
-                  emerald: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200',
-                  muted:   'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400',
-                } as const;
-                const swAr = (s: 'open' | 'closed') => (s === 'open' ? 'مفتوح' : 'مغلق');
                 return (
                   <div dir="rtl" className={`p-4 rounded-2xl border text-sm space-y-2 ${TONE[switchTone(s)]}`}>
                     <div className="flex items-center gap-2 font-bold">
@@ -992,7 +1081,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 </h4>
                 <div className="grid grid-cols-4 gap-2">
                   {scoreReport.stepReport.map((sl: StepLine) => {
-                    const tone = !sl.applicable ? 'muted' : sl.passed ? 'emerald' : 'red';
+                    const tone: ToneKey = !sl.applicable ? 'muted' : sl.passed ? 'emerald' : 'red';
                     const isSwitchStep = sl.step === 3;
                     const truth = scoreReport.switchLine.truth;
                     return (
@@ -1033,9 +1122,13 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 })()}
               </div>
 
+              {/* M6 · couche enseignant repliée : critères + erreurs sous « التفاصيل » */}
+              <details className="bg-gray-50 dark:bg-black/20 rounded-2xl border border-gray-200 dark:border-gray-800 px-4 py-3">
+                <summary className="font-bold text-sm text-gray-700 dark:text-gray-300 cursor-pointer">التفاصيل</summary>
+                <div className="pt-3 space-y-6">
               {/* Criteria hits list */}
               <div className="space-y-3">
-                <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300">تدقيق معايير السيكل الخاص بفعل ({currentVerb.verbAr}):</h4>
+                <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300">تدقيق معايير الفعل ({currentVerb.verbAr}):</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {scoreReport.criteriaResults.map(res => (
                     <div
@@ -1074,7 +1167,6 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                       <div key={idx} className="p-4 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-900/40 text-xs space-y-1">
                         <div className="flex items-center justify-between font-bold text-red-800 dark:text-red-300">
                           <span>{err.nameAr}</span>
-                          <span className="text-[10px] bg-red-200/60 dark:bg-red-900/60 px-2 py-0.5 rounded font-mono">{err.tag}</span>
                         </div>
                         <p className="text-gray-700 dark:text-gray-300">{err.descriptionAr}</p>
                         <div className="pt-1 text-emerald-700 dark:text-emerald-400 font-bold">
@@ -1086,6 +1178,8 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                   </div>
                 </div>
               )}
+                </div>
+              </details>
 
             </motion.div>
           )}
@@ -1270,57 +1364,57 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {VERB_CARDS.slice(0, 4).map((verb) => {
+                  {VERB_CARDS_V2.map((verb) => {
                     const scores = matrixScores[verb.id] || {};
-                    const isAutomated = Object.values(scores).filter((s: any) => Number(s) >= 85).length >= 3;
+                    const isAutomated = Object.values(scores).filter((s: any) => Number(s) >= AUTOMATION_THRESHOLD).length >= 3;
                     return (
                       <tr key={verb.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-white/5">
                         <td className="p-3 font-black text-gray-900 dark:text-white">{verb.verbAr}</td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-1 rounded-md font-bold text-xs ${
-                            (scores.protein_synthesis || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                            (scores.protein_synthesis || 0) >= AUTOMATION_THRESHOLD ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                           }`}>
                             {scores.protein_synthesis || 0}%
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-1 rounded-md font-bold text-xs ${
-                            (scores.enzymology || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                            (scores.enzymology || 0) >= AUTOMATION_THRESHOLD ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                           }`}>
                             {scores.enzymology || 0}%
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-1 rounded-md font-bold text-xs ${
-                            (scores.immunology || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                            (scores.immunology || 0) >= AUTOMATION_THRESHOLD ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
                           }`}>
                             {scores.immunology || 0}%
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-1 rounded-md font-bold text-xs ${
-                            (scores.neuro_comm || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                            (scores.neuro_comm || 0) >= AUTOMATION_THRESHOLD ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                           }`}>
                             {scores.neuro_comm || 0}%
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-1 rounded-md font-bold text-xs ${
-                            (scores.regulations || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                            (scores.regulations || 0) >= AUTOMATION_THRESHOLD ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                           }`}>
                             {scores.regulations || 0}%
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-1 rounded-md font-bold text-xs ${
-                            (scores.energy_transformations || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                            (scores.energy_transformations || 0) >= AUTOMATION_THRESHOLD ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                           }`}>
                             {scores.energy_transformations || 0}%
                           </span>
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-1 rounded-md font-bold text-xs ${
-                            (scores.geodynamics || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                            (scores.geodynamics || 0) >= AUTOMATION_THRESHOLD ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                           }`}>
                             {scores.geodynamics || 0}%
                           </span>
@@ -1354,7 +1448,11 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               </div>
 
               <div className="space-y-3">
-                {Object.entries(weeklyErrorCounters).map(([tag, count]) => {
+                {Object.keys(weeklyErrorCounters).length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-bold text-center py-4">
+                    لا أخطاء مرصودة بعد — ابدأ التدريب لتشخيص الخلل السائد.
+                  </p>
+                ) : Object.entries(weeklyErrorCounters).map(([tag, count]) => {
                   const errorDef = ERROR_TAXONOMY[tag];
                   if (!errorDef) return null;
                   return (
@@ -1376,33 +1474,31 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               </div>
             </div>
 
-            {/* Spaced Review Schedule (J+1, J+3, J+7, J+16, J+30) */}
+            {/* Calendrier de révision calculé depuis le carnet (m1 : aucune date fictive) */}
             <div className="bg-white dark:bg-[#161c18] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
                 <h3 className="font-black text-base text-gray-900 dark:text-white flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-emerald-600" />
-                  <span>جدول التكرار المتباعد للذاكرة (Active Recall)</span>
+                  <span>جدول التكرار المتباعد للذاكرة</span>
                 </h3>
                 <span className="text-xs font-bold text-emerald-600">5 دقائق استرجاع كتابي</span>
               </div>
 
               <div className="space-y-2.5">
-                {[
-                  { day: 'J + 1', verb: 'حَلّل (Analyser)', status: 'جاهز للمراجعة', isDue: true },
-                  { day: 'J + 3', verb: 'فَسّر (Expliquer)', status: 'متبقي يومان', isDue: false },
-                  { day: 'J + 7', verb: 'قَارن (Comparer)', status: 'متبقي 4 أيام', isDue: false },
-                  { day: 'J + 16', verb: 'اقْتَرح فرضيّة', status: 'متبقي 11 يوماً', isDue: false },
-                  { day: 'J + 30', verb: 'صَادق على الفرضية', status: 'متبقي 24 يوماً', isDue: false }
-                ].map((item, idx) => (
+                {reviewSchedule.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-bold text-center py-4">
+                    لا مراجعات مجدولة بعد — أكمل إنتاجًا مقيّمًا ليبدأ الجدول.
+                  </p>
+                ) : reviewSchedule.map((item, idx) => (
                   <div key={idx} className="p-3 bg-gray-50 dark:bg-[#121614] rounded-xl border border-gray-200 dark:border-gray-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono font-black text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
-                        {item.day}
+                      <span className="font-black text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
+                        يوم +{item.gap}
                       </span>
-                      <span className="font-bold text-xs md:text-sm text-gray-800 dark:text-gray-200">{item.verb}</span>
+                      <span className="font-bold text-xs md:text-sm text-gray-800 dark:text-gray-200">{item.verbAr}</span>
                     </div>
-                    <span className={`text-xs font-bold ${item.isDue ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
-                      {item.status}
+                    <span className={`text-xs font-bold ${item.due ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
+                      {item.due ? 'جاهز للمراجعة' : `بعد ${item.daysLeft} يوم`}
                     </span>
                   </div>
                 ))}
@@ -1455,6 +1551,24 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               ))}
             </div>
           </div>
+        </section>
+      )}
+
+      {/* TAB 5: FICHE ÉLève IMPRIMABLE (projection directe du moteur v2) */}
+      {activeTab === 'boussole_card' && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between print:hidden">
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400">
+              البطاقة مولّدة آلياً من محرك المنهجية — لا تُكتَب يدوياً، فلا تتباعد عنه أبداً.
+            </p>
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2 bg-[#006d37] hover:bg-[#00562b] text-white rounded-xl font-bold text-sm shadow-md"
+            >
+              طباعة (A4)
+            </button>
+          </div>
+          <BoussoleCard />
         </section>
       )}
 

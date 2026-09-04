@@ -6,6 +6,9 @@
 // 100% local : aucune donnée ne quitte l'appareil de l'élève.
 // ============================================================
 
+// M4 · source unique des libellés : dérivé de ERROR_TAXONOMY (pas de quatrième liste manuelle)
+import { ERROR_TAXONOMY } from '../data/methodologyEngine';
+
 export interface ProductionLogEntry {
   id: string;
   verbId: string;
@@ -134,17 +137,9 @@ export function clearProductionLog(): void {
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
 }
 
-export const ERROR_TAG_LABELS_AR: Record<string, string> = {
-  missing_unit: 'غياب الوحدة القياسية',
-  missing_reference: 'غياب ذكر السند',
-  premature_interpretation: 'تفسير مبكر أثناء التحليل',
-  conditional_hypothesis: 'فرضية بصيغة الشك',
-  missing_conclusion: 'غياب الجملة الختامية',
-  verb_confusion: 'الخلط بين أفعال الأداء',
-  comparison_without_criteria: 'مقارنة بلا معايير',
-  unbalanced_comparison: 'مقارنة غير متوازنة',
-  unsupported_claim: 'ربط بلا سند',
-};
+export const ERROR_TAG_LABELS_AR: Record<string, string> = Object.fromEntries(
+  Object.values(ERROR_TAXONOMY).map(e => [e.code, e.nameAr])
+);
 
 export interface NavigatorGrade {
   key: 'none' | 'deckhand' | 'sailor' | 'captain' | 'admiral';

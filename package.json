@@ -9,6 +9,8 @@
     "start": "node dist/server.cjs",
     "teacher": "tsx -e \"import { createTeacher } from './src/server/teacher-cli'; createTeacher();\"",
     "test": "tsx tests/boussole.test.ts",
+    "test:vitest": "vitest run",
+    "check:v2": "tsc -p tsconfig.v2.json --noEmit",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },
@@ -29,6 +31,8 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/d3": "^7.4.3",
     "@types/express": "^4.17.21",
@@ -36,9 +40,11 @@
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "jsdom": "^30.0.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^5.0.0"
   }
 }
