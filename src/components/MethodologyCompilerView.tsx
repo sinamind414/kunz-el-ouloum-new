@@ -63,10 +63,10 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   // Local storage stats & matrix
   const [matrixScores, setMatrixScores] = useState<Record<string, Record<string, number>>>({
-    verb_analyse_v1: { protein_synthesis: 92, enzymology: 85, immunology: 68, neuro_comm: 84 },
-    verb_explain_v1: { protein_synthesis: 71, enzymology: 88, immunology: 64, neuro_comm: 79 },
-    verb_compare_v1: { protein_synthesis: 80, enzymology: 90, immunology: 87, neuro_comm: 62 },
-    verb_hypothesis_v1: { protein_synthesis: 75, enzymology: 80, immunology: 70, neuro_comm: 65 }
+    verb_analyse_v1: { protein_synthesis: 92, enzymology: 85, immunology: 68, neuro_comm: 84, regulations: 0, energy_transformations: 0, geodynamics: 0 },
+    verb_explain_v1: { protein_synthesis: 71, enzymology: 88, immunology: 64, neuro_comm: 79, regulations: 0, energy_transformations: 0, geodynamics: 0 },
+    verb_compare_v1: { protein_synthesis: 80, enzymology: 90, immunology: 87, neuro_comm: 62, regulations: 0, energy_transformations: 0, geodynamics: 0 },
+    verb_hypothesis_v1: { protein_synthesis: 75, enzymology: 80, immunology: 70, neuro_comm: 65, regulations: 0, energy_transformations: 0, geodynamics: 0 }
   });
 
   const [weeklyErrorCounters, setWeeklyErrorCounters] = useState<Record<string, number>>({
@@ -146,6 +146,17 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
       errorTags: rep.detectedErrors.map(e => e.tag),
     });
     setEvolutionVersion(v => v + 1);
+
+    // Lot 0011: stage 2 errors also update weekly error counters
+    if (rep.detectedErrors.length > 0) {
+      setWeeklyErrorCounters(prev => {
+        const nextCounters = { ...prev };
+        rep.detectedErrors.forEach(err => {
+          nextCounters[err.tag] = (nextCounters[err.tag] || 0) + 1;
+        });
+        return nextCounters;
+      });
+    }
   };
 
   // Submit Stage 3 or 4
@@ -325,7 +336,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
             <div className="flex flex-col md:flex-row items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-gray-500 dark:text-gray-400">فعل الأداء:</span>
-                <select 
+                <select
                   value={selectedVerbId}
                   onChange={(e) => {
                     setSelectedVerbId(e.target.value);
@@ -340,6 +351,28 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                   ))}
                 </select>
               </div>
+
+              {(() => {
+                const verbExercises = TRAINING_EXERCISES.filter(ex => ex.verbId === selectedVerbId);
+                if (verbExercises.length <= 1) return null;
+                return (
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-gray-500 dark:text-gray-400">الوثيقة:</span>
+                    <select
+                      value={selectedExerciseId}
+                      onChange={(e) => {
+                        setSelectedExerciseId(e.target.value);
+                        handleResetExercise();
+                      }}
+                      className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-black text-gray-900 dark:text-white px-3 py-1.5 rounded-xl text-sm"
+                    >
+                      {verbExercises.map(ex => (
+                        <option key={ex.id} value={ex.id}>{ex.themeAr} — {ex.supportTitle}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
 
               <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                 القاعدة: لا نسحب وسيلتي مساعدة في نفس الوقت
@@ -427,6 +460,16 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
               {currentExercise.dataSnippet && (
                 <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-100 dark:border-emerald-900/40 text-xs md:text-sm font-medium text-emerald-950 dark:text-emerald-200 whitespace-pre-line">
                   {currentExercise.dataSnippet}
+                </div>
+              )}
+
+              {currentExercise.diagramUrl && (
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-[#1b221e]">
+                  <img
+                    src={currentExercise.diagramUrl}
+                    alt={currentExercise.supportTitle}
+                    className="w-full h-auto object-contain"
+                  />
                 </div>
               )}
 
@@ -809,11 +852,19 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
               {/* Pedagogical Decision Engine Result */}
               <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 flex items-start gap-3">
                 <Cpu className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <h4 className="font-black text-sm text-emerald-900 dark:text-emerald-300">قرار محرك التوجيه البيداغوجي:</h4>
                   <p className="text-xs md:text-sm text-emerald-800 dark:text-emerald-400 font-medium mt-0.5">
                     {scoreReport.pedagogicalDecisionAr}
                   </p>
+                  {scoreReport.nextPedagogicalStage !== currentStage && (
+                    <button
+                      onClick={() => handleSelectStage(scoreReport.nextPedagogicalStage)}
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-[#006d37] hover:bg-[#00562b] text-white rounded-xl text-xs font-black shadow-sm"
+                    >
+                      الانتقال إلى المرحلة {scoreReport.nextPedagogicalStage} الآن
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1047,6 +1098,9 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                     <th className="p-3 font-bold text-gray-600 dark:text-gray-400 text-center">النشاط الإنزيمي</th>
                     <th className="p-3 font-bold text-gray-600 dark:text-gray-400 text-center">المناعة</th>
                     <th className="p-3 font-bold text-gray-600 dark:text-gray-400 text-center">الاتصال العصبي</th>
+                    <th className="p-3 font-bold text-gray-600 dark:text-gray-400 text-center">التنظيم الهرموني</th>
+                    <th className="p-3 font-bold text-gray-600 dark:text-gray-400 text-center">التحولات الطاقوية</th>
+                    <th className="p-3 font-bold text-gray-600 dark:text-gray-400 text-center">الظواهر الجيولوجية</th>
                     <th className="p-3 font-bold text-gray-600 dark:text-gray-400 text-center">الحالة</th>
                   </tr>
                 </thead>
@@ -1083,6 +1137,27 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                             (scores.neuro_comm || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                           }`}>
                             {scores.neuro_comm || 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md font-bold text-xs ${
+                            (scores.regulations || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                          }`}>
+                            {scores.regulations || 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md font-bold text-xs ${
+                            (scores.energy_transformations || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                          }`}>
+                            {scores.energy_transformations || 0}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-1 rounded-md font-bold text-xs ${
+                            (scores.geodynamics || 0) >= 90 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                          }`}>
+                            {scores.geodynamics || 0}%
                           </span>
                         </td>
                         <td className="p-3 text-center">

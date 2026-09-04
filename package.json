@@ -8,6 +8,7 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "teacher": "tsx -e \"import { createTeacher } from './src/server/teacher-cli'; createTeacher();\"",
+    "test": "tsx tests/boussole.test.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },

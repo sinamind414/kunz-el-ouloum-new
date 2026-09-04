@@ -40,13 +40,39 @@ export async function fetchMe() {
   return request('/api/auth/me');
 }
 
-export async function syncEntries(entries: Array<Record<string, unknown>>) {
+export async function syncEntries(entries: Array<Record<string, unknown>>, events: Array<Record<string, unknown>> = []) {
   const token = getApiToken();
   return request('/api/student/sync', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ entries }),
+    body: JSON.stringify({ entries, events }),
   });
+}
+
+export async function logActivity(type: 'quiz' | 'mission' | 'drill' | 'production', payload: Record<string, unknown>) {
+  const token = getApiToken();
+  return request('/api/student/activity', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ type, payload }),
+  });
+}
+
+export async function requestPasswordReset(code: string, newPassword: string) {
+  return request('/api/student/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ code, newPassword }),
+  });
+}
+
+export async function fetchTeacherExport(studentId?: string) {
+  const token = localStorage.getItem('boussole_teacher_token');
+  const url = studentId ? `/api/teacher/export/csv?studentId=${encodeURIComponent(studentId)}` : '/api/teacher/export/csv';
+  const res = await fetch(`${API_BASE}${url}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('export_failed');
+  return res.blob();
 }
 
 export async function fetchStudentEntries() {

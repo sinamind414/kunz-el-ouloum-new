@@ -49,6 +49,7 @@ export interface TrainingExercise {
   context: string;
   question: string;
   dataSnippet?: string;
+  diagramUrl?: string;
   // Stade 1 - Modelage
   stage1: {
     expertAnswer: string;
@@ -888,6 +889,7 @@ export const TRAINING_EXERCISES: TrainingExercise[] = [
     context: 'تم وضع خلايا كبدية في وسط يحتوي على لوسين مشع لفترات زمنية قصيرة، ثم تم قياس نسبة الإشعاع في العضيات الخلوية (الشبكة الهيولية الفعالة، جهاز غولجي، الحويصلات الإفرازية).',
     question: 'حلل منحنيات الوثيقة 1 الممثلة لتطور الإشعاع بدلالة الزمن.',
     dataSnippet: 'في الشبكة الهيولية: يبلغ الإشعاع ذروته (80%) عند د 5 ثم ينخفض.\nفي جهاز غولجي: يبلغ ذروته (60%) عند د 20 ثم ينخفض.\nفي الحويصلات: يرتفع تدريجياً بعد د 30 ليصل 90% عند د 60.',
+    diagramUrl: '/assets/images/schemas/domaine1_proteines/schema_33_secretory_tracking_graph_modern_ar.svg',
     stage1: {
       expertAnswer: 'تمثل الوثيقة 1 منحنيات تطور نسبة الإشعاع في مختلف العضيات الخلوية بدلالة الزمن (بالدقائق)، حيث نلاحظ:\n- من د 0 إلى د 5: تزايد سريع لنسبة الإشعاع في الشبكة الهيولية الفعالة ليبلغ ذروة 80%، مع بقائه منعدماً في باقي العضيات.\n- من د 5 إلى د 20: تناقص نسبة الإشعاع في الشبكة الهيولية يقابله تزايد سريع في جهاز غولجي ليبلغ 60% عند د 20.\n- بعد د 20: تناقص الإشعاع في جهاز غولجي وتزايده تدريجياً في الحويصلات الإفرازية ليبلغ 90% عند د 60.\nالاستنتاج: يتم تركيب البروتين في الشبكة الهيولية المحببة ثم ينتقل عبر جهاز غولجي ليفرز خارج الخلية عبر الحويصلات الإفرازية.',
       segments: [
@@ -998,6 +1000,264 @@ export const TRAINING_EXERCISES: TrainingExercise[] = [
         'قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)',
         'لا تذكر كل استجابة في فقرة منعزلة',
         'اختم بخلاصة تبين التكامل الوظيفي'
+      ]
+    },
+    stage4: {
+      timeLimitSec: 200,
+      passIcmThreshold: 90
+    }
+  },
+  {
+    id: 'ex_analyse_glycemie_04',
+    verbId: 'verb_analyse_v1',
+    theme: 'regulations',
+    themeAr: 'التنظيم الهرموني',
+    supportType: 'courbe',
+    supportTitle: 'الوثيقة 4: منحنى تغير نسبة السكر في الدم',
+    context: 'تم قياس نسبة السكر في الدم لدى شخص سليم بعد تناول وجبة غنية بالكربوهيدرات. يلاحظ المنحنى ارتفاعاً طفيفاً ثم عودة تدريجية إلى القيمة الأساسية.',
+    question: 'حلل منحنى الوثيقة 4 الممثل لتغير نسبة السكر في الدم بدلالة الزمن.',
+    dataSnippet: 'قبل الوجبة: 0,9 g/L.\nبعد 30 دقيقة: 1,6 g/L.\nبعد 120 دقيقة: 0,9 g/L.',
+    stage1: {
+      expertAnswer: 'تمثل الوثيقة 4 منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات، حيث نلاحظ:\n- قبل الوجبة: قيمة أساسية مستقرة عند 0,9 g/L.\n- بعد 30 دقيقة: ارتفاع حاد إلى 1,6 g/L.\n- بعد 120 دقيقة: عودة تدريجية إلى القيمة الأساسية 0,9 g/L.\nالاستنتاج: يضمن التنظيم الهرموني استقرار نسبة السكر في الدم حول القيمة الأساسية.',
+      segments: [
+        { stepNumber: 1, text: 'تمثل الوثيقة 4 منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
+        { stepNumber: 2, text: 'قبل الوجبة: 0,9 g/L — بعد 30 دقيقة: 1,6 g/L — بعد 120 دقيقة: 0,9 g/L', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
+        { stepNumber: 3, text: 'ارتفاع حاد بعد الوجبة يعكس امتصاص الكربوهيدرات', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
+        { stepNumber: 4, text: 'الاستنتاج: يضمن التنظيم الهرموني استقرار نسبة السكر في الدم حول القيمة الأساسية', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
+      ]
+    },
+    stage2: {
+      clozePrompt: 'تمثل الوثيقة 4 {{1}} حيث نلاحظ:\n- القيمة الأساسية: {{2}}.\n- بعد 30 دقيقة: {{3}}.\n- بعد 120 دقيقة: عودة إلى {{4}}.\nالاستنتاج: يضمن التنظيم الهرموني {{5}}.',
+      blanks: [
+        { id: '1', expectedText: 'منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات', hint: 'تقديم الوثيقة' },
+        { id: '2', expectedText: '0,9 g/L', hint: 'القيمة الأساسية' },
+        { id: '3', expectedText: '1,6 g/L', hint: 'القيمة القصوى' },
+        { id: '4', expectedText: '0,9 g/L', hint: 'القيمة بعد恢复' },
+        { id: '5', expectedText: 'استقرار نسبة السكر في الدم حول القيمة الأساسية', hint: 'الاستنتاج' }
+      ]
+    },
+    stage3: {
+      recommendedTimeSec: 180,
+      hints: [
+        'تأكد من ذكر القيم مع الوحدات (g/L)',
+        'اشرح الارتفاع بعد الوجبة والعودة التدريجية',
+        'لا تذكر الأنسولين في التحليل، اتركه للاستنتاج'
+      ]
+    },
+    stage4: {
+      timeLimitSec: 180,
+      passIcmThreshold: 90
+    }
+  },
+  {
+    id: 'ex_explain_synapse_05',
+    verbId: 'verb_explain_v1',
+    theme: 'neuro_comm',
+    themeAr: 'الاتصال العصبي',
+    supportType: 'schema',
+    supportTitle: 'الوثيقة 5: المشبك الكيميائي',
+    context: 'المشبك الكيميائي هو منطقة اتصال بين نهاية عصبية قبل مشبكية وخلايا بعد مشبكية، تسمح بنقل السيال العصبي عبر مواد كيميائية تسمى ناقلات عصبية.',
+    question: 'فسر آلية النقل المشبكي عند وصول موجة زوال الاستقطاب.',
+    dataSnippet: 'السيال العصبي يصل إلى النهاية قبل المشبكية → فتح قنوات Ca2+ → دخول الكالسيوم → تحرير الأستيل كولين في الشق المشبكي.',
+    diagramUrl: '/assets/images/schemas/domaine1_regulations/schema_82_synapse_modern_ar.svg',
+    stage1: {
+      expertAnswer: 'الملاحظة: وصول السيال العصبي إلى النهاية قبل المشبكية يسبب فتح قنوات الكالسيوم وتحرير الأستيل كولين في الشق المشبكي.\nالتفسير: يعود ذلك إلى أن كمون العمل يسبب فتح قنوات Ca2+ الفولطية، مما يدفع الحويصلات المشبكية للاندماج مع الغشاء قبل المشبكي وتحرير الأستيل كولين في الشق المشبكي، وبالتالي توليد كمون عمل بعد مشبكي.',
+      segments: [
+        { stepNumber: 1, text: 'وصول السيال العصبي إلى النهاية قبل المشبكية', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
+        { stepNumber: 2, text: 'فتح قنوات Ca2+ الفولطية ودخول الكالسيوم', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
+        { stepNumber: 3, text: 'يعود ذلك إلى... اندماج الحويصلات وتحرير الأستيل كولين', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
+        { stepNumber: 4, text: 'وبالتالي توليد كمون عمل بعد مشبكي', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
+      ]
+    },
+    stage2: {
+      clozePrompt: 'الملاحظة: نلاحظ {{1}} عند وصول السيال العصبي.\nالتفسير: {{2}} أن Ca2+ يدخل إلى الخلية، مما يسبب {{3}} وتحرير {{4}}، وبالتالي {{5}}.',
+      blanks: [
+        { id: '1', expectedText: 'تحرير الأستيل كولين في الشق المشبكي', hint: 'الملاحظة المراد تفسيرها' },
+        { id: '2', expectedText: 'يعود ذلك إلى', hint: 'الرابط السببي الإلزامي' },
+        { id: '3', expectedText: 'اندماج الحويصلات المشبكية', hint: 'الآلية' },
+        { id: '4', expectedText: 'الأستيل كولين', hint: 'الناقل العصبي' },
+        { id: '5', expectedText: 'توليد كمون عمل بعد مشبكي', hint: 'النتيجة' }
+      ]
+    },
+    stage3: {
+      recommendedTimeSec: 180,
+      hints: [
+        'تأكد من استخدام الرابط السببي (يعود ذلك إلى)',
+        'اشرح دور الكالسيوم في تحرير الناقل',
+        'بين تكامل البنية المشبكية'
+      ]
+    },
+    stage4: {
+      timeLimitSec: 180,
+      passIcmThreshold: 90
+    }
+  },
+  {
+    id: 'ex_compare_immunity_06',
+    verbId: 'verb_compare_v1',
+    theme: 'immunology',
+    themeAr: 'المناعة',
+    supportType: 'schema',
+    supportTitle: 'الوثيقة 6: الاستجابة المناعية الأولية والثانوية',
+    context: 'مقارنة بين الاستجابة المناعية الأولية والثانوية من حيث المدة، شدة الاستجابة، ونوع الأجسام المضادة المنتجة.',
+    question: 'قارن بين الاستجابة المناعية الأولية والثانوية.',
+    dataSnippet: 'أولية: IgM أولاً ثم IgG، مدة 7-10 أيام، شدة ضعيفة.\nثانوية: IgG سريعاً، مدة 2-3 أيام، شدة قوية.',
+    diagramUrl: '/assets/images/schemas/domaine1_proteines/schema_85_anticorps_primaire_secondaire_modern_ar.svg',
+    stage1: {
+      expertAnswer: 'أوجه التشابه: كلاهما استجابة مناعية نوعية تعتمد على التكاثر اللمفاوي وامتلاك ذاكرة مناعية.\nأوجه الاختلاف وفق المعايير:\n- المدة: 7-10 أيام في الاستجابة الأولية مقابل 2-3 أيام في الاستجابة الثانوية.\n- شدة الاستجابة: ضعيفة في الاستجابة الأولية مقابل قوية في الاستجابة الثانوية.\n- نوع الأجسام المضادة: IgM أولاً ثم IgG في الاستجابة الأولية، مقابل IgG سريعاً في الاستجابة الثانوية.\nالخلاصة: الاستجابة الثانوية أسرع وأقوى بفضل الخلايا الذاكرة.',
+      segments: [
+        { stepNumber: 1, text: 'أوجه التشابه: كلاهما استجابة مناعية نوعية مكتسبة', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
+        { stepNumber: 2, text: 'أوجه الاختلاف: المدة، شدة الاستجابة، نوع الأجسام المضادة', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
+        { stepNumber: 3, text: 'بينما... في حين...', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
+        { stepNumber: 4, text: 'الخلاصة: الاستجابة الثانوية أسرع وأقوى', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
+      ]
+    },
+    stage2: {
+      clozePrompt: 'أوجه التشابه: كلاهما استجابة مناعية {{1}}.\nأوجه الاختلاف:\n- المدة: {{2}} أيام أولية مقابل {{3}} أيام ثانوية.\n- الشدة: {{4}} أولية مقابل {{5}} ثانوية.\nالخلاصة: {{6}}.',
+      blanks: [
+        { id: '1', expectedText: 'نوعية مكتسبة ذات ذاكرة مناعية', hint: 'طبيعة الاستجابة' },
+        { id: '2', expectedText: '7-10', hint: 'مدة الاستجابة الأولية' },
+        { id: '3', expectedText: '2-3', hint: 'مدة الاستجابة الثانوية' },
+        { id: '4', expectedText: 'ضعيفة', hint: 'شدة الاستجابة الأولية' },
+        { id: '5', expectedText: 'قوية', hint: 'شدة الاستجابة الثانوية' },
+        { id: '6', expectedText: 'الاستجابة الثانوية أسرع وأقوى بفضل الخلايا الذاكرة', hint: 'الخلاصة' }
+      ]
+    },
+    stage3: {
+      recommendedTimeSec: 200,
+      hints: [
+        'قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)',
+        'لا تذكر كل استجابة في فقرة منعزلة',
+        'اختم بخلاصة تبين الفرق الجوهري'
+      ]
+    },
+    stage4: {
+      timeLimitSec: 200,
+      passIcmThreshold: 90
+    }
+  },
+  {
+    id: 'ex_analyse_photosynthesis_07',
+    verbId: 'verb_analyse_v1',
+    theme: 'energy_transformations',
+    themeAr: 'التحولات الطاقوية',
+    supportType: 'courbe',
+    supportTitle: 'الوثيقة 7: منحنى البناء الضوئي بدلالة شدة الإضاءة',
+    context: 'تم قياس معدل البناء الضوئي في نباتات خضراء تحت شدة إضاءة متزايدة. يلاحظ المنحنى ارتفاعاً ثم استقراراً.',
+    question: 'حلل منحنى الوثيقة 7 الممثل لمعدل البناء الضوئي بدلالة شدة الإضاءة.',
+    dataSnippet: 'عند شدة إضاءة منخفضة: معدل ضعيف.\nعند شدة إضاءة متوسطة: ارتفاع تدريجي.\nعند شدة إضاءة عالية: أقصى معدل.\nعند شدة إضاءة قصوى: استقرار.',
+    diagramUrl: '/assets/images/schemas/domaine2_energie/schema_86_photosynthese_intensite_lumiere_modern_ar.svg',
+    stage1: {
+      expertAnswer: 'تمثل الوثيقة 7 منحنى معدل البناء الضوئي بدلالة شدة الإضاءة، حيث نلاحظ:\n- عند شدة إضاءة منخفضة: معدل ضعيف.\n- عند شدة إضاءة متوسطة: ارتفاع تدريجي.\n- عند شدة إضاءة عالية: أقصى معدل.\n- عند شدة إضاءة قصوى: استقرار.\nالاستنتاج: يزيد معدل البناء الضوئي مع شدة الإضاءة حتى يصل إلى أقصى قيمة ثم يستقر.',
+      segments: [
+        { stepNumber: 1, text: 'تمثل الوثيقة 7 منحنى معدل البناء الضوئي بدلالة شدة الإضاءة', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
+        { stepNumber: 2, text: 'شدة منخفضة: ضعيف — متوسطة: ارتفاع — عالية: أقصى — قصوى: استقرار', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
+        { stepNumber: 3, text: 'ارتفاع تدريجي مع زيادة شدة الإضاءة', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
+        { stepNumber: 4, text: 'الاستنتاج: يزيد المعدل حتى أقصى قيمة ثم يستقر', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
+      ]
+    },
+    stage2: {
+      clozePrompt: 'تمثل الوثيقة 7 {{1}} حيث نلاحظ:\n- شدة منخفضة: {{2}}.\n- شدة متوسطة: {{3}}.\n- شدة عالية: {{4}}.\nالاستنتاج: {{5}}.',
+      blanks: [
+        { id: '1', expectedText: 'منحنى معدل البناء الضوئي بدلالة شدة الإضاءة', hint: 'تقديم الوثيقة' },
+        { id: '2', expectedText: 'ضعيف', hint: 'معدل ضعيف' },
+        { id: '3', expectedText: 'ارتفاع تدريجي', hint: 'تزايد' },
+        { id: '4', expectedText: 'أقصى معدل', hint: 'ذروة' },
+        { id: '5', expectedText: 'يزيد المعدل حتى أقصى قيمة ثم يستقر', hint: 'الاستنتاج' }
+      ]
+    },
+    stage3: {
+      recommendedTimeSec: 180,
+      hints: [
+        'تأكد من ذكر شدة الإضاءة مع الوحدات',
+        'اشرح مرحلة الاستقرار',
+        'لا تذكر الكلوروفيل في التحليل، اتركه للاستنتاج'
+      ]
+    },
+    stage4: {
+      timeLimitSec: 180,
+      passIcmThreshold: 90
+    }
+  },
+  {
+    id: 'ex_explain_leaf_08',
+    verbId: 'verb_explain_v1',
+    theme: 'energy_transformations',
+    themeAr: 'التحولات الطاقوية',
+    supportType: 'schema',
+    supportTitle: 'الوثيقة 8: مقطع ورقة نباتية',
+    context: 'الورقة النباتية هي عضو أساسي في البناء الضوئي، تتكون من طبقات متعددة تسمح بامتصاص الضوء وتبادل الغازات.',
+    question: 'فسر بنية الورقة النباتية وكيف تتكيف للقيام بالبناء الضوئي.',
+    dataSnippet: 'البشرة العليا: حماية.\nالنسيج البالي: تبادل غازات.\nالنسيج المكون للأسفلية: موقع البناء الضوئي.\nالبشرة السفلية: ثغبات.',
+    diagramUrl: '/assets/images/schemas/domaine2_energie/schema_87_coupe_feuille_modern_ar.svg',
+    stage1: {
+      expertAnswer: 'الملاحظة: الورقة تتكون من بشرة علوية، نسيج بالي، نسيج مكون للأسفلية، وبشرة سفلية.\nالتفسير: يعود ذلك إلى أن كل طبقة لها دور محدد: البشرة العليا تحمي، النسيج البالي يسمح بتبادل الغازات، النسيج المكون للأسفلية يحتوي على بلاستيدات خضراء للبناء الضوئي، والبشرة السفلية تحتوي على ثغبات لتبادل CO2.',
+      segments: [
+        { stepNumber: 1, text: 'وصف طبقات الورقة: بشرة علوية، نسيج بالي، نسيج مكون للأسفلية، بشرة سفلية', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
+        { stepNumber: 2, text: 'كل طبقة لها دور محدد في الحماية وتبادل الغازات والبناء الضوئي', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
+        { stepNumber: 3, text: 'يعود ذلك إلى... تكيف كل طبقة لوظيفتها', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
+        { stepNumber: 4, text: 'وبالتالي تكيف الورقة للقيام بالبناء الضوئي', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
+      ]
+    },
+    stage2: {
+      clozePrompt: 'الملاحظة: نلاحظ {{1}} في الورقة.\nالتفسير: {{2}} أن كل طبقة لها دور:\n- البشرة العليا: {{3}}.\n- النسيج البالي: {{4}}.\n- النسيج المكون للأسفلية: {{5}}.\nالنتيجة: {{6}}.',
+      blanks: [
+        { id: '1', expectedText: 'طبقات متعددة متخصصة', hint: 'الملاحظة' },
+        { id: '2', expectedText: 'يعود ذلك إلى', hint: 'الرابط السببي' },
+        { id: '3', expectedText: 'حماية', hint: 'دور البشرة' },
+        { id: '4', expectedText: 'تبادل غازات', hint: 'دور النسيج البالي' },
+        { id: '5', expectedText: 'بناء ضوئي', hint: 'دور النسيج المكون للأسفلية' },
+        { id: '6', expectedText: 'تكيف الورقة للقيام بالبناء الضوئي', hint: 'النتيجة' }
+      ]
+    },
+    stage3: {
+      recommendedTimeSec: 180,
+      hints: [
+        'تأكد من ذكر جميع الطبقات',
+        'استخدم رابط سببي واضح',
+        'ربط كل طبقة بوظيفتها'
+      ]
+    },
+    stage4: {
+      timeLimitSec: 180,
+      passIcmThreshold: 90
+    }
+  },
+  {
+    id: 'ex_compare_tectonics_09',
+    verbId: 'verb_compare_v1',
+    theme: 'geodynamics',
+    themeAr: 'الظواهر الجيولوجية',
+    supportType: 'schema',
+    supportTitle: 'الوثيقة 9: الاصطدام القاري',
+    context: 'مقارنة بين الاصطدام القاري والانDivergence القاري من حيث الحركة، النتيجة، والأشكال الجبلية المتكونة.',
+    question: 'قارن بين الاصطدام القاري والانDivergence القاري.',
+    dataSnippet: 'اصطدام: لوحتان تتحركان نحو بعضهما → سلسلة جبلية.\nانDivergence: لوحتان تتحركان بعيداً عن بعضهما → محيط جديد.',
+    diagramUrl: '/assets/images/schemas/domaine3_tectonique/schema_88_collision_continentale_modern_ar.svg',
+    stage1: {
+      expertAnswer: 'أوجه التشابه: كلاهما حركة للوحات القارية.\nأوجه الاختلاف وفق المعايير:\n- اتجاه الحركة: نحو بعضهما في الاصطدام مقابل بعيد عن بعضهما في الانDivergence.\n- النتيجة: سلسلة جبلية في الاصطدام مقابل محيط جديد في الانDivergence.\n- المثال: الهيمالايا في الاصطدام مقابل المحيط الأطلسي في الانDivergence.\nالخلاصة: الحركة النسبية للوحات القارية تحدد الأشكال الجيولوجية المتكونة.',
+      segments: [
+        { stepNumber: 1, text: 'أوجه التشابه: كلاهما حركة للوحات القارية', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
+        { stepNumber: 2, text: 'أوجه الاختلاف: اتجاه الحركة، النتيجة، المثال', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
+        { stepNumber: 3, text: 'بينما... في حين...', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
+        { stepNumber: 4, text: 'الخلاصة: الحركة النسبية تحدد الأشكال الجيولوجية', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
+      ]
+    },
+    stage2: {
+      clozePrompt: 'أوجه التشابه: كلاهما {{1}}.\nأوجه الاختلاف:\n- اتجاه الحركة: {{2}}.\n- النتيجة: {{3}}.\nالخلاصة: {{4}}.',
+      blanks: [
+        { id: '1', expectedText: 'حركة للوحات القارية', hint: 'طبيعة الحركة' },
+        { id: '2', expectedText: 'نحو بعضهما في الاصطدام مقابل بعيد في الانDivergence', hint: 'اتجاه الحركة' },
+        { id: '3', expectedText: 'سلسلة جبلية مقابل محيط جديد', hint: 'النتيجة' },
+        { id: '4', expectedText: 'الحركة النسبية تحدد الأشكال الجيولوجية', hint: 'الخلاصة' }
+      ]
+    },
+    stage3: {
+      recommendedTimeSec: 200,
+      hints: [
+        'قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)',
+        'لا تذكر كل حركة في فقرة منعزلة',
+        'اختم بخلاصة تبين الفارق الجوهري'
       ]
     },
     stage4: {

@@ -398,6 +398,12 @@ export default function App() {
     saveToLocalStorage(updatedUnits, flashcards, updatedProgress);
     updateLastStudyTime();
 
+    // Lot 0022: log quiz activity for teacher dashboard
+    const unit = units.find((u) => u.id === activeQuizUnitId);
+    import('./utils/studentAccount').then(({ logQuizActivity }) => {
+      logQuizActivity(activeQuizUnitId, score, total, unit?.title || 'quiz');
+    });
+
     if (isCompleted && !currentDaily.completedToday) {
       playDailyGoalCelebrationSound();
     } else {

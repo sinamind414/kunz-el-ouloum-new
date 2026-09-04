@@ -36,12 +36,20 @@ export function evaluateStudentProduction(
 ): ScoreReport {
   const verbCard = VERB_CARDS.find(v => v.id === verbId) || VERB_CARDS[0];
   const criteria = verbCard.criteria;
-  
+
+  const REFERENT_VERBS = [
+    'verb_analyse_v1', 'verb_explain_v1', 'verb_compare_v1',
+    'verb_validate_v1', 'verb_justify_v1', 'verb_schema_v1',
+    'verb_explain_multi_v1', 'verb_critique_v1',
+    'verb_hypothesis_v1', 'verb_deduce_v1'
+  ];
+
   const textLower = (userText || '').trim().toLowerCase();
   const criteriaResults: ScoreReport['criteriaResults'] = [];
   const detectedErrorsMap = new Set<string>();
 
-  let passedCount = 0;
+  let weightedPass = 0;
+  let weightedTotal = 0;
 
   // 1. Détection des erreurs typées globales
   // Vérification de l'interdit pour l'analyse (premature_interpretation)
@@ -53,9 +61,19 @@ export function evaluateStudentProduction(
   }
 
   // Vérification de l'absence d'unités si des nombres sont présents (missing_unit)
-  const numbersPresent = /\d+/.test(textLower);
-  const unitsPresent = /(غ\/ل|g\/l|%|دقيقة|min|ثانية|s|وحدة اعتبارية|ua|°|درجة|ميكرومول)/i.test(textLower);
-  if (numbersPresent && !unitsPresent && verbCard.id === 'verb_analyse_v1') {
+  const textNoDocRefs = textLower.replace(
+    new RegExp(`((?:الوثيقة|الوثيقتين|الوثيقتان|الوثائق|المنحنى|المنحنيين|الجدول|الجدولين|الشكل|الشكلين|الرسم|النموذج|التجربة|الملاحظة|الصورة)[\\u0600-\\u06FF]*)\\s*\\d+(?:\\s*(?:و|،|,)\\s*\\d+)*`, 'g'),
+    ' '
+  );
+  const NUM_UNIT_RE = /(غ\/ل|g\/l|%|دقيقة|دقائق|دق|min|ساعة|ثانية|ثواني|s\b|وحدة اعتبارية|ua|°|درجة|ميكرومول|مول|نل|مل|لتر|مم|سم|نانومتر|كيلومتر|خلايا|بلورات|وحدات)/i;
+  const numberTokens = Array.from(textNoDocRefs.matchAll(/\d+(?:[.,]\d+)?/g));
+  const bareNumbers = numberTokens.filter(m => {
+    const idx = m.index || 0;
+    const after = textNoDocRefs.slice(idx + m[0].length, idx + m[0].length + 14);
+    return !NUM_UNIT_RE.test(after);
+  });
+  const allNumbersHaveUnits = numberTokens.length > 0 && bareNumbers.length === 0;
+  if (bareNumbers.length > 0 && (REFERENT_VERBS.includes(verbCard.id) || verbCard.id === 'verb_composer_v1')) {
     detectedErrorsMap.add('missing_unit');
   }
 
@@ -81,6 +99,12 @@ export function evaluateStudentProduction(
     detectedErrorsMap.add('missing_conclusion');
   }
 
+  // Vérification de la référence explicite pour les verbes à document
+  const REFERENCE_REQUIRED_RE = /(الوثيق|الوثائق|منحنى|جدول|الملاحظة|الشاهد|الشكل|الرسم|document|graphe)/i;
+  if (REFERENT_VERBS.includes(verbCard.id) && !REFERENCE_REQUIRED_RE.test(textLower)) {
+    detectedErrorsMap.add('missing_reference');
+  }
+
   // 2. Évaluation des critères spécifiques du verbe
   criteria.forEach((criterion) => {
     let passed = false;
@@ -88,15 +112,15 @@ export function evaluateStudentProduction(
 
     if (criterion.id === 'an_c1' || criterion.id === 'ex_c1' || criterion.id === 'comp_c1' || criterion.id === 'val_c1') {
       // Présentation / Référent
-      const refKeywords = /(تمثل الوثيقة|منحنى|جدول|الوثيقة|الملاحظة|الشاهد|نلاحظ|document|graphe)/i;
+      const refKeywords = /(تمثل الوثيقة|منحنى|جدول|الوثيقة|الوثائق|الملاحظة|الشاهد|document|graphe)/i;
       passed = refKeywords.test(textLower) && textLower.length > 25;
       feedback = passed 
         ? 'تم تحديد الوثيقة والسياق بنجاح.' 
         : `تنبيه: « ${criterion.wording.compass} » - لم يتم ذكر السند بوضوح.`;
     } 
     else if (criterion.id === 'an_c2') {
-      // Découpage et unités
-      passed = numbersPresent && unitsPresent;
+      // Découpage et unités : CHAQUE valeur numérique a son unité juste après
+      passed = allNumbersHaveUnits;
       feedback = passed 
         ? 'تم تفكيك المعطيات وإرفاق القيم بالوحدات القياسية.' 
         : `تنبيه: « ${criterion.wording.compass} » - تأكد من كتابة كل رقم متبوعاً بوحدته (غ/ل، %، دقيقة).`;
@@ -150,8 +174,10 @@ export function evaluateStudentProduction(
       feedback = passed ? 'معيار مستوفى.' : `يرجى مراجعة المعيار: « ${criterion.wording.compass} ».`;
     }
 
+    const w = criterion.weight || 1;
+    weightedTotal += w;
     if (passed) {
-      passedCount += 1;
+      weightedPass += w;
     } else if (criterion.errorTag) {
       detectedErrorsMap.add(criterion.errorTag);
     }
@@ -166,8 +192,7 @@ export function evaluateStudentProduction(
     });
   });
 
-  const totalCriteria = criteria.length;
-  const icm = Math.round((passedCount / totalCriteria) * 100);
+  const icm = weightedTotal > 0 ? Math.round((weightedPass / weightedTotal) * 100) : 0;
 
   // 3. Décision pédagogique adaptative selon l'algorithme du document
   let nextPedagogicalStage: 1 | 2 | 3 | 4 = currentStage;
