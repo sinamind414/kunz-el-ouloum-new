@@ -30,6 +30,8 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   const [selectedVerbId, setSelectedVerbId] = useState<string>('verb_analyse_v1');
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>('ex_analyse_protein_01');
   const [currentStage, setCurrentStage] = useState<1 | 2 | 3 | 4>(1);
+  const [switchChoice, setSwitchChoice] = useState<Switch | null>(null);
+  const [showSwitchGate, setShowSwitchGate] = useState(false);
 
   // Stage 1: Modelage State
   const [highlightedSteps, setHighlightedSteps] = useState<Record<number, boolean>>({});
@@ -100,18 +102,21 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   }, [isTimerRunning, timerSeconds]);
 
   // Handle stage change
-  const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
-    if (!currentExercise) return;
-    setCurrentStage(stage);
-    setScoreReport(null);
-    if (stage === 4) {
-      setTimerSeconds(currentExercise.stage4.timeLimitSec);
-      setIsTimerRunning(true);
-      setIsDraftCompleted(false);
-    } else {
-      setIsTimerRunning(false);
-    }
-  };
+const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
+     if (!currentExercise) return;
+     setCurrentStage(stage);
+     setScoreReport(null);
+     setSwitchChoice(null);
+     if (stage === 3) {
+       setShowSwitchGate(true);
+     } else if (stage === 4) {
+       setTimerSeconds(currentExercise.stage4.timeLimitSec);
+       setIsTimerRunning(true);
+       setIsDraftCompleted(false);
+     } else {
+       setIsTimerRunning(false);
+     }
+   };
 
   // Submit Stage 1
   const handleCheckStage1 = () => {
@@ -119,7 +124,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     const totalSegments = currentExercise.stage1.segments.length;
     const count = Object.keys(highlightedSteps).length;
     if (count >= totalSegments) {
-      const rep = evaluateStudentProduction(selectedVerbId, currentExercise.stage1.expertAnswer, undefined, 1);
+      const rep = evaluateStudentProduction(selectedVerbId, currentExercise.stage1.expertAnswer, undefined, 1, { switchChoice });
       setScoreReport(rep);
     }
   };
@@ -132,7 +137,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     currentExercise.stage2.blanks.forEach(b => {
       fullText = fullText.replace(`{{${b.id}}}`, clozeAnswers[b.id] || '');
     });
-    const rep = evaluateStudentProduction(selectedVerbId, fullText, undefined, 2);
+    const rep = evaluateStudentProduction(selectedVerbId, fullText, undefined, 2, { switchChoice });
     setScoreReport(rep);
     // Carnet de bord : archiver la production complétée (diagnostic d'évolution)
     logProduction({
@@ -167,7 +172,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
       steps: draftSteps,
       finalSentence: draftFinalSentence
     };
-    const rep = evaluateStudentProduction(selectedVerbId, studentText, draft, currentStage);
+    const rep = evaluateStudentProduction(selectedVerbId, studentText, draft, currentStage, { switchChoice });
     setScoreReport(rep);
 
     // Carnet de bord : archiver le brouillon complet de l'élève (texte + résumé)
@@ -434,7 +439,23 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
             </div>
           </div>
 
-          {/* Current Exercise Subject Context */}
+          {/* Switch Gate Modal — stage 3+ only */}
+              {showSwitchGate && currentExercise && (
+                <SwitchGateModal
+                  verb={currentVerb.verbAr}
+                  verbAr={currentVerb.verbAr}
+                  onSwitch={(allowsBecause) => {
+                    setSwitchChoice(allowsBecause ? 'open' : 'closed');
+                    setShowSwitchGate(false);
+                  }}
+                  onSkip={() => {
+                    setSwitchChoice(null);
+                    setShowSwitchGate(false);
+                  }}
+                />
+              )}
+
+              {/* Current Exercise Subject Context */}
           {currentExercise ? (
           <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-3 border-b border-gray-100 dark:border-gray-800 pb-3">
@@ -798,24 +819,30 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                     })}
                   </div>
 
-                  {/* Red Forbidden Box */}
-                  {currentVerb.forbiddenPatterns.length > 0 && (
-                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl text-xs">
-                      <span className="font-bold text-red-700 dark:text-red-400 flex items-center gap-1 mb-1">
-                        <ShieldAlert className="w-3.5 h-3.5" />
-                        المحظورات المنهجية في هذا الفعل:
-                      </span>
-                      <ul className="list-disc list-inside text-red-600 dark:text-red-300/90 space-y-0.5">
-                        {currentVerb.forbiddenPatterns.map((pat, idx) => (
-                          <li key={idx}>{pat}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+{/* Switch Gate Indicator */}
+                    {currentStage >= 3 && (
+                      <div className={`mt-3 p-3 rounded-xl border text-xs ${
+                        switchChoice === 'open' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' :
+                        switchChoice === 'closed' ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40' :
+                        'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
+                      }`}>
+                        <div className="font-bold mb-1">🔑 المفتاح</div>
+                        {switchChoice === null ? (
+                          <span className="opacity-70">اختر ما إذا كان الفعل يسمح بـ«لأنّ»</span>
+                        ) : (
+                          <span>
+                            الفعل: <span className="font-black">{switchChoice === 'open' ? 'مفتوح' : 'مغلق'}</span>
+                            <span className="ml-1">
+                              {switchChoice === 'open' ? '«لأنّ» مطلوبة' : 'لا «لأنّ»'}
+                            </span>
+                          </span>
+                        )}
+</div>
+                    )}
 
+                  </div>
                 </div>
               </div>
-
             </div>
           )}
 
