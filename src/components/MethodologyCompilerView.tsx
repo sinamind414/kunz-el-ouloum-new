@@ -442,7 +442,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           {currentStage >= 1 && currentStage <= 3 && currentExercise && (() => {
             const card = getVerbCardV2(selectedVerbId);
             if (!card) return null;
-            const lampState = switchChoice ?? 'pending';
+            const lampState = currentStage === 3 ? (switchChoice ?? 'pending') : card.switch;
             return (
               <div dir="rtl" className="space-y-2 mb-4">
                 <div className="grid grid-cols-4 gap-2">
@@ -874,25 +874,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     })}
                   </div>
 
-{/* Switch Gate Indicator */}
-                    {currentStage >= 3 && (
-                      <div className={`mt-3 p-3 rounded-xl border text-xs ${
-                        switchChoice === 'open' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' :
-                        'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
-                      }`}>
-                        <div className="font-bold mb-1">🔑 المفتاح</div>
-                        {switchChoice === null ? (
-                          <span className="opacity-70">اختر ما إذا كان الفعل يسمح بـ«لأنّ»</span>
-                        ) : (
-                          <span>
-                            الفعل: <span className="font-black">{switchChoice === 'open' ? 'مفتوح' : 'مغلق'}</span>
-                            <span className="ml-1">
-                              {switchChoice === 'open' ? '«لأنّ» مطلوبة' : 'لا «لأنّ»'}
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                    )}
+
                             <span className="ml-1">
                               {switchChoice === 'open' ? '«لأنّ» مطلوبة' : 'لا «لأنّ»'}
                             </span>
