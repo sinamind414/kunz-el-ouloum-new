@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { BOUSSOLE_STEPS, ERROR_TAG_LABELS_AR, getStepByTag } from '../data/boussoleData';
 
 interface ErrorMapProps {

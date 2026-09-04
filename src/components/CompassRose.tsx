@@ -6,13 +6,13 @@ interface Props {
   size?: number;
 }
 
-const CAP_ANGLE: Record<CapId, number> = { north: 0, south: 180, west: 270, east: 90 };
+const CAP_ANGLE: Record<CapId, number> = { 1: 0, 2: 90, 3: 180, 4: 270 };
 
 const CAP_POS: Record<CapId, { x: number; y: number; lx: number; ly: number }> = {
-  north: { x: 110, y: 42, lx: 110, ly: 16 },
-  south: { x: 110, y: 178, lx: 110, ly: 204 },
-  west:  { x: 42,  y: 110, lx: 20,  ly: 114 },
-  east:  { x: 178, y: 110, lx: 202, ly: 114 },
+  1: { x: 110, y: 42, lx: 110, ly: 16 },
+  3: { x: 110, y: 178, lx: 110, ly: 204 },
+  4: { x: 42, y: 110, lx: 20, ly: 114 },
+  2: { x: 178, y: 110, lx: 202, ly: 114 },
 };
 
 export default function CompassRose({ activeCap, size = 190 }: Props) {

@@ -1,10 +1,11 @@
 import React from 'react';
-import { TrendingUp, AlertCircle, CheckCircle2, BarChart3 } from 'lucide-react';
+import { TrendingUp, AlertCircle, CheckCircle2, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { BOUSSOLE_STEPS, REGLE_D_OR_AR } from '../data/boussoleData';
 import { getProductionLogs, VerbEvolutionStats } from '../utils/methodologyLog';
 
 interface Props {
   evolution?: Record<string, VerbEvolutionStats>;
+  onNavigate?: (tab: string) => void;
 }
 
 export default function MethodologyGlobalStats({ evolution }: Props) {

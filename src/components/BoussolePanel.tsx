@@ -1,11 +1,10 @@
 import React from 'react';
 import { Compass, Anchor, Wind, ChevronDown, ChevronUp } from 'lucide-react';
 import CompassRose from './CompassRose';
-import { BOUSSOLE_CAPS, capForStage, REGLE_D_OR_AR, BoussoleCap, groupErrorsByCap } from '../data/boussoleData';
-import { ERROR_TAG_LABELS_AR } from '../data/methodologyEngine';
+import { BOUSSOLE_CAPS, REGLE_D_OR_AR, BoussoleCap, groupErrorsByCap, ERROR_TAG_LABELS_AR, CapId } from '../data/boussoleData';
 
 interface Props {
-  activeStage: number;
+  activeStage: 1 | 2 | 3 | 4;
   detectedErrors?: string[];
 }
 
@@ -44,8 +43,8 @@ function CapCard({ cap, active, done }: { cap: BoussoleCap; active: boolean; don
 }
 
 export default function BoussolePanel({ activeStage, detectedErrors = [] }: Props) {
-  const activeCap = capForStage(activeStage);
-  const activeCapData = activeCap ? BOUSSOLE_CAPS.find(c => c.id === activeCap)! : null;
+  const activeCapId: CapId = activeStage;
+  const activeCap = BOUSSOLE_CAPS.find(c => c.id === activeCapId) || null;
   const errorGroups = groupErrorsByCap(detectedErrors);
   
   const errorCount = detectedErrors.length;
@@ -73,7 +72,7 @@ export default function BoussolePanel({ activeStage, detectedErrors = [] }: Prop
       </div>
 
       <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3.5">
-        <CompassRose activeCap={activeCap} />
+        <CompassRose activeCap={activeCapId} />
       </div>
       
       <div className="px-4 py-3.5 border-t border-gray-100 dark:border-gray-800">

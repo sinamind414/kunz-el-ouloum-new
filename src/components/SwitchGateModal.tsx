@@ -26,7 +26,7 @@ export default function SwitchGateModal({ verb, verbAr, onSwitch, onSkip }: Swit
           return 0;
         }
         return prev - 1;
-      };
+      });
     }, 1000);
 
     return () => {

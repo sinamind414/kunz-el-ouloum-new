@@ -77,7 +77,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   });
 
   const currentVerb = VERB_CARDS.find(v => v.id === selectedVerbId) || VERB_CARDS[0];
-  const currentExercise = TRAINING_EXERCISES.find(e => e.id === selectedExerciseId) || TRAINING_EXERCISES[0];
+  const currentExercise = TRAINING_EXERCISES.find(e => e.id === selectedExerciseId) || null;
 
   // Diagnostic d'évolution : statistiques par verbe depuis le carnet de bord
   const evolutionStats: VerbEvolutionStats[] = React.useMemo(
@@ -101,6 +101,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   // Handle stage change
   const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
+    if (!currentExercise) return;
     setCurrentStage(stage);
     setScoreReport(null);
     if (stage === 4) {
@@ -114,6 +115,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   // Submit Stage 1
   const handleCheckStage1 = () => {
+    if (!currentExercise) return;
     const totalSegments = currentExercise.stage1.segments.length;
     const count = Object.keys(highlightedSteps).length;
     if (count >= totalSegments) {
@@ -124,6 +126,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   // Submit Stage 2
   const handleCheckStage2 = () => {
+    if (!currentExercise) return;
     setClozeSubmitted(true);
     let fullText = currentExercise.stage2.clozePrompt;
     currentExercise.stage2.blanks.forEach(b => {
@@ -147,6 +150,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   // Submit Stage 3 or 4
   const handleSubmitProduction = () => {
+    if (!currentExercise) return;
     const draft = {
       verb: draftVerb,
       steps: draftSteps,
@@ -224,7 +228,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     setDraftSteps('');
     setDraftFinalSentence('');
     setIsDraftCompleted(false);
-    if (currentStage === 4) {
+    if (currentStage === 4 && currentExercise) {
       setTimerSeconds(currentExercise.stage4.timeLimitSec);
       setIsTimerRunning(true);
     }
@@ -332,7 +336,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                   className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-black text-gray-900 dark:text-white px-3 py-1.5 rounded-xl text-sm"
                 >
                   {VERB_CARDS.map(v => (
-                    <option key={v.id} value={v.id}>{v.verbAr} ({v.verbFr})</option>
+                     <option key={v.id} value={v.id}>{v.verbAr}</option>
                   ))}
                 </select>
               </div>
@@ -398,6 +402,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
           </div>
 
           {/* Current Exercise Subject Context */}
+          {currentExercise ? (
           <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-3 border-b border-gray-100 dark:border-gray-800 pb-3">
               <div className="flex items-center gap-2">
@@ -409,7 +414,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                 </span>
               </div>
               <span className="text-xs font-bold text-gray-400">
-                السند: {currentExercise.supportType}
+                السند: {currentExercise.supportType === 'schema' ? 'مخطط' : currentExercise.supportType}
               </span>
             </div>
 
@@ -438,9 +443,17 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
               </div>
             </div>
           </div>
+          ) : (
+            <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm text-center">
+              <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                اختر حلّل / فسّر / قارن للتدريب — أو راجع بطاقات الأفعال
+              </p>
+            </div>
+          )}
 
           {/* STAGE 1: MODELAGE (النمذجة بالخطوات والألوان) */}
-          {currentStage === 1 && (
+          {currentStage === 1 && currentExercise && (
             <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-5">
               <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
                 <div>
@@ -520,7 +533,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
           )}
 
           {/* STAGE 2: CLOZE COMPLETION (الإكمال مع روابط جاهزة) */}
-          {currentStage === 2 && (
+          {currentStage === 2 && currentExercise && (
             <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-5">
               <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
                 <div>
@@ -579,7 +592,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
           )}
 
           {/* STAGE 3 & 4: GUIDED & CONSTRAINED PRODUCTION */}
-          {(currentStage === 3 || currentStage === 4) && (
+          {(currentStage === 3 || currentStage === 4) && currentExercise && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Main Writing Area (8 cols on lg) */}
@@ -657,14 +670,14 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                     className="w-full bg-gray-50 dark:bg-[#121614] border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm md:text-base text-gray-900 dark:text-white font-medium leading-relaxed focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
 
-                  {/* Actions & Submit */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <button
-                      onClick={() => setStudentText(currentExercise.stage1.expertAnswer)}
-                      className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-600"
-                    >
-                      إدراج نص تجريبي للاختبار
-                    </button>
+                   {/* Actions & Submit */}
+                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                     <button
+                       onClick={() => currentExercise && setStudentText(currentExercise.stage1.expertAnswer)}
+                       className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-600"
+                     >
+                       إدراج نص تجريبي للاختبار
+                     </button>
 
                     <div className="flex items-center gap-2">
                       <button
@@ -895,9 +908,6 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                       <div>
                         <h3 className="font-black text-lg text-gray-900 dark:text-white flex items-center gap-2">
                           {verbCard.verbAr}
-                          <span className="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                            {verbCard.verbFr}
-                          </span>
                         </h3>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{verbCard.goal}</p>
                       </div>
@@ -1081,7 +1091,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
                               ? 'bg-emerald-600 text-white' 
                               : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                           }`}>
-                            {isAutomated ? 'مؤتمت (Acquis)' : 'قيد التدريب'}
+                            {isAutomated ? 'مؤتمت' : 'قيد التدريب'}
                           </span>
                         </td>
                       </tr>

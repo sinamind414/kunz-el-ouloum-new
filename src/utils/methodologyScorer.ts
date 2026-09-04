@@ -1,7 +1,8 @@
 import { VERB_CARDS, ERROR_TAXONOMY, VerbCriteriaItem } from '../data/methodologyEngine';
+import { SwitchState, SWITCH_CLOSED_VERBS, SWITCH_OPEN_VERBS } from '../data/boussoleData';
 
 export interface ScoreReport {
-  icm: number; // 0 to 100
+  icm: number;
   criteriaResults: {
     criterionId: string;
     label: string;
@@ -21,11 +22,17 @@ export interface ScoreReport {
   pedagogicalDecisionAr: string;
 }
 
+export interface SwitchContext {
+  switchChoice: SwitchState | null;
+  switchTruth: SwitchState;
+}
+
 export function evaluateStudentProduction(
   verbId: string,
   userText: string,
   draftText?: { verb: string; steps: string; finalSentence: string },
-  currentStage: 1 | 2 | 3 | 4 = 3
+  currentStage: 1 | 2 | 3 | 4 = 3,
+  switchContext?: SwitchContext
 ): ScoreReport {
   const verbCard = VERB_CARDS.find(v => v.id === verbId) || VERB_CARDS[0];
   const criteria = verbCard.criteria;

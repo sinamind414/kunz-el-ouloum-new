@@ -36,6 +36,9 @@ import StatsView from './components/StatsView';
 import AITutorView from './components/AITutorView';
 import StudyReminderModal from './components/StudyReminderModal';
 import MethodologyCompilerView from './components/MethodologyCompilerView';
+import StudentAuthView from './components/StudentAuthView';
+import StudentAccountBar from './components/StudentAccountBar';
+import TeacherDashboardView from './components/TeacherDashboardView';
 import UnitIntroPortal from './components/UnitIntroPortal';
 import CombatTrainerView from './components/CombatTrainerView';
 import CombatChallengePortal from './components/CombatChallengePortal';
@@ -58,8 +61,11 @@ export default function App() {
   });
 
   // Navigation tab state
-  const [currentTab, setCurrentTab] = useState<'splash' | 'home' | 'review' | 'stats' | 'chat' | 'methodology' | 'bootcamp' | 'badges' | 'lesson' | 'mindmap'>('splash');
+  const [currentTab, setCurrentTab] = useState<'splash' | 'home' | 'review' | 'stats' | 'chat' | 'methodology' | 'bootcamp' | 'badges' | 'lesson' | 'mindmap' | 'teacher'>('splash');
   const [activeMindMapUnitId, setActiveMindMapUnitId] = useState<number>(1);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [studentName, setStudentName] = useState<string | null>(null);
+  const [studentEmail, setStudentEmail] = useState<string | null>(null);
   
   // Stop music once we exit the splash screen
   useEffect(() => {
@@ -470,35 +476,49 @@ export default function App() {
         onSchedule={handleScheduleReminder} 
       />
 
+      <StudentAuthView
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLogin={(name, email) => {
+          setStudentName(name);
+          setStudentEmail(email);
+        }}
+      />
+
       {/* Dynamic Top App Bar matching Screen 2 */}
       {!isFocusMode && currentTab !== 'home' && (
         <header className="bg-[#ffffff] dark:bg-[#141916] shadow-[0_2px_12px_rgba(0,109,55,0.06)] border-b border-[#e2dabf]/40 dark:border-[#2ecc71]/10 flex flex-row-reverse justify-between items-center px-4 md:px-8 h-16 md:h-20 w-full shrink-0 z-40 select-none">
         
         {/* Left Side: Avatar block */}
         <div className="flex items-center gap-3">
-          <div className="relative cursor-pointer" onClick={() => setCurrentTab('stats')}>
-            <div className="absolute inset-0 bg-[#2ecc71]/20 rounded-full blur-sm" />
-            <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#006d37] text-white flex items-center justify-center border-2 border-[#ffffff] shadow-sm">
-              <User className="w-5 h-5 md:w-6 md:h-6" />
+          {studentEmail ? (
+            <StudentAccountBar onOpenTeacher={() => setCurrentTab('teacher')} />
+          ) : (
+            <div className="relative cursor-pointer" onClick={() => setIsAuthOpen(true)}>
+              <div className="absolute inset-0 bg-[#2ecc71]/20 rounded-full blur-sm" />
+              <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#006d37] text-white flex items-center justify-center border-2 border-[#ffffff] shadow-sm">
+                <User className="w-5 h-5 md:w-6 md-6" />
+              </div>
             </div>
-          </div>
+          )}
           <div className="hidden sm:block text-right">
             <span className="text-[10px] text-[#506072] block font-bold">طالب متميز</span>
-            <span className="text-xs font-black text-[#1f1c0b]">SVT BAC DZ</span>
+            <span className="text-xs font-black text-[#1f1c0b]">{studentName || 'SVT BAC DZ'}</span>
           </div>
         </div>
 
         {/* Center Title Brand Name */}
         <div className="font-extrabold text-xl md:text-2xl text-[#006d37] font-display select-none">
-          {currentTab === 'home' ? 'كنز العلوم' : 
-           currentTab === 'review' ? 'المراجعة الذكية' : 
+          {currentTab === 'review' ? 'المراجعة الذكية' : 
            currentTab === 'stats' ? 'لوحة الإحصائيات' : 
            currentTab === 'badges' ? 'الأوسمة والإنجازات' : 
            currentTab === 'methodology' ? 'بوصلة' : 
            currentTab === 'bootcamp' ? 'تحدي البكالوريا' : 
            currentTab === 'lesson' ? 'الدرس التفاعلي' : 
            currentTab === 'mindmap' ? 'الخرائط الذهنية (D3)' :
-           'المرشد الذكي'}
+            currentTab === 'chat' ? 'المرشد الذكي' :
+            currentTab === 'teacher' ? 'لوحة المتابعة' :
+            'كنز العلوم'}
         </div>
 
         {/* Right Side Block with Streak & Dark Mode Toggle */}
@@ -591,17 +611,30 @@ export default function App() {
           </button>
 
           {/* Methodology Tab */}
-          <button
-            onClick={() => setCurrentTab('methodology')}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
-              currentTab === 'methodology'
-                ? 'bg-[#2ecc71]/15 text-[#006d37]'
-                : 'text-[#504441] hover:bg-[#fff9ed] hover:text-[#006d37]'
-            }`}
-          >
-            <Target className="w-5 h-5" />
-            <span>المنهجية</span>
-          </button>
+           <button
+             onClick={() => setCurrentTab('methodology')}
+             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
+               currentTab === 'methodology'
+                 ? 'bg-[#2ecc71]/15 text-[#006d37]'
+                 : 'text-[#504441] hover:bg-[#fff9ed] hover:text-[#006d37]'
+             }`}
+           >
+             <Target className="w-5 h-5" />
+             <span>المنهجية</span>
+           </button>
+
+           {/* Teacher Dashboard Tab */}
+           <button
+             onClick={() => setCurrentTab('teacher')}
+             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
+               currentTab === 'teacher'
+                 ? 'bg-[#2ecc71]/15 text-[#006d37]'
+                 : 'text-[#504441] hover:bg-[#fff9ed] hover:text-[#006d37]'
+             }`}
+           >
+             <GraduationCap className="w-5 h-5" />
+             <span>لوحة المتابعة</span>
+           </button>
 
           {/* AI Chat / Tutor Tab */}
           <button
@@ -668,6 +701,10 @@ export default function App() {
 
               {currentTab === 'methodology' && (
                 <MethodologyCompilerView onBackToHome={() => setCurrentTab('home')} />
+              )}
+
+              {currentTab === 'teacher' && (
+                <TeacherDashboardView onBack={() => setCurrentTab('home')} />
               )}
 
               {currentTab === 'bootcamp' && (

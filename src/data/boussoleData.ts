@@ -1,12 +1,16 @@
-// ============================================================
-// BOUSSOLE SVT v2 — بوصلة الإجابة · 4 خطوات + مفتاح واحد
-// ============================================================
-
 export interface BoussoleStep {
   num: 1 | 2 | 3 | 4;
   ar: string;
+  word: string;
   wordAr: string;
+  whereAr: string;
+  questionAr: string;
+  templateAr?: string;
   color: string;
+  colorSoft: string;
+  actionsAr: string[];
+  interditAr: string[];
+  noteAr?: string;
   errorTag: string;
 }
 
@@ -14,74 +18,389 @@ export const BOUSSOLE_STEPS: BoussoleStep[] = [
   {
     num: 1,
     ar: 'اقرأْ',
-    wordAr: 'أحدد فعل الأداء والكلمات المفتاحية',
+    word: 'أحدد فعل الأداء والكلمات المفتاحية',
+    wordAr: 'أحدد الفعل',
+    whereAr: 'المسودة فقط',
+    questionAr: 'ما هو المطلوب بالضبط؟',
+    templateAr: 'المطلوب: … (⩽5 كلمات)',
     color: '#1d4ed8',
-    errorTag: 'verb_confusion'
+    colorSoft: '#3b82f6',
+    actionsAr: ['حدّث الفعل', 'سَبّب الكلمات المفتاحية'],
+    interditAr: ['أن تكتب إجابة بالكامل', 'تذكر القواعد'],
+    errorTag: 'verb_confusion',
   },
   {
     num: 2,
     ar: 'اجمعْ',
-    wordAr: 'أربط المعطيات بالوحدات',
+    word: 'أربط المعطيات بالوحدات',
+    wordAr: 'جمع المعطيات',
+    whereAr: 'على الورقة',
+    questionAr: 'ما الذي أملك؟',
+    templateAr: 'انطلاقًا من الوثيقة (…) نلاحظ أنّ … (قيمة + وحدة)',
     color: '#059669',
-    errorTag: 'missing_unit'
+    colorSoft: '#10b981',
+    actionsAr: ['سَحب القيم من الوثيقة', 'إرفاق جميع القيم بوحدتها'],
+    interditAr: ['بدون وثيقة', 'بدون قيمة', 'بدون وحدة'],
+    errorTag: 'missing_unit',
   },
   {
     num: 3,
     ar: 'اربطْ',
-    wordAr: 'أقرأ الوثيقة ثم أستنتج',
+    word: 'أقرأ الوثيقة ثم أستنتج',
+    wordAr: 'الربط السببي',
+    whereAr: 'على الورقة',
+    questionAr: 'هل يسمح الفعل بـ«لأنّ»؟',
+    templateAr: 'وهذا لأنّ … وبالتالي …',
     color: '#d97706',
-    errorTag: 'missing_reference'
+    colorSoft: '#f59e0b',
+    actionsAr: ['ربط السبب بالنتيجة', 'استخدام «لأنّ» أو «وبالتالي»'],
+    interditAr: ['أن تكتب دون فرض', 'إغفال المفتاح'],
+    errorTag: 'premature_interpretation',
   },
   {
     num: 4,
     ar: 'اختمْ',
-    wordAr: 'أعيد صياغة المطلوب كحقيقة علمية',
+    word: 'أعيد صياغة المطلوب كحقيقة علمية',
+    wordAr: 'الإنهاء',
+    whereAr: 'على الورقة',
+    questionAr: 'ما الخلاصة؟',
+    templateAr: 'ومنه نستنتج أنّ … (أُعيد صياغة المطلوب)',
     color: '#7c3aed',
-    errorTag: 'missing_conclusion'
-  }
+    colorSoft: '#a855f7',
+    actionsAr: ['أعيد صياغة السؤال بحقيقة', 'أغلق الإجابة'],
+    interditAr: ['إبقاء على المطلوب كما هو', 'بدون جملة خاتمية'],
+    errorTag: 'missing_conclusion',
+  },
 ];
+
+export function getStep(id: 1 | 2 | 3 | 4): BoussoleStep | undefined {
+  return BOUSSOLE_STEPS.find(s => s.num === id);
+}
+
+export const REGLE_D_OR_AR = '« لا خاتمةَ قبل حُجّة، ولا حُجّةَ قبل مُعطى، ولا مُعطى قبلَ فَهْمِ السؤال »';
+
+export const TIME_RULE_AR = 'الربع الأول: اقرأ + اجمع · النصف: الربط · الربع الأخير: اختم + الفحص';
+
+export const FINGERS_RITUAL_AR = 'الإصبع ≈ الخطوة 1-2-3-4 تحت الطاولة';
+
+export const SELF_CHECKS = [
+  '٤ هل آخر جملة تُجيب «المطلوب»؟',
+  '٣ هل كل تأكيد له «لأنّ»؟',
+  '٢ هل ذكرت الوثيقة والقيمة والوحدة؟',
+  '١ هل احترمت الفعل؟',
+];
+
+export const SWITCH_QUESTION_AR = 'هل الفعل يسمح بـ«لأنّ»؟';
+
+export const SWITCH_OPEN_VERBS: string[] = [
+  'verb_explain_v1',
+  'verb_explain_multi_v1',
+  'verb_justify_v1',
+  'verb_validate_v1',
+  'verb_critique_v1',
+  'verb_hypothesis_v1',
+  'verb_composer_v1',
+];
+
+export const SWITCH_CLOSED_VERBS: string[] = [
+  'verb_analyse_v1',
+  'verb_compare_v1',
+  'verb_deduce_v1',
+  'verb_schema_v1',
+  'verb_schematic_v1',
+];
+
+export type SwitchState = 'open' | 'closed';
+
+export function getSwitchForVerb(verbId: string): SwitchState {
+  return SWITCH_OPEN_VERBS.includes(verbId) ? 'open' : 'closed';
+}
+
+export function switchPathAr(verbId: string): string {
+  return getSwitchForVerb(verbId) === 'open' ? '١٢٣٤' : '١٢٤';
+}
+
+export interface ErrorAddress {
+  1: 'step_1';
+  2: 'step_2';
+  3: 'step_3';
+  4: 'step_4';
+  switch: 'switch';
+}
+
+export const ERROR_ADDRESS_MAP: Record<string, '1' | '2' | '3' | '4' | 'switch'> = {
+  missing_unit: '2',
+  missing_reference: '3',
+  premature_interpretation: 'switch',
+  conditional_hypothesis: '3',
+  missing_conclusion: '4',
+  verb_confusion: '1',
+  comparison_without_criteria: '2',
+  unbalanced_comparison: '2',
+};
+
+export function errorAddressAr(addr: '1' | '2' | '3' | '4' | 'switch'): string {
+  const map: Record<typeof addr, string> = {
+    1: '١ اقرأ',
+    2: '٢ اجمع',
+    3: '٣ اربط',
+    4: '٤ اختم',
+    switch: '🔑 المفتاح',
+  };
+  return map[addr];
+}
+
+export const ERROR_REMEDY_MAP: Record<string, string> = {
+  missing_unit: 'كل قيمة عددية متبوعة بوحدتها (غ/ل، %، دقيقة، وحدة اعتبارية)',
+  missing_reference: 'ابدأ بـ «انطلاقًا من الوثيقة …» أو «نلاحظ أن …»',
+  premature_interpretation: 'احذف أي تفسير واكتف بوصف ما تراه العين فقط، ثم استنتج',
+  conditional_hypothesis: 'صيغة إخبارية جازمة: «يؤثر …» بدلاً من «ربما يؤثر»',
+  missing_conclusion: 'أختم بجملة استنتاجية: «ومنه نستنتج أن …»',
+  verb_confusion: 'افحص الفعل في بداية الإجابة وتحرك الوثيقة',
+  comparison_without_criteria: 'قارن وجهاً لوجه حسب معيار: «بينما …» أو «في حين …»',
+  unbalanced_comparison: 'اكتب عن العنصر الأول ثم عن الثاني في نفس السطر',
+};
+
+export interface StepErrorGroup {
+  address: '1' | '2' | '3' | '4' | 'switch';
+  tags: string[];
+}
+
+export function groupErrorsByAddress(tags: string[]): StepErrorGroup[] {
+  const groups: StepErrorGroup[] = [
+    { address: '1', tags: [] },
+    { address: 'switch', tags: [] },
+    { address: '2', tags: [] },
+    { address: '3', tags: [] },
+    { address: '4', tags: [] },
+  ];
+  tags.forEach(tag => {
+    const addr = ERROR_ADDRESS_MAP[tag];
+    if (addr) {
+      const g = groups.find(x => x.address === addr);
+      if (g) g.tags.push(tag);
+    }
+  });
+  return groups;
+}
+
+export interface SpecialFormat {
+  verbId: string;
+  name: string;
+  step2Template: string;
+  step3Template: string;
+  step4Template: string;
+}
+
+export const SPECIAL_FORMATS: SpecialFormat[] = [
+  {
+    verbId: 'verb_compare_v1',
+    name: 'مقارنة',
+    step2Template: 'أمتز الحجم في 2 أعمدة على معيار واحد',
+    step3Template: 'بينما … في حين …',
+    step4Template: 'الخلاصة: ...',
+  },
+  {
+    verbId: 'verb_schema_v1',
+    name: 'رسم تخطيطي',
+    step2Template: 'البنيات + البيانات بأسهم',
+    step3Template: 'أسهم مرقمة 1-2-3...',
+    step4Template: 'العنوان + المفتاح',
+  },
+  {
+    verbId: 'verb_schematic_v1',
+    name: 'مخطط',
+    step2Template: 'العناصر داخل أطر',
+    step3Template: 'اتجاه الأسهم الواضح',
+    step4Template: 'عنوان مؤطر',
+  },
+  {
+    verbId: 'verb_hypothesis_v1',
+    name: 'فرضية',
+    step2Template: 'آلية دقيقة',
+    step3Template: 'صياغة جازمة لا تحتوي على ربما',
+    step4Template: 'قابلة للتجربة',
+  },
+  {
+    verbId: 'verb_deduce_v1',
+    name: 'استنتاج',
+    step2Template: 'حقيقة عامة فقط',
+    step3Template: 'بدون أرقام متكررة',
+    step4Template: 'جملة واحدة مختصرة',
+  },
+];
+
+export function getSpecialFormatForVerb(verbId: string): SpecialFormat | undefined {
+  return SPECIAL_FORMATS.find(f => f.verbId === verbId);
+}
+
+export type NavigatorGradeKey = 'none' | 'deckhand' | 'sailor' | 'captain' | 'admiral';
+
+export interface NavigatorGrade {
+  key: NavigatorGradeKey;
+  num: 1 | 2 | 3 | 4;
+  nameAr: string;
+  icon: string;
+  title: string;
+  sub: string;
+  desc: string;
+  conditionAr: string;
+  emoji: string;
+}
+
+export const AID_LEVELS: NavigatorGrade[] = [
+  {
+    num: 1,
+    key: 'deckhand',
+    nameAr: 'نوتيّ',
+    icon: '🛶',
+    title: 'مع النموذج',
+    sub: 'Modelage',
+    desc: 'اكتشف الخطوات النموذجية والمفتاح',
+    conditionAr: 'أولى الرحلات — واصل الإبحار لتكتسب الرتب',
+    emoji: '⚡',
+  },
+  {
+    num: 2,
+    key: 'sailor',
+    nameAr: 'ملاح',
+    icon: '⛵',
+    title: 'إكمال الفراغات',
+    sub: 'Complétion',
+    desc: 'أكمل النماذج بالمعطيات والوحدات',
+    conditionAr: '5 رحلات مكتملة + رحلة واحدة بلا خطأ منهجي',
+    emoji: '📝',
+  },
+  {
+    num: 3,
+    key: 'captain',
+    nameAr: 'رجل البحر',
+    icon: '🚢',
+    title: 'كتابة بالبطاقة',
+    sub: 'Guidée',
+    desc: 'اكتب الإجابة مع دعم الفيشة',
+    conditionAr: 'متوسط ≥ 75% في 3 أفعال أداء مختلفة',
+    emoji: '✓',
+  },
+  {
+    num: 4,
+    key: 'admiral',
+    nameAr: 'قبطان أعالي البحار',
+    icon: '⚓',
+    title: 'بكالوريا',
+    sub: 'Examen',
+    desc: 'إجابة محدودة الوقت دون دعم',
+    conditionAr: 'ICM ≥ 90% في 3 وحدات مختلفة على الأقل',
+    emoji: '🏆',
+  },
+];
+
+export const TIME_RULES = {
+  quart: 'الرُّبع الأول: اقرأ + اجمع',
+  half: 'النِّصف: الربط (أو الكتابة إن كان مغلقًا)',
+  quarter: 'الرُّبع الأخير: اختم + الفحص',
+};
+
+export const ERROR_TAG_LABELS_AR: Record<string, string> = {
+  missing_unit: 'غياب الوحدة القياسية',
+  missing_reference: 'تأكيد دون سند',
+  premature_interpretation: 'تفسير مبكر أثناء التحليل',
+  conditional_hypothesis: 'فرضية بصيغة الشك',
+  missing_conclusion: 'غياب الجملة الختامية',
+  verb_confusion: 'الخلط بين أفعال الأداء',
+  comparison_without_criteria: 'مقارنة بلا معايير',
+  unbalanced_comparison: 'مقارنة غير متوازنة',
+};
 
 export function getStepData(step: number): BoussoleStep | undefined {
   return BOUSSOLE_STEPS.find(s => s.num === step);
 }
 
 export function getStepByTag(tag: string): BoussoleStep | undefined {
-  return BOUSSOLE_STEPS.find(s => s.errorTag === tag);
+  const tagToStep: Record<string, number> = {
+    missing_unit: 2,
+    missing_reference: 3,
+    premature_interpretation: 3,
+    conditional_hypothesis: 3,
+    missing_conclusion: 4,
+    verb_confusion: 1,
+    comparison_without_criteria: 2,
+    unbalanced_comparison: 2,
+  };
+  const stepNum = tagToStep[tag];
+  return stepNum ? getStep(stepNum as 1 | 2 | 3 | 4) : undefined;
 }
 
-export const ERROR_TAG_LABELS_AR: Record<string, string> = {
-  missing_unit: 'غياب الوحدة القياسية',
-  missing_reference: 'تأكيد دون سند',
-  premature_interpretation: 'التفسير المبكر أثناء التحليل',
-  conditional_hypothesis: 'فرضية بصيغة الشك',
-  missing_conclusion: 'غياب الجملة الختامية',
-  verb_confusion: 'الخلط بين أفعال الأداء',
-  comparison_without_criteria: 'مقارنة بلا معايير',
-  unbalanced_comparison: 'مقارنة غير متوازنة'
-};
+export interface BoussoleCap {
+  id: 1 | 2 | 3 | 4;
+  num: number;
+  ar: string;
+  word: string;
+  color: string;
+  colorSoft: string;
+  questionAr: string;
+  verbAr: string;
+  gestureAr: string;
+  stepsAr: string[];
+  desc: string;
+}
 
-export const REGLE_D_OR_AR = '« لا خاتمةَ قبل حُجّة، ولا حُجّةَ قبل مُعطى، ولا مُعطى قبلَ فَهْمِ السؤال »';
-
-export const PHRASE_TYPES = [
+export const BOUSSOLE_CAPS: BoussoleCap[] = [
   {
-    step: 2,
-    ar: 'انطلاقًا من الوثيقة (…) نلاحظ أنّ …',
-    hint: 'القيمة + الوحدة'
+    id: 1, num: 1, ar: 'اقرأْ', word: 'أحدد الفعل', color: '#1d4ed8', colorSoft: '#3b82f6',
+    questionAr: 'ما المطلوب؟', verbAr: 'حَلِّلْ / فَسِّرْ', gestureAr: '👇 4 أضراس',
+    stepsAr: ['حدد الفعل', 'سَبّب الكلمات'],
+    desc: 'نوتيّ — أولى الرحلات — واصل الإبحار لتكتسب الرتب',
   },
   {
-    step: 3,
-    ar: 'وهذا <b>لأنّ</b> … <b>وبالتالي</b> …',
-    hint: 'السبب + النتيجة'
+    id: 2, num: 2, ar: 'اجمعْ', word: 'جمع المعطيات', color: '#059669', colorSoft: '#10b981',
+    questionAr: 'ما الأملك؟', verbAr: 'حَلِّلْ / فَسِّرْ', gestureAr: '👇 3 أضراس',
+    stepsAr: ['اكتب الوثيقة', 'أرد القيم'],
+    desc: 'ملاح — 5 رحلات مكتملة + رحلة واحدة بلا خطأ منهجي',
   },
   {
-    step: 4,
-    ar: '<b>ومنه نستنتج أنّ</b> …',
-    hint: 'إعادة صياغة المطلوب'
-  }
+    id: 3, num: 3, ar: 'اربطْ', word: 'الربط السببي', color: '#d97706', colorSoft: '#f59e0b',
+    questionAr: 'هل يسمح بالسبب؟', verbAr: 'فَسِّرْ', gestureAr: '👇 2 أضراس',
+    stepsAr: ['استخدم لأن', 'كن جديراً بالنتيجة'],
+    desc: 'رجل البحر — متوسط ≥ 75% في 3 أفعال أداء مختلفة',
+  },
+  {
+    id: 4, num: 4, ar: 'اختمْ', word: 'الإنهاء', color: '#7c3aed', colorSoft: '#a855f7',
+    questionAr: 'ما الخلاصة؟', verbAr: 'حَلِّلْ / فَسِّرْ', gestureAr: '👇 1 إصبع',
+    stepsAr: ['أعد صياغة السؤال', '،كتب جملة خاتمية'],
+    desc: 'قبطان — ICM ≥ 90% في 3 وحدات مختلفة على الأقل',
+  },
 ];
 
-export const TIME_RULES = {
-  quart: 'الرُّبع الأول: اقرأ + اجمع',
-  half: 'النِّصف: الربط (أو الكتابة إن كان مغلقًا)',
-  quarter: 'الرُّبع الأخير: اختم + الفحص'
+export function capForStage(stage: 1 | 2 | 3 | 4): BoussoleCap {
+  return BOUSSOLE_CAPS[stage - 1];
+}
+
+export function groupErrorsByCap(tags: string[]): { capId: number; tags: string[] }[] {
+  const groups: Record<number, string[]> = { 1: [], 2: [], 3: [], 4: [] };
+  tags.forEach(tag => {
+    const step = getStepByTag(tag);
+    if (step) groups[step.num].push(tag);
+  });
+  return Object.entries(groups).map(([id, tags]) => ({ capId: Number(id), tags }));
+}
+
+export const VENT_CAP_MAP: Record<string, 1 | 2 | 3 | 4> = {
+  missing_unit: 2,
+  missing_reference: 3,
+  premature_interpretation: 3,
+  conditional_hypothesis: 3,
+  missing_conclusion: 4,
+  verb_confusion: 1,
+  comparison_without_criteria: 2,
+  unbalanced_comparison: 2,
 };
+
+export type CapId = 1 | 2 | 3 | 4;
+
+export const BOUSSOLE_STAGES_META: { num: 1 | 2 | 3 | 4; title: string; description: string }[] = [
+  { num: 1, title: 'مع النموذج', description: 'استكشف الخطوات النموذجية' },
+  { num: 2, title: 'إكمال الفراغات', description: 'أكمل النماذج' },
+  { num: 3, title: 'كتابة بالبطاقة', description: 'اكتب الإجابة' },
+  { num: 4, title: 'بكالوريا', description: 'الإجابة تحت ضغط الوقت' },
+];
