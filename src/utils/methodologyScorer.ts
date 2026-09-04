@@ -54,7 +54,7 @@ const DOC_NUMBER_RE = /(?:الوثيقة|الوثيقتين|الوثيقتان|�
 
 const NUMBER_RE = /(?<![A-Za-z=+\-\/\d.,])\d+(?:[.,]\d+)?(?![A-Za-z+\-\d])/g;
 const UNIT_AFTER_RE  = /(غ\/ل|g\/l|%|دقيقة|دقائق|دق\b|min|ساعة|ساعات|ثانية|ثواني|s\b|وحدة اعتبارية|ua|°|درجة|ميكرومول|مول|نل|مل|لتر|مم|سم|نانومتر|كيلومتر|خلايا|بلورات|وحدات|يوم|أيام|أسبوع|شهر|سنة)/i;
-const UNIT_BEFORE_RE = /(?:^|\s)(?:د|دقيقة|الدقيقة|ph)\s*=?\s*$/i;
+const UNIT_BEFORE_RE = /(?:^|\s)(?:د|دقيقة|الدقيقة|ph)\s*=?\s*/i;
 
 function bareNumbers(text: string): string[] {
   const t = text.replace(DOC_NUMBER_RE, ' ');
@@ -78,7 +78,7 @@ export function evaluateStudentProduction(
   const card = getVerbCardV2(verbId) ?? VERB_CARDS_V2[0];
   const sw = card.switch;
   const writes = (s: StepId) => card.path.includes(s);
-  const text = (userText || '').trim();
+  const text = (userText || '').trim().toLowerCase();
   const detected = new Set<string>();
 
   const numbers = Array.from(text.replace(DOC_NUMBER_RE, ' ').matchAll(NUMBER_RE));

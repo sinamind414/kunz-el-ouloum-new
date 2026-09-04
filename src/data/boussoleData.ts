@@ -294,6 +294,7 @@ export const TIME_RULES = {
 };
 
 export const ERROR_TAG_LABELS_AR: Record<string, string> = {
+  unsupported_claim: 'ربط بلا سند',
   missing_unit: 'غياب الوحدة القياسية',
   missing_reference: 'تأكيد دون سند',
   premature_interpretation: 'تفسير مبكر أثناء التحليل',
@@ -310,6 +311,7 @@ export function getStepData(step: number): BoussoleStep | undefined {
 
 export function getStepByTag(tag: string): BoussoleStep | undefined {
   const tagToStep: Record<string, number> = {
+    unsupported_claim: 3,
     missing_unit: 2,
     missing_reference: 3,
     premature_interpretation: 3,
@@ -378,6 +380,7 @@ export function groupErrorsByCap(tags: string[]): { capId: number; tags: string[
 }
 
 export const VENT_CAP_MAP: Record<string, 1 | 2 | 3 | 4> = {
+  unsupported_claim: 3,
   missing_unit: 2,
   missing_reference: 3,
   premature_interpretation: 3,
