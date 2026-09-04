@@ -442,27 +442,28 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           {currentStage >= 1 && currentStage <= 3 && currentExercise && (() => {
             const card = getVerbCardV2(selectedVerbId);
             if (!card) return null;
-            const sw = card.switch;
+            const lampState = switchChoice ?? 'pending';
             return (
               <div dir="rtl" className="space-y-2 mb-4">
                 <div className="grid grid-cols-4 gap-2">
                   {([1, 2, 3, 4] as StepId[]).map(step => {
                     const applicable = step === 1 || card.path.includes(step);
                     const isStep3 = step === 3;
-                    const isStep3Open = sw === 'open';
+                    const isStep3Open = lampState === 'open';
+                    const isStep3Pending = lampState === 'pending';
                     return (
                       <div key={step} className={`p-3 rounded-xl border text-center text-xs ${
                         !applicable ? 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400'
-                        : isStep3 ? (isStep3Open ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40')
+                        : isStep3 ? (isStep3Open ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' : isStep3Pending ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40' : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40')
                         : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200'
                       }`}>
                         <div className="font-black text-lg leading-none">{step}</div>
                         <div className="font-bold text-sm mt-1">{STEP_NAMES_AR[step]}</div>
                         {isStep3 && (
                           <div className={`mt-1 inline-block px-1.5 rounded text-[10px] font-bold ${
-                            isStep3Open ? 'bg-emerald-200/60 dark:bg-emerald-900/60' : 'bg-gray-200/80 dark:bg-gray-700 line-through'
+                            isStep3Open ? 'bg-emerald-200/60 dark:bg-emerald-900/60' : isStep3Pending ? 'bg-amber-200/60 dark:bg-amber-900/60' : 'bg-gray-200/80 dark:bg-gray-700 line-through'
                           }`}>
-                            «لأنّ
+                            «لأنّ»
                           </div>
                         )}
                         <div className="mt-1 font-bold text-[11px]">
@@ -476,11 +477,10 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             );
           })()}
 
-          {/* Switch Gate — stage 3 only, no skip */}
+          {/* Switch Gate — stage 3 only, no skip, no pre-color */}
           {showSwitchGate && currentStage === 3 && currentExercise && (() => {
             const card = getVerbCardV2(selectedVerbId);
             if (!card) return null;
-            const sw = card.switch;
             return (
               <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 font-bold text-sm">
@@ -490,31 +490,17 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => { setSwitchChoice('closed'); setShowSwitchGate(false); }}
-                    className={`p-4 rounded-xl border-2 font-bold text-center transition-all ${
-                      sw === 'closed'
-                        ? 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/20'
-                        : 'border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30'
-                    }`}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-red-300 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all font-bold text-center"
                   >
                     <div className="text-2xl mb-1">🚫</div>
                     <div>لا — مغلق</div>
-                    <div className="text-[10px] font-normal opacity-70 mt-1">
-                      {card.path.map(s => STEP_NAMES_AR[s]).join(' · ')}
-                    </div>
                   </button>
                   <button
                     onClick={() => { setSwitchChoice('open'); setShowSwitchGate(false); }}
-                    className={`p-4 rounded-xl border-2 font-bold text-center transition-all ${
-                      sw === 'open'
-                        ? 'border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/20'
-                        : 'border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30'
-                    }`}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all font-bold text-center"
                   >
                     <div className="text-2xl mb-1">✅</div>
                     <div>نعم — مفتوح</div>
-                    <div className="text-[10px] font-normal opacity-70 mt-1">
-                      {card.path.map(s => STEP_NAMES_AR[s]).join(' · ')}
-                    </div>
                   </button>
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-400">
@@ -892,7 +878,6 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     {currentStage >= 3 && (
                       <div className={`mt-3 p-3 rounded-xl border text-xs ${
                         switchChoice === 'open' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' :
-                        switchChoice === 'closed' ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40' :
                         'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
                       }`}>
                         <div className="font-bold mb-1">🔑 المفتاح</div>
@@ -901,6 +886,13 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                         ) : (
                           <span>
                             الفعل: <span className="font-black">{switchChoice === 'open' ? 'مفتوح' : 'مغلق'}</span>
+                            <span className="ml-1">
+                              {switchChoice === 'open' ? '«لأنّ» مطلوبة' : 'لا «لأنّ»'}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    )}
                             <span className="ml-1">
                               {switchChoice === 'open' ? '«لأنّ» مطلوبة' : 'لا «لأنّ»'}
                             </span>
