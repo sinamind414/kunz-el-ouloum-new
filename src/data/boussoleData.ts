@@ -1,3 +1,5 @@
+import { Switch, VERB_CARDS_V2 } from './methodologyEngine';
+
 export interface BoussoleStep {
   num: 1 | 2 | 3 | 4;
   ar: string;
@@ -92,25 +94,13 @@ export const SELF_CHECKS = [
 
 export const SWITCH_QUESTION_AR = 'هل الفعل يسمح بـ«لأنّ»؟';
 
-export const SWITCH_OPEN_VERBS: string[] = [
-  'verb_explain_v1',
-  'verb_explain_multi_v1',
-  'verb_justify_v1',
-  'verb_validate_v1',
-  'verb_critique_v1',
-  'verb_hypothesis_v1',
-  'verb_composer_v1',
-];
+export const SWITCH_OPEN_VERBS = VERB_CARDS_V2.filter(c => c.switch === 'open').map(c => c.id);
 
-export const SWITCH_CLOSED_VERBS: string[] = [
-  'verb_analyse_v1',
-  'verb_compare_v1',
-  'verb_deduce_v1',
-  'verb_schema_v1',
-  'verb_schematic_v1',
-];
+export const SWITCH_CLOSED_VERBS = VERB_CARDS_V2.filter(c => c.switch === 'closed').map(c => c.id);
 
-export type SwitchState = 'open' | 'closed';
+import { Switch, VERB_CARDS_V2 } from './methodologyEngine';
+
+export type SwitchState = Switch;
 
 export function getSwitchForVerb(verbId: string): SwitchState {
   return SWITCH_OPEN_VERBS.includes(verbId) ? 'open' : 'closed';
@@ -130,13 +120,14 @@ export interface ErrorAddress {
 
 export const ERROR_ADDRESS_MAP: Record<string, '1' | '2' | '3' | '4' | 'switch'> = {
   missing_unit: '2',
-  missing_reference: '3',
+  missing_reference: '2',
   premature_interpretation: 'switch',
   conditional_hypothesis: '3',
   missing_conclusion: '4',
   verb_confusion: '1',
   comparison_without_criteria: '2',
-  unbalanced_comparison: '2',
+  unbalanced_comparison: '3',
+  unsupported_claim: '3',
 };
 
 export function errorAddressAr(addr: '1' | '2' | '3' | '4' | 'switch'): string {
@@ -159,6 +150,7 @@ export const ERROR_REMEDY_MAP: Record<string, string> = {
   verb_confusion: 'افحص الفعل في بداية الإجابة وتحرك الوثيقة',
   comparison_without_criteria: 'قارن وجهاً لوجه حسب معيار: «بينما …» أو «في حين …»',
   unbalanced_comparison: 'اكتب عن العنصر الأول ثم عن الثاني في نفس السطر',
+  unsupported_claim: 'أضف الرابط: «وهذا لأنّ … وبالتالي …» — أو احذف التأكيد الذي لا سند له.',
 };
 
 export interface StepErrorGroup {

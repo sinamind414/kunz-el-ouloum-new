@@ -1,1280 +1,227 @@
 export interface VerbCriteriaItem {
   id: string;
   order: number;
-  wording: {
-    compass: string; // 1ère personne, présent, action (ex: "أسمي طبيعة الوثيقة")
-    check: string;   // Constat vérification (ex: "طبيعة الوثيقة مذكورة بدقة")
-    probe: string;   // Question sonde (ex: "منحنى، جدول، أم رسم تخطيطي؟")
-    ar_label: string;
-  };
-  evidencePattern?: string; // Regex ou mots clés pour validation
-  selfProofPrompt: string;  // Consigne de surlignage de la preuve
-  errorTag: string;         // Code d'erreur typé associé
+  wording: { compass: string; check: string; probe: string; ar_label: string };
+  evidencePattern?: string;
+  selfProofPrompt: string;
+  errorTag: string;
   weight: number;
 }
-
 export interface VerbCard {
-  id: string;
-  verbAr: string;
-  verbFr: string;
-  category: 'descriptive' | 'reasoned';
-  goal: string;
-  structureSteps: string[];
-  requiredConnectors: string[];
-  forbiddenPatterns: string[];
-  stopCriteria: string[];
-  goodExample: {
-    context: string;
-    question: string;
-    answer: string;
-    annotatedSteps: { step: number; text: string; color: string }[];
-  };
-  badExample: {
-    answer: string;
-    flawDescription: string;
-    circledError: string;
-    errorTag: string;
-    scorePercent: number;
-  };
+  id: string; verbAr: string; verbFr: string; category: 'descriptive' | 'reasoned';
+  goal: string; structureSteps: string[]; requiredConnectors: string[];
+  forbiddenPatterns: string[]; stopCriteria: string[];
+  goodExample: { context: string; question: string; answer: string; annotatedSteps: { step: number; text: string; color: string }[] };
+  badExample: { answer: string; flawDescription: string; circledError: string; errorTag: string; scorePercent: number };
   criteria: VerbCriteriaItem[];
 }
-
 export interface TrainingExercise {
-  id: string;
-  verbId: string;
-  theme: string; // 'immunology' | 'protein_synthesis' | 'enzymology' | 'neuro_comm' | 'geodynamics'
-  themeAr: string;
+  id: string; verbId: string; theme: string; themeAr: string;
   supportType: 'courbe' | 'tableau' | 'schema' | 'photo' | 'texte';
-  supportTitle: string;
-  context: string;
-  question: string;
-  dataSnippet?: string;
+  supportTitle: string; context: string; question: string; dataSnippet?: string;
   diagramUrl?: string;
-  // Stade 1 - Modelage
-  stage1: {
-    expertAnswer: string;
-    segments: { stepNumber: number; text: string; colorClass: string }[];
-  };
-  // Stade 2 - Complétion
-  stage2: {
-    clozePrompt: string; // Text with placeholders like {{1}}, {{2}}
-    blanks: { id: string; expectedText: string; hint: string; options?: string[] }[];
-  };
-  // Stade 3 & 4 - Production
-  stage3: {
-    recommendedTimeSec: number;
-    hints: string[];
-  };
-  stage4: {
-    timeLimitSec: number;
-    passIcmThreshold: number;
-  };
+  stage1: { expertAnswer: string; segments: { stepNumber: number; text: string; colorClass: string }[] };
+  stage2: { clozePrompt: string; blanks: { id: string; expectedText: string; hint: string; options?: string[] }[] };
+  stage3: { recommendedTimeSec: number; hints: string[] };
+  stage4: { timeLimitSec: number; passIcmThreshold: number };
 }
-
+export type ErrorStep = StepId | 'switch';
 export interface ErrorTaxonomyItem {
-  code: string;
-  nameAr: string;
-  nameFr: string;
-  descriptionAr: string;
-  example: string;
-  counterActionAr: string;
+  code: string; nameAr: string; nameFr: string; descriptionAr: string;
+  example: string; counterActionAr: string; step: ErrorStep;
 }
-
 export const ERROR_TAXONOMY: Record<string, ErrorTaxonomyItem> = {
-  missing_unit: {
-    code: 'missing_unit',
-    nameAr: 'غياب الوحدة القياسية',
-    nameFr: 'Unité absente',
-    descriptionAr: 'ذكر أرقام مجردة دون إرفاقها بوحدتها القياسية الفيزيائية أو الحيوية.',
-    example: 'كتابة "تصل القيمة إلى 1.8" بدلاً من "1.8 غ/ل".',
-    counterActionAr: 'أعد كتابة كل قيمة عددية متبوعة بوحدتها (غ/ل، %، دقيقة، وحدة اعتبارية).'
-  },
-  missing_reference: {
-    code: 'missing_reference',
-    nameAr: 'تأكيد دون سند/مرجع',
-    nameFr: 'Affirmation sans référent',
-    descriptionAr: 'إطلاق أحكام دون الإشارة الصريحة لرقم الوثيقة أو عنوانها أو المجال المدروس.',
-    example: 'قول "تتزايد الأجسام المضادة" دون ذكر "انطلاقاً من الوثيقة 1".',
-    counterActionAr: 'ابدأ دائماً بـ "انطلاقاً من الوثيقة (س)" أو "تمثل الوثيقة... حيث نلاحظ".'
-  },
-  premature_interpretation: {
-    code: 'premature_interpretation',
-    nameAr: 'تفسير مبكر أثناء التحليل',
-    nameFr: 'Interprétation prématurée dans l\'analyse',
-    descriptionAr: 'استعمال الروابط السببية (لأن، راجع إلى، بسبب) داخل مهمة التحليل الوصفي.',
-    example: 'قول "تتناقص النسبة لأن الإنزيم تخرب" في سؤال "حلل المنحنى".',
-    counterActionAr: 'احذف أي تفسير واكتفِ بوصف ما تراه العين بدقة، واختم بالاستنتاج فقط.'
-  },
-  conditional_hypothesis: {
-    code: 'conditional_hypothesis',
-    nameAr: 'صياغة الفرضية بصيغة الشك',
-    nameFr: 'Hypothèse non assertive',
-    descriptionAr: 'استخدام كلمات التردد أو التعطيل في الفرضية التفسيرية (ربما، لعل).',
-    example: 'قول "ربما يؤثر الدواء على الريبوزوم".',
-    counterActionAr: 'صغ الفرضية بجملة إخبارية جازمة قابلة للاختبار التجريبي: "يؤثر الدواء عن طريق تثبيط عمل الريبوزومات".'
-  },
-  missing_conclusion: {
-    code: 'missing_conclusion',
-    nameAr: 'غياب الجملة الختامية (الاستنتاج/البيلان)',
-    nameFr: 'Absence de phrase-bilan',
-    descriptionAr: 'التوقف عند تفكيك المعطيات دون تقديم خلاصة تجيب صراحة عن المشكل.',
-    example: 'إنهاء التحليل عند آخر نقطة في المنحنى دون سطر استنتاجي.',
-    counterActionAr: 'اختم دائماً بـ "الاستنتاج: [إعادة صياغة الهدف من الوثيقة كحقيقة علمية]".'
-  },
-  verb_confusion: {
-    code: 'verb_confusion',
-    nameAr: 'الخلط بين أفعال الأداء',
-    nameFr: 'Confusion entre verbes',
-    descriptionAr: 'تقديم تفسير لسؤال تحليل، أو الاكتفاء بالوصف في سؤال تفسير.',
-    example: 'تقديم آلية بيولوجية لسؤال "حلل"، أو وصف سطحي لسؤال "فسر".',
-    counterActionAr: 'افحص الفعل في بداية التعليمة جيداً والتزم بهيكل الفيشة المخصص له.'
-  },
-  comparison_without_criteria: {
-    code: 'comparison_without_criteria',
-    nameAr: 'مقارنة عشوائية دون معايير',
-    nameFr: 'Comparaison sans critères',
-    descriptionAr: 'سرد حالة الشاهد ثم سرد حالة التجربة في فقرتين منفصلتين (مجرد وضع جنب إلى جنب).',
-    example: 'وصف الفأر 1 في 5 أسطر ثم وصف الفأر 2 في 5 أسطر دون تقاطع.',
-    counterActionAr: 'قارن وجهاً لوجه حسب المعيار مستعملاً "بينما / في حين".'
-  },
-  unbalanced_comparison: {
-    code: 'unbalanced_comparison',
-    nameAr: 'مقارنة غير متوازنة',
-    nameFr: 'Comparaison non équilibrée',
-    descriptionAr: 'معالجة معيار لعنصر وإهمال العنصر المقابل لنفس المعيار.',
-    example: 'ذكر سرعة التفاعل عند 37° دون مقارنتها بسرعة التفاعل عند 0° لنفس التركيز.',
-    counterActionAr: 'تأكد من معالجة كلا العنصرين في كل معيار مقارنة.'
-  }
+  missing_unit: { code:'missing_unit', nameAr:'غياب الوحدة القياسية', nameFr:'Unité absente', descriptionAr:'ذكر أرقام مجردة دون إرفاقها بوحدتها القياسية الفيزيائية أو الحيوية.', example:'كتابة "تصل القيمة إلى 1.8" بدلاً من "1.8 غ/ل".', counterActionAr:'أعد كتابة كل قيمة عددية متبوعة بوحدتها (غ/ل، %، دقيقة، وحدة اعتبارية).', step:2 },
+  missing_reference: { code:'missing_reference', nameAr:'غياب ذكر السند (الوثيقة / المنحنى / الجدول)', nameFr:'Support non nommé', descriptionAr:'الانطلاق في الوصف دون تسمية الوثيقة أو نوعها أو المجال المدروس.', example:'قول "تتزايد الأجسام المضادة" دون ذكر "انطلاقاً من الوثيقة 1".', counterActionAr:'ابدأ دائماً بـ "انطلاقاً من الوثيقة (س)" أو "تمثل الوثيقة... حيث نلاحظ".', step:2 },
+  premature_interpretation: { code:'premature_interpretation', nameAr:'تفسير مبكر أثناء التحليل', nameFr:'Interprétation prématurée', descriptionAr:'استعمال الروابط السببية (لأن، راجع إلى، بسبب) داخل مهمة التحليل الوصفي.', example:'قول "تتناقص النسبة لأن الإنزيم تخرب" في سؤال "حلل المنحنى".', counterActionAr:'احذف أي تفسير واكتفِ بوصف ما تراه العين بدقة، واختم بالاستنتاج فقط.', step:'switch' },
+  conditional_hypothesis: { code:'conditional_hypothesis', nameAr:'صياغة الفرضية بصيغة الشك', nameFr:'Hypothèse non assertive', descriptionAr:'استخدام كلمات التردد أو التعطيل في الفرضية التفسيرية (ربما، لعل).', example:'قول "ربما يؤثر الدواء على الريبوزوم".', counterActionAr:'صغ الفرضية بجملة إخبارية جازمة قابلة للاختبار التجريبي.', step:3 },
+  missing_conclusion: { code:'missing_conclusion', nameAr:'غياب الجملة الختامية', nameFr:'Absence de phrase-bilan', descriptionAr:'التوقف عند تفكيك المعطيات دون تقديم خلاصة تجيب صراحة عن المشكل.', example:'إنهاء التحليل عند آخر نقطة في المنحنى دون سطر استنتاجي.', counterActionAr:'اختم دائماً بـ "الاستنتاج: [إعادة صياغة الهدف من الوثيقة كحقيقة علمية]".', step:4 },
+  verb_confusion: { code:'verb_confusion', nameAr:'الخلط بين أفعال الأداء', nameFr:'Confusion entre verbes', descriptionAr:'تقديم تفسير لسؤال تحليل، أو الاكتفاء بالوصف في سؤال تفسير.', example:'تقديم آلية بيولوجية لسؤال "حلل"، أو وصف سطحي لسؤال "فسر".', counterActionAr:'افحص الفعل في بداية التعليمة جيداً والتزم بهيكل الفيشة المخصص له.', step:1 },
+  comparison_without_criteria: { code:'comparison_without_criteria', nameAr:'مقارنة عشوائية دون معايير', nameFr:'Comparaison sans critères', descriptionAr:'سرد حالة الشاهد ثم سرد حالة التجربة في فقرتين منفصلتين.', example:'وصف الفأر 1 في 5 أسطر ثم وصف الفأر 2 في 5 أسطر دون تقاطع.', counterActionAr:'قارن وجهاً لوجه حسب المعيار مستعملاً "بينما / في حين".', step:2 },
+  unbalanced_comparison: { code:'unbalanced_comparison', nameAr:'مقارنة غير متوازنة', nameFr:'Comparaison non équilibrée', descriptionAr:'معالجة معيار لعنصر وإهمال العنصر المقابل لنفس المعيار.', example:'ذكر سرعة التفاعل عند 37° دون مقارنتها بسرعة التفاعل عند 0°.', counterActionAr:'تأكد من معالجة كلا العنصرين في كل معيار مقارنة.', step:3 },
+  unsupported_claim: { code:'unsupported_claim', nameAr:'ربط بلا سند (تأكيد دون «لأنّ»)', nameFr:'Affirmation sans lien causal', descriptionAr:'في سؤال تفسيري: إطلاق تأكيد دون ربطه بسببه أو بآليته أو بالفرضية المقابلة.', example:'قول "الفرضية الأولى صحيحة" دون "لأنّ الوثيقة تُظهر أنّ…".', counterActionAr:'أضف الرابط: «وهذا لأنّ … وبالتالي …» — أو احذف التأكيد الذي لا سند له.', step:3 }
 };
-
 export const UNIVERSAL_GRAMMAR_RULES = [
-  {
-    ruleNumber: 1,
-    titleAr: 'الإجابة تكون لفعل الأداء، لا للموضوع العام',
-    summaryAr: 'لا تجب "في المناعة"، بل أجب عن تعليمة "حَلِّل" أو "فَسِّر". الهيكل المنهجي ثابت ومستقل عن الدرس.',
-    badge: 'القاعدة الذهبية'
-  },
-  {
-    ruleNumber: 2,
-    titleAr: 'الاستناد الإلزامي إلى سند صريح',
-    summaryAr: 'كل تأكيد علمي يجب أن يرتبط بوثيقة مسماة، أو قيمة عددية دقيقة مع وحدتها، أو مكتسب معرفي محدد.',
-    badge: 'دقة الاستدلال'
-  },
-  {
-    ruleNumber: 3,
-    titleAr: 'الجملة الختامية تُعيد صياغة التعليمة',
-    summaryAr: 'كل إجابة تنتهي بجملة استنتاجية حاسمة (Phrase-bilan) تلخص النتيجة وتجيب عن جوهر السؤال.',
-    badge: 'معيار الإغلاق'
-  },
-  {
-    ruleNumber: 4,
-    titleAr: 'الاستثمار الحرفي لمفردات ومعطيات السند',
-    summaryAr: 'استعمال التسميات الدقيقة، وحدات القياس، أسماء المواد، وعناوين المنحنيات كما وردت في الوثيقة.',
-    badge: 'لغة المصحح'
-  }
+  { ruleNumber:1, titleAr:'الإجابة تكون لفعل الأداء، لا للموضوع العام', summaryAr:'لا تجب "في المناعة"، بل أجب عن تعليمة "حَلِّل" أو "فَسِّر".', badge:'القاعدة الذهبية' },
+  { ruleNumber:2, titleAr:'الاستناد الإلزامي إلى سند صريح', summaryAr:'كل تأكيد علمي يجب أن يرتبط بوثيقة مسماة، أو قيمة عددية دقيقة مع وحدتها.', badge:'دقة الاستدلال' },
+  { ruleNumber:3, titleAr:'الجملة الختامية تُعيد صياغة التعليمة', summaryAr:'كل إجابة تنتهي بجملة استنتاجية حاسمة (Phrase-bilan).', badge:'معيار الإغلاق' },
+  { ruleNumber:4, titleAr:'الاستثمار الحرفي لمفردات ومعطيات السند', summaryAr:'استعمال التسميات الدقيقة، وحدات القياس، أسماء المواد، وعناوين المنحنيات كما وردت في الوثيقة.', badge:'لغة المصحح' }
 ];
-
 export const VERB_CARDS: VerbCard[] = [
-  {
-    id: 'verb_analyse_v1',
-    verbAr: 'حَلِّلْ',
-    verbFr: 'Analyser',
-    category: 'descriptive',
-    goal: 'وصف منظم وموضوعي لمعطيات الوثيقة واستخراج العلاقات دون تفسير الأسباب، والختام باستنتاج دقيق.',
-    structureSteps: [
-      '1. هوية الوثيقة وسياقها (تمثل الوثيقة... حيث نلاحظ)',
-      '2. قراءة المعطيات بدقة مع القيم والوحدات وتقسيم المجالات',
-      '3. إبراز العلاقة الطردية أو العكسية بين المتغيرات',
-      '4. الاستنتاج: معلومة علمية مستخلصة تجيب عن هدف الوثيقة'
-    ],
-    requiredConnectors: [
-      'تمثل الوثيقة...',
-      'حيث نلاحظ في المجال من... إلى...',
-      'تزايد / تناقص / ثبات القيمة من... إلى...',
-      'الاستنتاج: نستنتج أن...'
-    ],
-    forbiddenPatterns: [
-      'لأن',
-      'راجع إلى',
-      'بسبب أن',
-      'يفسر ذلك بـ',
-      'ربما'
-    ],
-    stopCriteria: [
-      'تم تفكيك كل مجالات المنحنى/أعمدة الجدول',
-      'كتابة القيم العددية متبوعة بالوحدات',
-      'صياغة جملة استنتاجية منفصلة في الأخير'
-    ],
-    goodExample: {
-      context: 'منحنى بياني لتغيرات نسبة انحلال الدم (%) بدلالة تركيز محلول NaCl (غ/ل).',
-      question: 'حلل المنحنى الممثل في الوثيقة 1.',
-      answer: 'تمثل الوثيقة 1 منحنى بياني لتغيرات نسبة انحلال الدم بدلالة تركيز محلول NaCl، حيث نلاحظ:\n- في التراكيز المنخفضة من 0 إلى 4 غ/ل: ثبات نسبة انحلال الدم عند نسبة أعظمية قدرها 100%.\n- في التراكيز من 4 إلى 9 غ/ل: تناقص سريع في نسبة انحلال الدم لتصل إلى 0% عند تركيز 9 غ/ل.\n- في التراكيز الأكبر من 9 غ/ل: انعدام تام لانحلال الدم (0%).\nالاستنتاج: تتناسب نسبة انحلال كريات الدم الحمراء عكساً مع تركيز محلول NaCl الوسط الخارجي حتى انعدامها في الوسط متساوي التوتر.',
-      annotatedSteps: [
-        { step: 1, text: 'تمثل الوثيقة 1 منحنى بياني لتغيرات نسبة انحلال الدم بدلالة تركيز محلول NaCl', color: '#3b82f6' },
-        { step: 2, text: 'في التراكيز المنخفضة من 0 إلى 4 غ/ل: ثبات... من 4 إلى 9 غ/ل: تناقص... أكبر من 9 غ/ل: انعدام', color: '#10b981' },
-        { step: 3, text: 'تناقص سريع... لتصل إلى 0%', color: '#f59e0b' },
-        { step: 4, text: 'الاستنتاج: تتناسب نسبة انحلال كريات الدم الحمراء عكساً مع تركيز محلول NaCl', color: '#8b5cf6' }
-      ]
-    },
-    badExample: {
-      answer: 'نلاحظ أن انحلال الدم ينقص لأن جزيئات الملح تمنع دخول الماء إلى الكرية بظاهرة الأسموزية فتتقلص الخلايا.',
-      flawDescription: 'خطأ قاتل: قام التلميذ بالتفسير المباشر لآلية الأسموزية بدلاً من الوصف الدقيق، مع إهمال تقديم الوثيقة والقيم العددية والوحدات وغياب الاستنتاج.',
-      circledError: 'لأن جزيئات الملح تمنع دخول الماء...',
-      errorTag: 'premature_interpretation',
-      scorePercent: 25
-    },
-    criteria: [
-      {
-        id: 'an_c1',
-        order: 1,
-        wording: {
-          compass: 'أعرف بطبيعة الوثيقة وموضوعها بدقة.',
-          check: 'طبيعة الوثيقة وموضوعها مذكوران.',
-          probe: 'هل ذكرت ما تمثله الوثيقة بدلالة المتغير؟',
-          ar_label: 'تقديم الوثيقة'
-        },
-        selfProofPrompt: 'حدد سطر تقديم الوثيقة',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'an_c2',
-        order: 2,
-        wording: {
-          compass: 'أذكر التغيرات وأقسم المجالات مع القيم العددية والوحدات.',
-          check: 'المجالات مقسمة والقيم متبوعة بالوحدات.',
-          probe: 'هل كل رقم كتبته متبوع بوحدته (غ/ل، %، إلخ)؟',
-          ar_label: 'تفكيك المعطيات والوحدات'
-        },
-        selfProofPrompt: 'حدد القيم العددية ووحداتها في تحليلك',
-        errorTag: 'missing_unit',
-        weight: 1
-      },
-      {
-        id: 'an_c3',
-        order: 3,
-        wording: {
-          compass: 'أتجنب استعمال أي عبارة سببية مثل (لأن، راجع إلى).',
-          check: 'خلو التحليل من التفسير المسبق.',
-          probe: 'هل وصفت ما تراه العين فقط دون تبرير؟',
-          ar_label: 'تجنب التفسير المبكر'
-        },
-        selfProofPrompt: 'تأكد من خلو النص من كلمات التعليل',
-        errorTag: 'premature_interpretation',
-        weight: 1
-      },
-      {
-        id: 'an_c4',
-        order: 4,
-        wording: {
-          compass: 'أختم باستنتاج يمثل معلومة علمية مستخلصة.',
-          check: 'وجود جملة استنتاجية واضحة.',
-          probe: 'هل كتبت كلمة "الاستنتاج:" وصغت الحقيقة المستخلصة؟',
-          ar_label: 'صياغة الاستنتاج'
-        },
-        selfProofPrompt: 'حدد جملة الاستنتاج في نهاية الإجابة',
-        errorTag: 'missing_conclusion',
-        weight: 1
-      }
+  { id:'verb_analyse_v1', verbAr:'حَلِّلْ', verbFr:'Analyser', category:'descriptive',
+    goal:'وصف منظم وموضوعي لمعطيات الوثيقة واستخراج العلاقات دون تفسير الأسباب، والختام باستنتاج دقيق.',
+    structureSteps:['1. هوية الوثيقة وسياقها (تمثل الوثيقة... حيث نلاحظ)','2. قراءة المعطيات بدقة مع القيم والوحدات وتقسيم المجالات','3. إبراز العلاقة الطردية أو العكسية بين المتغيرات','4. الاستنتاج: معلومة علمية مستخلصة تجيب عن هدف الوثيقة'],
+    requiredConnectors:['تمثل الوثيقة...','حيث نلاحظ في المجال من... إلى...','نلاحظ أنّ','الاستنتاج:'],
+    forbiddenPatterns:['استخدام رابط سببي (لأن، بسبب، راجع إلى) داخل التحليل','البدء بوصف عام دون تسمية الوثيقة'],
+    stopCriteria:['ذكر رقم الوثيقة في بداية التحليل','وجود استنتاج علمي واضح'],
+    goodExample:{ context:'تمثل الوثيقة 1 منحنى بياني لتغيرات نسبة انحلال الدم بدلالة تركيز محلول NaCl.', question:'حلل المنحنى البياني لتغيرات نسبة انحلال الدم.', answer:'تمثل الوثيقة 1 منحنى بياني لتغيرات نسبة انحلال الدم بدلالة تركيز محلول NaCl، حيث نلاحظ:\n- في التراكيز المنخفضة من 0 إلى 4 غ/ل: ثبات نسبة انحلال الدم عند نسبة أعظمية قدرها 100%.\n- في التراكيز من 4 إلى 9 غ/ل: تناقص سريع في نسبة انحلال الدم لتصل إلى 0% عند تركيز 9 غ/ل.\n- في التراكيز الأكبر من 9 غ/ل: انعدام تام لانحلال الدم (0%).\nالاستنتاج: تتناسب نسبة انحلال كريات الدم الحمراء عكساً مع تركيز محلول NaCl الوسط الخارجي حتى انعدامها في الوسط متساوي التوتر.', annotatedSteps:[{step:1,text:'تمثل الوثيقة 1 منحنى بياني لتغيرات نسبة انحلال الدم',color:'#3b82f6'},{step:2,text:'ثبات عند 100% ثم تناقص سريع إلى 0% عند 9 غ/ل',color:'#10b981'},{step:3,text:'العلاقة العكسية بين التركيز والانحلال',color:'#f59e0b'},{step:4,text:'الاستنتاج: تتناسب عكساً حتى الانعدام',color:'#8b5cf6'}] },
+    badExample:{ answer:'نلاحظ أن انحلال الدم ينقص لأن جزيئات الملح تمنع دخول الماء إلى الكرية بظاهرة الأسموزية فتتقلص الخلايا.', flawDescription:'خلط فادح بين التحليل والتفسير: قدم تفسيراً سببياً (لأن) في سؤال تحليل وصفي.', circledError:'نلاحظ أن انحلال الدم ينقص لأن', errorTag:'premature_interpretation', scorePercent:20 },
+    criteria:[
+      { id:'an_c1', order:1, wording:{compass:'أسمي طبيعة الوثيقة والسياق بدقة.',check:'تحديد الوثيقة ورقمها ونطاقها.',probe:'ما هي الوثيقة التي نحلل منحنىها؟',ar_label:'تحديد الوثيقة'}, selfProofPrompt:'حدد اسم الوثيقة ورقمها', errorTag:'missing_reference', weight:1 },
+      { id:'an_c2', order:2, wording:{compass:'أستخرج القيم العددية مع وحداتها القياسية.',check:'كل قيمة عددية مرفقة بوحدتها.',probe:'هل ذكرت القيم مع وحداتها (غ/ل، %، دقيقة)؟',ar_label:'تفكيك المعطيات مع الوحدات'}, selfProofPrompt:'حدد القيم والوحدات', errorTag:'missing_unit', weight:1 },
+      { id:'an_c3', order:3, wording:{compass:'أصف العلاقة بين المتغيرات دون تفسير سببي.',check:'التحليل وصفي خالٍ من التعليل.',probe:'هل تجنبت كلمات مثل "لأن" أو "بسبب" في التحليل؟',ar_label:'تحليل وصفي خالٍ من التعليل'}, selfProofPrompt:'تأكد من عدم وجود كلمات سببية', errorTag:'premature_interpretation', weight:1 },
+      { id:'an_c4', order:4, wording:{compass:'أختم بالاستنتاج العلمي الذي يجيب عن هدف الوثيقة.',check:'وجود جملة استنتاجية حاسمة.',probe:'هل قدمت استنتاجاً يجيب عن هدف المنحنى؟',ar_label:'الاستنتاج العلمي'}, selfProofPrompt:'حدد سطر الاستنتاج', errorTag:'missing_conclusion', weight:1 }
     ]
   },
-  {
-    id: 'verb_explain_v1',
-    verbAr: 'فَسِّرْ',
-    verbFr: 'Expliquer',
-    category: 'reasoned',
-    goal: 'إبراز الآلية البيولوجية السببية التي أدت إلى النتيجة الملاحظة (الإجابة عن كيف ولماذا).',
-    structureSteps: [
-      '1. التذكير بالملاحظة أو النتيجة المراد تفسيرها',
-      '2. استدعاء المعارف والمكتسبات الآلية للظاهرة',
-      '3. الربط السببي المحكم عبر روابط (يعود ذلك إلى / يرجع هذا لـ / مما يؤدي)',
-      '4. الإجابة الصريحة عن المشكل وتوضيح الأثر النهائي'
-    ],
-    requiredConnectors: [
-      'يعود ذلك إلى...',
-      'يرجع هذا لـ...',
-      'مما يؤدي إلى تشكل / تثبيط...',
-      'وبالتالي...'
-    ],
-    forbiddenPatterns: [
-      'نلاحظ فقط',
-      'المنحنى يتصاعد فقط دون تعليل'
-    ],
-    stopCriteria: [
-      'تم ذكر السبب الجزيئي/الخلوي المسؤول بدقة',
-      'استعمال رابط سببي صريح يربط الملاحظة بالسبب'
-    ],
-    goodExample: {
-      context: 'توقف استطالة السلسلة الببتيدية عند إضافة مادة البوروميسين الحيوية في وسط زرع خلوي.',
-      question: 'فسر سبب توقف تركيب البروتين عند إضافة مادة البوروميسين.',
-      answer: 'الملاحظة: توقف استطالة السلسلة الببتيدية وتراكم ببتيدات غير مكتملة.\nالتفسير: يعود ذلك إلى أن البوروميسين يتميز ببنية فراغية مماثلة لنهاية الـ ARNt الحامل للحمض الأميني، مما يمكنه من التثبت على الموقع A للريبوزوم والارتباط بالسلسلة الببتيدية النامية، مانعاً بذلك توضع الـ ARNt الموالي وانتقال الريبوزوم، وبالتالي حدوث إيقاف مبكر لعملية الترجمة.',
-      annotatedSteps: [
-        { step: 1, text: 'توقف استطالة السلسلة الببتيدية وتراكم ببتيدات غير مكتملة', color: '#3b82f6' },
-        { step: 2, text: 'بنية فراغية مماثلة لنهاية الـ ARNt... التثبت على الموقع A للريبوزوم', color: '#10b981' },
-        { step: 3, text: 'يعود ذلك إلى... مانعاً بذلك توضع الـ ARNt الموالي', color: '#f59e0b' },
-        { step: 4, text: 'وبالتالي حدوث إيقاف مبكر لعملية الترجمة', color: '#8b5cf6' }
-      ]
-    },
-    badExample: {
-      answer: 'نلاحظ أن إضافة البوروميسين تؤدي إلى تناقص إنتاج البروتينات حتى تنعدم تماماً في الخلية.',
-      flawDescription: 'خلط فادح بين التفسير والتحليل: اكتفى التلميذ بوصف الملاحظة ولم يذكر الآلية الجزيئية ولم يستعمل أي رابط سببي.',
-      circledError: 'نلاحظ أن إضافة البوروميسين تؤدي إلى تناقص...',
-      errorTag: 'verb_confusion',
-      scorePercent: 20
-    },
-    criteria: [
-      {
-        id: 'ex_c1',
-        order: 1,
-        wording: {
-          compass: 'أحدد بدقة النتيجة أو الظاهرة المراد تفسيرها.',
-          check: 'النتيجة الملاحظة محددة بوضوح.',
-          probe: 'ما هو الشيء الذي يجب أن أفسره بالتحديد؟',
-          ar_label: 'تحديد النتيجة الملاحظة'
-        },
-        selfProofPrompt: 'حدد جملة النتيجة/الملاحظة',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'ex_c2',
-        order: 2,
-        wording: {
-          compass: 'أستدعي الآلية العلمية والمكتسبات الدقيقة (المستوى الخلوي/الجزيئي).',
-          check: 'المعطى العلمي الدقيق مستحضر.',
-          probe: 'ما هي الآلية البيولوجية التي تفسر هذه النتيجة؟',
-          ar_label: 'استحضار الآلية العلمية'
-        },
-        selfProofPrompt: 'حدد التفسير العلمي الجزيئي في حلك',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'ex_c3',
-        order: 3,
-        wording: {
-          compass: 'أستخدم رابطاً سببياً صريحاً (يعود ذلك إلى / يفسر بـ).',
-          check: 'وجود رابط سببي يربط الظاهرة بآليتها.',
-          probe: 'أين هو الرابط السببي "يعود ذلك إلى" في جملتي؟',
-          ar_label: 'الربط السببي الصريح'
-        },
-        selfProofPrompt: 'حدد الكلمة السببية (يعود ذلك، راجع لـ)',
-        errorTag: 'verb_confusion',
-        weight: 1
-      },
-      {
-        id: 'ex_c4',
-        order: 4,
-        wording: {
-          compass: 'أبين الأثر النهائي الذي يحقق إجابة وافية عن المشكل.',
-          check: 'إغلاق التفسير بإبراز النتيجة النهائية.',
-          probe: 'هل أجابت جملتي الأخيرة عن سبب الظاهرة؟',
-          ar_label: 'النتيجة التفسيرية الختامية'
-        },
-        selfProofPrompt: 'حدد السطر الأخير الذي يختم التفسير',
-        errorTag: 'missing_conclusion',
-        weight: 1
-      }
+  { id:'verb_explain_v1', verbAr:'فَسِّرْ', verbFr:'Expliquer', category:'reasoned',
+    goal:'ربط الملاحظة بآليتها العلمية عبر سلسلة سببية منطقية تنتهي بتأكيد أو نفي.',
+    structureSteps:['1. الملاحظة: ما الذي نلاحظه في الوثيقة؟','2. التفسير: ما الآلية البيولوجية/الكيميائية التي تفسر هذه الملاحظة؟','3. الربط السببي: لماذا تؤدي الآلية إلى هذه النتيجة؟ (لأنّ / يعود ذلك إلى)','4. التأكيد: ماذا نستنتج من هذه الآلية؟'],
+    requiredConnectors:['الملاحظة: …','التفسير: يعود ذلك إلى أنّ …','وبالتالي …','الاستنتاج: …'],
+    forbiddenPatterns:['الاكتفاء بالوصف دون ذكر الآلية','استخدام "لأن" في التحليل (هذا خطأ تحليلي)'],
+    stopCriteria:['وجود رابط سببي صريح يربط الملاحظة بالآلية','وجود استنتاج نهائي'],
+    goodExample:{ context:'توقف استطالة السلسلة الببتيدية عند إضافة مادة البوروميسين الحيوية في وسط زرع خلوي.', question:'فسر سبب توقف تركيب البروتين عند إضافة مادة البوروميسين.', answer:'الملاحظة: توقف استطالة السلسلة الببتيدية وتراكم ببتيدات غير مكتملة.\nالتفسير: يعود ذلك إلى أن البوروميسين يتميز ببنية فراغية مماثلة لنهاية الـ ARNt الحامل للحمض الأميني، مما يمكنه من التثبت على الموقع A للريبوزوم والارتباط بالسلسلة الببتيدية النامية، مانعاً بذلك توضع الـ ARNt الموالي وانتقال الريبوزوم، وبالتالي حدوث إيقاف مبكر لعملية الترجمة.\nالاستنتاج: يمنع البوروميسين اكتمال الترجمة فتتوقف عملية تركيب البروتينات.', annotatedSteps:[{step:1,text:'توقف استطالة السلسلة الببتيدية وتراكم ببتيدات غير مكتملة',color:'#3b82f6'},{step:2,text:'بنية فراغية مماثلة لنهاية الـ ARNt... التثبت على الموقع A للريبوزوم',color:'#10b981'},{step:3,text:'يعود ذلك إلى... مانعاً بذلك توضع الـ ARNt الموالي',color:'#f59e0b'},{step:4,text:'وبالتالي حدوث إيقاف مبكر لعملية الترجمة',color:'#8b5cf6'}] },
+    badExample:{ answer:'نلاحظ أن إضافة البوروميسين تؤدي إلى تناقص إنتاج البروتينات حتى تنعدم تماماً في الخلية.', flawDescription:'خلط فادح بين التفسير والتحليل: اكتفى التلميذ بوصف الملاحظة ولم يذكر الآلية الجزيئية ولم يستعمل أي رابط سببي.', circledError:'نلاحظ أن إضافة البوروميسين تؤدي إلى تناقص...', errorTag:'unsupported_claim', scorePercent:20 },
+    criteria:[
+      { id:'ex_c1', order:1, wording:{compass:'أسمي طبيعة الوثيقة والسياق بدقة.',check:'تحديد الوثيقة ورقمها ونطاقها.',probe:'ما هي الوثيقة التي نحلل منحنىها؟',ar_label:'تحديد الوثيقة'}, selfProofPrompt:'حدد اسم الوثيقة ورقمها', errorTag:'missing_reference', weight:1 },
+      { id:'ex_c2', order:2, wording:{compass:'أستدعي الآلية العلمية والمكتسبات الدقيقة (المستوى الخلوي/الجزيئي).',check:'المعطى العلمي الدقيق مستحضر.',probe:'ما هي الآلية البيولوجية التي تفسر هذه النتيجة؟',ar_label:'استحضار الآلية العلمية'}, selfProofPrompt:'حدد التفسير العلمي الجزيئي في حلك', errorTag:'unsupported_claim', weight:1 },
+      { id:'ex_c3', order:3, wording:{compass:'أستخدم رابطاً سببياً صريحاً (يعود ذلك إلى / يفسر بـ).',check:'وجود رابط سببي يربط الظاهرة بآليتها.',probe:'أين هو الرابط السببي "يعود ذلك إلى" في جملتي؟',ar_label:'الربط السببي الصريح'}, selfProofPrompt:'حدد الكلمة السببية (يعود ذلك، راجع لـ)', errorTag:'unsupported_claim', weight:1 },
+      { id:'ex_c4', order:4, wording:{compass:'أبين الأثر النهائي الذي يحقق إجابة وافية عن المشكل.',check:'إغلاق التفسير بإبراز النتيجة النهائية.',probe:'هل أجابت جملتي الأخيرة عن سبب الظاهرة؟',ar_label:'النتيجة التفسيرية الختامية'}, selfProofPrompt:'حدد السطر الأخير الذي يختم التفسير', errorTag:'missing_conclusion', weight:1 }
     ]
   },
-  {
-    id: 'verb_compare_v1',
-    verbAr: 'قَارِنْ',
-    verbFr: 'Comparer',
-    category: 'descriptive',
-    goal: 'إبراز أوجه التشابه والاختلاف بين عنصرين أو حالتين وفق معايير واضحة مشتركة، والختام بخلاصة.',
-    structureSteps: [
-      '1. تحديد وتسمية العنصرين أو الحالتين محل المقارنة',
-      '2. تحديد معايير المقارنة المعتمدة (السرعة، التركيز، الفعالية)',
-      '3. المعالجة المتقاطعة لأوجه التشابه والاختلاف (بينما / في حين)',
-      '4. خلاصة المقارنة: استنتاج الفارق الجوهري المميز'
-    ],
-    requiredConnectors: [
-      'أوجه التشابه: كلاهما...',
-      'أوجه الاختلاف: بينما... في حين...',
-      'بالمقارنة مع...',
-      'الخلاصة: نستنتج أن...'
-    ],
-    forbiddenPatterns: [
-      'الحديث عن العنصر الأول في فقرة مستقلة ثم العنصر الثاني في فقرة ثانية دون تقاطع (السرد المتوازي)'
-    ],
-    stopCriteria: [
-      'وجود تقاطع مباشر بين العنصرين في كل معيار',
-      'استعمال أداة ربط مقارنة (بينما / في المقابل)',
-      'صياغة خلاصة عامة'
-    ],
-    goodExample: {
-      context: 'مقارنة بنية الـ ARN والـ ADN من حيث السلسلة، السكر الخماسي، والقواعد الآزوتية.',
-      question: 'قارن في جدول بين جزيئة ADN وجزيئة ARNm.',
-      answer: 'أوجه التشابه: كلاهما حمض نووي مكون من تتابع نيكليوتيدات متصلة بروابط إستر-فوسفاتية.\nأوجه الاختلاف وفق المعايير:\n- عدد السلاسل: يتكون الـ ADN من سلسلتين ملتفتين حلزونياً بينما يتكون الـ ARNm من سلسلة واحدة خطية.\n- نوع السكر الخماسي: يحتوي الـ ADN على ريبوز منقوص الأكسجين بينما يحتوي الـ ARNm على ريبوز كامل الأكسجين.\n- القواعد الآزوتية: يحتوي الـ ADN على التايمين (T) في حين يستبدل في الـ ARNm باليوراسيل (U).\nالخلاصة: يختلف الـ ARNm عن الـ ADN في البنية التركيبية التي تمنحه مرونة لنقل المعلومة الوراثية خارج النواة.',
-      annotatedSteps: [
-        { step: 1, text: 'أوجه التشابه: كلاهما حمض نووي مكون من تتابع نيكليوتيدات', color: '#3b82f6' },
-        { step: 2, text: 'أوجه الاختلاف وفق المعايير: عدد السلاسل، نوع السكر، القواعد الآزوتية', color: '#10b981' },
-        { step: 3, text: 'بينما يتكون... في حين يستبدل في الـ ARNm', color: '#f59e0b' },
-        { step: 4, text: 'الخلاصة: يختلف الـ ARNm عن الـ ADN في البنية التركيبية', color: '#8b5cf6' }
-      ]
-    },
-    badExample: {
-      answer: 'الـ ADN هو جزيء ضخم يتكون من سلسلتين وسكر ريبوز منقوص الأكسجين وله تايمين. والـ ARNm يتكون من سلسلة واحدة وسكر ريبوز ويوراسيل.',
-      flawDescription: 'سرد متجاور دون تقاطع معايير ودون استخدام أدوات المقارنة (بينما / في حين) وغياب الخلاصة الاستنتاجية.',
-      circledError: 'الـ ADN هو... والـ ARNm يتكون من...',
-      errorTag: 'comparison_without_criteria',
-      scorePercent: 35
-    },
-    criteria: [
-      {
-        id: 'comp_c1',
-        order: 1,
-        wording: {
-          compass: 'أسمي بوضوح العنصرين أو الشاهد والتجربة محل المقارنة.',
-          check: 'تسمية العنصرين محل المقارنة.',
-          probe: 'هل ذكرت الطرفين المقارن بينهما؟',
-          ar_label: 'تحديد طرفي المقارنة'
-        },
-        selfProofPrompt: 'حدد أسماء العنصرين المقارن بينهما',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'comp_c2',
-        order: 2,
-        wording: {
-          compass: 'أحدد معايير المقارنة وأعالج أوجه التشابه والاختلاف معاً.',
-          check: 'اعتماد معايير صريحة مشتركة.',
-          probe: 'ما هي المحاور (المعايير) التي قارنت على أساسها؟',
-          ar_label: 'تحديد المعايير والتقاطع'
-        },
-        selfProofPrompt: 'حدد معايير المقارنة المتقاطعة',
-        errorTag: 'comparison_without_criteria',
-        weight: 1
-      },
-      {
-        id: 'comp_c3',
-        order: 3,
-        wording: {
-          compass: 'أستخدم أدوات المقارنة (بينما / في المقابل / في حين).',
-          check: 'استعمال أدوات الربط والتقابل.',
-          probe: 'هل استخدمت كلمة "بينما" أو "في المقابل" في كل معيار؟',
-          ar_label: 'استعمال روابط المقارنة'
-        },
-        selfProofPrompt: 'حدد أدوات التقابل (بينما، في المقابل)',
-        errorTag: 'unbalanced_comparison',
-        weight: 1
-      },
-      {
-        id: 'comp_c4',
-        order: 4,
-        wording: {
-          compass: 'أختم بخلاصة تبين الفارق الجوهري المستخلص.',
-          check: 'وجود استنتاج/خلاصة مقارنة.',
-          probe: 'ما هي الخلاصة الجامعة للمقارنة؟',
-          ar_label: 'خلاصة المقارنة'
-        },
-        selfProofPrompt: 'حدد سطر الخلاصة النهائي',
-        errorTag: 'missing_conclusion',
-        weight: 1
-      }
+  { id:'verb_compare_v1', verbAr:'قَارِنْ', verbFr:'Comparer', category:'descriptive',
+    goal:'إبراز أوجه التشابه والاختلاف بين عنصرين أو حالتين وفق معايير واضحة مشتركة، والختام بخلاصة.',
+    structureSteps:['1. تحديد وتسمية العنصرين أو الحالتين محل المقارنة','2. تحديد معايير المقارنة المعتمدة (السرعة، التركيز، الفعالية)','3. المعالجة المتقاطعة لأوجه التشابه والاختلاف (بينما / في حين)','4. خلاصة المقارنة: استنتاج الفارق الجوهري المميز'],
+    requiredConnectors:['أوجه التشابه: كلاهما...','أوجه الاختلاف: بينما... في حين...','بالمقارنة مع...','الخلاصة: نستنتج أن...'],
+    forbiddenPatterns:['الحديث عن العنصر الأول في فقرة مستقلة ثم العنصر الثاني في فقرة ثانية دون تقاطع (السرد المتوازي)'],
+    stopCriteria:['وجود تقاطع مباشر بين العنصرين في كل معيار','استعمال أداة ربط مقارنة (بينما / في المقابل)','صياغة خلاصة عامة'],
+    goodExample:{ context:'مقارنة بنية الـ ARN والـ ADN من حيث السلسلة، السكر الخماسي، والقواعد الآزوتية.', question:'قارن في جدول بين جزيئة ADN وجزيئة ARNm.', answer:'أوجه التشابه: كلاهما حمض نووي مكون من تتابع نيكليوتيدات متصلة بروابط إستر-فوسفاتية.\nأوجه الاختلاف وفق المعايير:\n- عدد السلاسل: يتكون الـ ADN من سلسلتين ملتفتين حلزونياً بينما يتكون الـ ARNm من سلسلة واحدة خطية.\n- نوع السكر الخماسي: يحتوي الـ ADN على ريبوز منقوص الأكسجين بينما يحتوي الـ ARNm على ريبوز كامل الأكسجين.\n- القواعد الآزوتية: يحتوي الـ ADN على التايمين (T) في حين يستبدل في الـ ARNm باليوراسيل (U).\nالخلاصة: يختلف الـ ARNm عن الـ ADN في البنية التركيبية التي تمنحه مرونة لنقل المعلومة الوراثية خارج النواة.', annotatedSteps:[{step:1,text:'أوجه التشابه: كلاهما حمض نووي مكون من تتابع نيكليوتيدات',color:'#3b82f6'},{step:2,text:'أوجه الاختلاف وفق المعايير: عدد السلاسل، نوع السكر، القواعد الآزوتية',color:'#10b981'},{step:3,text:'بينما يتكون... في حين يستبدل في الـ ARNm',color:'#f59e0b'},{step:4,text:'الخلاصة: يختلف الـ ARNm عن الـ ADN في البنية التركيبية',color:'#8b5cf6'}] },
+    badExample:{ answer:'الـ ADN هو جزيء ضخم يتكون من سلسلتين وسكر ريبوز منقوص الأكسجين وله تايمين. والـ ARNm يتكون من سلسلة واحدة وسكر ريبوز ويوراسيل.', flawDescription:'سرد متجاور دون تقاطع معايير ودون استخدام أدوات المقارنة (بينما / في حين) وغياب الخلاصة الاستنتاجية.', circledError:'الـ ADN هو... والـ ARNm يتكون من...', errorTag:'comparison_without_criteria', scorePercent:35 },
+    criteria:[
+      { id:'comp_c1', order:1, wording:{compass:'أسمي بوضوح العنصرين أو الشاهد والتجربة محل المقارنة.',check:'تسمية العنصرين محل المقارنة.',probe:'هل ذكرت الطرفين المقارن بينهما؟',ar_label:'تحديد طرفي المقارنة'}, selfProofPrompt:'حدد أسماء العنصرين المقارن بينهما', errorTag:'unsupported_claim', weight:1 },
+      { id:'comp_c2', order:2, wording:{compass:'أحدد معايير المقارنة وأعالج أوجه التشابه والاختلاف معاً.',check:'اعتماد معايير صريحة مشتركة.',probe:'ما هي المحاور (المعايير) التي قارنت على أساسها؟',ar_label:'تحديد المعايير والتقاطع'}, selfProofPrompt:'حدد معايير المقارنة المتقاطعة', errorTag:'comparison_without_criteria', weight:1 },
+      { id:'comp_c3', order:3, wording:{compass:'أستخدم أدوات المقارنة (بينما / في المقابل / في حين).',check:'استعمال أدوات الربط والتقابل.',probe:'هل استخدمت كلمة "بينما" أو "في المقابل" في كل معيار؟',ar_label:'استعمال روابط المقارنة'}, selfProofPrompt:'حدد أدوات التقابل (بينما، في المقابل)', errorTag:'unbalanced_comparison', weight:1 },
+      { id:'comp_c4', order:4, wording:{compass:'أختم بخلاصة تبين الفارق الجوهري المستخلص.',check:'وجود استنتاج/خلاصة مقارنة.',probe:'ما هي الخلاصة الجامعة للمقارنة؟',ar_label:'خلاصة المقارنة'}, selfProofPrompt:'حدد سطر الخلاصة النهائي', errorTag:'missing_conclusion', weight:1 }
     ]
   },
-  {
-    id: 'verb_hypothesis_v1',
-    verbAr: 'اقْتَرِحْ فَرَضِيَّةً',
-    verbFr: 'Proposer une hypothèse',
-    category: 'reasoned',
-    goal: 'تقديم تفسير مؤقت منطقي وقابل للاختبار التجريبي يحل المشكل العلمي المطروح.',
-    structureSteps: [
-      '1. تحديد المنطلق التجريبي أو المعطى المثير للمشكل',
-      '2. اقتراح الآلية البيولوجية المحتملة تفسيرياً',
-      '3. صياغة الفرضية بصيغة إخبارية جازمة (تجنب صيغ التردد)',
-      '4. التأكد من قابلية الفرضية للاختبار والتحقق'
-    ],
-    requiredConnectors: [
-      'انطلاقاً من المعطيات السابقة، نقترح الفرضية التالية:...',
-      'تعتمد آلية التأثير على...',
-      'يعود السبب إلى...'
-    ],
-    forbiddenPatterns: [
-      'ربما قد يكون',
-      'لعل السبب هو',
-      'يمكن أن نفترض احتمال'
-    ],
-    stopCriteria: [
-      'صياغة خبرية واضحة محددة المعالم',
-      'قابلة للاختبار التجريبي في الجزء الموالي من التمرين'
-    ],
-    goodExample: {
-      context: 'أظهرت تجارب أن سم الألفا-بونغاروتوكسين يمنع تقلص العضلة دون التأثير على توليد كمون العمل في العصبون قبل المشبكي.',
-      question: 'اقترح فرضية تفسر بها طريقة تأثير سم الألفا-بونغاروتوكسين.',
-      answer: 'الفرضية: يؤثر سم الألفا-بونغاروتوكسين عن طريق التثبت النوعي على مستقبلات الأسيتيل كولين الغشائية في الغشاء بعد المشبكي مانعاً تثبت الأسيتيل كولين وانفتاح القنوات المبوبة كيميائياً، مما يحول دون توليد كمون عمل بعد مشبكي وتقلص العضلة.',
-      annotatedSteps: [
-        { step: 1, text: 'سم الألفا-بونغاروتوكسين يمنع تقلص العضلة', color: '#3b82f6' },
-        { step: 2, text: 'التثبت النوعي على مستقبلات الأسيتيل كولين الغشائية', color: '#10b981' },
-        { step: 3, text: 'مانعاً تثبت الأسيتيل كولين وانفتاح القنوات', color: '#f59e0b' },
-        { step: 4, text: 'مما يحول دون توليد كمون عمل بعد مشبكي', color: '#8b5cf6' }
-      ]
-    },
-    badExample: {
-      answer: 'ربما السم قد يقوم بقتل الخلية العضلية أو لعل هناك مادة تمنع انتقال السيالة.',
-      flawDescription: 'صياغة بالغة التردد واستعمال ألفاظ الشك ("ربما"، "لعل") واقتراح آليات عشوائية غير مبنية على معطيات السند.',
-      circledError: 'ربما السم قد يقوم... أو لعل هناك...',
-      errorTag: 'conditional_hypothesis',
-      scorePercent: 20
-    },
-    criteria: [
-      {
-        id: 'hyp_c1',
-        order: 1,
-        wording: {
-          compass: 'أنطلق من معطى تجريبي محدد يطرح المشكل العلمي.',
-          check: 'تحديد المنطلق العلمي للفرضية.',
-          probe: 'ما هو المعطى الملاحظ الذي يدفعني للفرضية؟',
-          ar_label: 'المنطلق التجريبي'
-        },
-        selfProofPrompt: 'حدد المعطى المؤسس للفرضية',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'hyp_c2',
-        order: 2,
-        wording: {
-          compass: 'أقترح آلية تفسيرية منطقية على المستوى الجزيئي.',
-          check: 'تضمين الآلية الجزيئية المفسرة.',
-          probe: 'ما هو التفسير الآلي المقترح؟',
-          ar_label: 'الآلية التفسيرية'
-        },
-        selfProofPrompt: 'حدد الآلية الجزيئية المقترحة',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'hyp_c3',
-        order: 3,
-        wording: {
-          compass: 'أصوغ الفرضية بصيغة إخبارية جازمة خالية من صيغ التردد (ربما، لعل).',
-          check: 'صياغة جازمة دون تردد.',
-          probe: 'هل تخلو جملتي تماماً من كلمات مثل "ربما" أو "قد"؟',
-          ar_label: 'الصياغة الجازمة'
-        },
-        selfProofPrompt: 'تأكد من عدم وجود كلمات الشك والتردد',
-        errorTag: 'conditional_hypothesis',
-        weight: 1
-      }
+  { id:'verb_hypothesis_v1', verbAr:'اقْتَرِحْ فَرَضِيَّةً', verbFr:'Proposer une hypothèse', category:'reasoned',
+    goal:'تقديم تفسير مؤقت منطقي وقابل للاختبار التجريبي يحل المشكل العلمي المطروح.',
+    structureSteps:['1. تحديد المنطلق التجريبي أو المعطى المثير للمشكل','2. اقتراح الآلية البيولوجية المحتملة تفسيرياً','3. صياغة الفرضية بصيغة إخبارية جازمة (تجنب صيغ التردد)','4. التأكد من قابلية الفرضية للاختبار والتحقق'],
+    requiredConnectors:['انطلاقاً من المعطيات السابقة، نقترح الفرضية التالية:...','تعتمد آلية التأثير على...','يعود السبب إلى...'],
+    forbiddenPatterns:['ربما قد يكون','لعل السبب هو','يمكن أن نفترض احتمال'],
+    stopCriteria:['صياغة خبرية واضحة محددة المعالم','قابلة للاختبار التجريبي في الجزء الموالي من التمرين'],
+    goodExample:{ context:'أظهرت تجارب أن سم الألفا-بونغاروتوكسين يمنع تقلص العضلة دون التأثير على توليد كمون العمل في العصبون قبل المشبكي.', question:'اقترح فرضية تفسر بها طريقة تأثير سم الألفا-بونغاروتوكسين.', answer:'الفرضية: يؤثر سم الألفا-بونغاروتوكسين عن طريق التثبت النوعي على مستقبلات الأسيتيل كولين الغشائية في الغشاء بعد المشبكي مانعاً تثبت الأسيتيل كولين وانفتاح القنوات المبوبة كيميائياً، مما يحول دون توليد كمون عمل بعد مشبكي وتقلص العضلة.', annotatedSteps:[{step:1,text:'سم الألفا-بونغاروتوكسين يمنع تقلص العضلة',color:'#3b82f6'},{step:2,text:'التثبت النوعي على مستقبلات الأسيتيل كولين الغشائية',color:'#10b981'},{step:3,text:'مانعاً تثبت الأسيتيل كولين وانفتاح القنوات',color:'#f59e0b'},{step:4,text:'مما يحول دون توليد كمون عمل بعد مشبكي',color:'#8b5cf6'}] },
+    badExample:{ answer:'ربما السم قد يقوم بقتل الخلية العضلية أو لعل هناك مادة تمنع انتقال السيالة.', flawDescription:'صياغة بالغة التردد واستعمال ألفاظ الشك ("ربما"، "لعل") واقتراح آليات عشوائية غير مبنية على معطيات السند.', circledError:'ربما السم قد يقوم... أو لعل هناك...', errorTag:'conditional_hypothesis', scorePercent:20 },
+    criteria:[
+      { id:'hyp_c1', order:1, wording:{compass:'أنطلق من معطى تجريبي محدد يطرح المشكل العلمي.',check:'تحديد المنطلق العلمي للفرضية.',probe:'ما هو المعطى الملاحظ الذي يدفعني للفرضية؟',ar_label:'المنطلق التجريبي'}, selfProofPrompt:'حدد المعطى المؤسس للفرضية', errorTag:'unsupported_claim', weight:1 },
+      { id:'hyp_c2', order:2, wording:{compass:'أقترح آلية تفسيرية منطقية على المستوى الجزيئي.',check:'تضمين الآلية الجزيئية المفسرة.',probe:'ما هو التفسير الآلي المقترح؟',ar_label:'الآلية التفسيرية'}, selfProofPrompt:'حدد الآلية الجزيئية المقترحة', errorTag:'unsupported_claim', weight:1 },
+      { id:'hyp_c3', order:3, wording:{compass:'أصوغ الفرضية بصيغة إخبارية جازمة خالية من صيغ التردد (ربما، لعل).',check:'صياغة جازمة دون تردد.',probe:'هل تخلو جملتي تماماً من كلمات مثل "ربما" أو "قد"؟',ar_label:'الصياغة الجازمة'}, selfProofPrompt:'تأكد من عدم وجود كلمات الشك والتردد', errorTag:'conditional_hypothesis', weight:1 }
     ]
   },
-  {
-    id: 'verb_deduce_v1',
-    verbAr: 'اسْتَنْتِجْ',
-    verbFr: 'Déduire',
-    category: 'descriptive',
-    goal: 'استخلاص معلومة علمية عامة جديدة ومجردة انطلاقاً من المعطيات السابقة دون تكرار الوصف.',
-    structureSteps: [
-      '1. استحضار الهدف العلمي من التجربة أو الوثيقة',
-      '2. تجريد النتائج والتخلي عن التفاصيل الرقمية والأرقام الجزئية',
-      '3. صياغة خلاصة مباشرة ومركزة في جملة واحدة جامعة'
-    ],
-    requiredConnectors: [
-      'نستنتج أن...',
-      'الاستنتاج: يتبين أن...'
-    ],
-    forbiddenPatterns: [
-      'إعادة أرقام المنحنى أو سرد التفاصيل التجريبية من جديد'
-    ],
-    stopCriteria: [
-      'جملة وحيدة واضحة تعبر عن قاعدة علمية عامة قابلة للتعميم'
-    ],
-    goodExample: {
-      context: 'إضافة إنزيم مع مادة تفاعله في وسطين: الأول بدرجة حرارة 37° (نشاط أعظمي) والثاني 70° (انعدام النشاط الدائم).',
-      question: 'ماذا تستنتج حول تأثير درجة الحرارة المرتفعة على الإنزيم؟',
-      answer: 'الاستنتاج: تؤثر درجات الحرارة المرتفعة سلباً وغير عكوس على النشاط الإنزيمي عن طريق تخريب بنيته الفراغية.',
-      annotatedSteps: [
-        { step: 1, text: 'تأثير درجات الحرارة المرتفعة', color: '#3b82f6' },
-        { step: 2, text: 'سلباً وغير عكوس على النشاط الإنزيمي', color: '#10b981' },
-        { step: 3, text: 'عن طريق تخريب بنيته الفراغية', color: '#8b5cf6' }
-      ]
-    },
-    badExample: {
-      answer: 'نستنتج أنه عندما نضع الإنزيم عند 70 درجة تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة.',
-      flawDescription: 'إعادة وصف النتائج التجريبية والأرقام بدلاً من استخلاص الحقيقة العلمية المكتسبة.',
-      circledError: 'تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة',
-      errorTag: 'missing_conclusion',
-      scorePercent: 30
-    },
-    criteria: [
-      {
-        id: 'ded_c1',
-        order: 1,
-        wording: {
-          compass: 'أصوغ حقيقة علمية عامة تمثل إجابة مباشرة للهدف من التجربة.',
-          check: 'صياغة قاعدة علمية مجردة.',
-          probe: 'هل استنتجت حقيقة عامة أم أعدت قراءة المنحنى؟',
-          ar_label: 'تجريد النتيجة'
-        },
-        selfProofPrompt: 'حدد الحقيقة العلمية المستخلصة',
-        errorTag: 'missing_conclusion',
-        weight: 1
-      },
-      {
-        id: 'ded_c2',
-        order: 2,
-        wording: {
-          compass: 'أتجنب تكرار الأرقام والتفاصيل التجريبية السطحية.',
-          check: 'خلو الاستنتاج من الأرقام المعادة.',
-          probe: 'هل يخلو استنتاجي من الأرقام والوصف؟',
-          ar_label: 'تجنب تكرار الوصف'
-        },
-        selfProofPrompt: 'تأكد من عدم وجود أرقام مكررة',
-        errorTag: 'missing_reference',
-        weight: 1
-      }
+  { id:'verb_deduce_v1', verbAr:'اسْتَنْتِجْ', verbFr:'Déduire', category:'descriptive',
+    goal:'استخلاص معلومة علمية عامة جديدة ومجردة انطلاقاً من المعطيات السابقة دون تكرار الوصف.',
+    structureSteps:['1. استحضار الهدف العلمي من التجربة أو الوثيقة','2. تجريد النتائج والتخلي عن التفاصيل الرقمية والأرقام الجزئية','3. صياغة خلاصة مباشرة ومركزة في جملة واحدة جامعة'],
+    requiredConnectors:['نستنتج أن...','الاستنتاج: يتبين أن...'],
+    forbiddenPatterns:['إعادة أرقام المنحنى أو سرد التفاصيل التجريبية من جديد'],
+    stopCriteria:['جملة وحيدة واضحة تعبر عن قاعدة علمية عامة قابلة للتعميم'],
+    goodExample:{ context:'إضافة إنزيم مع مادة تفاعله في وسطين: الأول بدرجة حرارة 37° (نشاط أعظمي) والثاني 70° (انعدام النشاط الدائم).', question:'ماذا تستنتج حول تأثير درجة الحرارة المرتفعة على الإنزيم؟', answer:'الاستنتاج: تؤثر درجات الحرارة المرتفعة سلباً وغير عكوس على النشاط الإنزيمي عن طريق تخريب بنيته الفراغية.', annotatedSteps:[{step:1,text:'تأثير درجات الحرارة المرتفعة',color:'#3b82f6'},{step:2,text:'سلباً وغير عكوس على النشاط الإنزيمي',color:'#10b981'},{step:3,text:'عن طريق تخريب بنيته الفراغية',color:'#8b5cf6'}] },
+    badExample:{ answer:'نستنتج أنه عندما نضع الإنزيم عند 70 درجة تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة.', flawDescription:'إعادة وصف النتائج التجريبية والأرقام بدلاً من استخلاص الحقيقة العلمية المكتسبة.', circledError:'تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة', errorTag:'verb_confusion', scorePercent:30 },
+    criteria:[
+      { id:'ded_c1', order:1, wording:{compass:'أصوغ حقيقة علمية عامة تمثل إجابة مباشرة للهدف من التجربة.',check:'صياغة قاعدة علمية مجردة.',probe:'هل استنتجت حقيقة عامة أم أعدت قراءة المنحنى؟',ar_label:'تجريد النتيجة'}, selfProofPrompt:'حدد الحقيقة العلمية المستخلصة', errorTag:'missing_conclusion', weight:1 },
+      { id:'ded_c2', order:2, wording:{compass:'أتجنب تكرار الأرقام والتفاصيل التجريبية السطحية.',check:'خلو الاستنتاج من الأرقام المعادة.',probe:'هل يخلو استنتاجي من الأرقام والوصف؟',ar_label:'تجنب تكرار الوصف'}, selfProofPrompt:'تأكد من عدم وجود أرقام مكررة', errorTag:'verb_confusion', weight:1 }
     ]
   },
-  {
-    id: 'verb_validate_v1',
-    verbAr: 'صَادِقْ عَلَى الصِّحَّة',
-    verbFr: 'Valider l\'hypothèse',
-    category: 'reasoned',
-    goal: 'مواجهة معطيات السند المستخرجة مع الفرضية المطروحة مسبقاً لتأكيدها أو نفيها بحجة حاسمة.',
-    structureSteps: [
-      '1. استنطاق الوثيقة واستخراج الدليل العلمي القاطع',
-      '2. مواجهة الدليل المستخرج مع نص الفرضية F1 أو F2',
-      '3. الحكم الصريح: "وهذا ما يؤكد صحة الفرضية (F1) وينفي صحة الفرضية (F2)"'
-    ],
-    requiredConnectors: [
-      'انطلاقاً من الوثيقة نلاحظ أن...',
-      'وهذا يتوافق مع ما تنص عليه الفرضية...',
-      'مما يؤكد صحة الفرضية رقم...'
-    ],
-    forbiddenPatterns: [
-      'المصادقة دون استخراج الدليل من الوثيقة أولاً'
-    ],
-    stopCriteria: [
-      'ذكر رقم الفرضية الصريحة مع حكم قطعي بالتأكيد أو النفي مدعوماً بالسند'
-    ],
-    goodExample: {
-      context: 'أظهر الفحص بالمجهر الإلكتروني ارتباط الجسم المضاد بالمستضد عبر موقع التثبيت الخاص به دون التأثير على البنية العامة للمستضد.',
-      question: 'صادق على صحة إحدى الفرضيتين المقترحتين سابقاً حول نوعية الأجسام المضادة.',
-      answer: 'انطلاقاً من الوثيقة: نلاحظ تشكل معقد مناعي (جسم مضاد - مستضد) بتكامل بنيوي دقيق في منطقة متغيرة محددة، بينما لم يحدث أي ارتباط مع مستضدات مختلفة.\nالمواجهة: هذا التثبت النوعي يتوافق تماماً مع ما تنص عليه الفرضية الأولى التي تفترض امتلاك الجسم المضاد لموقعي تثبيت نوعيين متكاملين مع محدد المستضد.\nالحكم: وهذا ما يؤكد صحة الفرضية الأولى (F1) ويفند (يلغي) الفرضية الثانية.',
-      annotatedSteps: [
-        { step: 1, text: 'انطلاقاً من الوثيقة: نلاحظ تشكل معقد مناعي', color: '#3b82f6' },
-        { step: 2, text: 'يتوافق تماماً مع ما تنص عليه الفرضية الأولى', color: '#10b981' },
-        { step: 3, text: 'وهذا ما يؤكد صحة الفرضية الأولى (F1) ويفند الفرضية الثانية', color: '#8b5cf6' }
-      ]
-    },
-    badExample: {
-      answer: 'الفرضية الأولى صحيحة لأن الجسم المضاد نوعي.',
-      flawDescription: 'مصادقة مجردة دون استنطاق الوثيقة ولا استخراج المعطيات الداعمة وغياب مواجهة الفرضية الثانية.',
-      circledError: 'الفرضية الأولى صحيحة لأن الجسم المضاد نوعي',
-      errorTag: 'missing_reference',
-      scorePercent: 20
-    },
-    criteria: [
-      {
-        id: 'val_c1',
-        order: 1,
-        wording: {
-          compass: 'أستخرج الدليل العلمي الصريح من الوثيقة أولاً.',
-          check: 'استخراج الدليل من السند.',
-          probe: 'ما هي المعلومة التي أثبتتها الوثيقة؟',
-          ar_label: 'استخراج الدليل'
-        },
-        selfProofPrompt: 'حدد الدليل المستخرج من الوثيقة',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'val_c2',
-        order: 2,
-        wording: {
-          compass: 'أربط الدليل بنص الفرضية المراد تأكيدها أو نفيها.',
-          check: 'مواجهة الدليل مع الفرضية.',
-          probe: 'هل واجهت الدليل مع نص الفرضية؟',
-          ar_label: 'مواجهة الفرضية'
-        },
-        selfProofPrompt: 'حدد جملة الربط بالفرضية',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'val_c3',
-        order: 3,
-        wording: {
-          compass: 'أصوغ حكماً فاصلاً يؤكد صحة الفرضية الصائبة ويلغي الخاطئة.',
-          check: 'تأكيد أو إلغاء صريح للفرضيات.',
-          probe: 'هل ذكرت "يؤكد صحة الفرضية 1 وينفي الفرضية 2"؟',
-          ar_label: 'الحكم الفاصل'
-        },
-        selfProofPrompt: 'حدد عبارة التأكيد والإلغاء الصريحة',
-        errorTag: 'missing_conclusion',
-        weight: 1
-      }
+  { id:'verb_validate_v1', verbAr:'صَادِقْ عَلَى الصِّحَّة', verbFr:'Valider l\'hypothèse', category:'reasoned',
+    goal:'مواجهة معطيات السند المستخرجة مع الفرضية المطروحة مسبقاً لتأكيدها أو نفيها بحجة حاسمة.',
+    structureSteps:['1. استنطاق الوثيقة واستخراج الدليل العلمي القاطع','2. مواجهة الدليل المستخرج مع نص الفرضية F1 أو F2','3. الحكم الصريح: "وهذا ما يؤكد صحة الفرضية (F1) وينفي صحة الفرضية (F2)"'],
+    requiredConnectors:['انطلاقاً من الوثيقة نلاحظ أن...','وهذا يتوافق مع ما تنص عليه الفرضية...','مما يؤكد صحة الفرضية رقم...'],
+    forbiddenPatterns:['المصادقة دون استخراج الدليل من الوثيقة أولاً'],
+    stopCriteria:['ذكر رقم الفرضية الصريحة مع حكم قطعي بالتأكيد أو النفي مدعوما بالسند'],
+    goodExample:{ context:'أظهر الفحص بالمجهر الإلكتروني ارتباط الجسم المضاد بالمستضد عبر موقع التثبيت الخاص به دون التأثير على البنية العامة للمستضد.', question:'صادق على صحة إحدى الفرضيتين المقترحتين سابقاً حول نوعية الأجسام المضادة.', answer:'انطلاقاً من الوثيقة: نلاحظ تشكل معقد مناعي (جسم مضاد - مستضد) بتكامل بنيوي دقيق في منطقة متغيرة محددة، بينما لم يحدث أي ارتباط مع مستضدات مختلفة.\nالمواجهة: هذا التثبت النوعي يتوافق تماماً مع ما تنص عليه الفرضية الأولى التي تفترض امتلاك الجسم المضاد لموقعي تثبيت نوعيين متكاملين مع محدد المستضد.\nالحكم: وهذا ما يؤكد صحة الفرضية الأولى (F1) ويفند (يلغي) الفرضية الثانية.', annotatedSteps:[{step:1,text:'انطلاقاً من الوثيقة: نلاحظ تشكل معقد مناعي',color:'#3b82f6'},{step:2,text:'يتوافق تماماً مع ما تنص عليه الفرضية الأولى',color:'#10b981'},{step:3,text:'وهذا ما يؤكد صحة الفرضية الأولى (F1) ويفند الفرضية الثانية',color:'#8b5cf6'}] },
+    badExample:{ answer:'الفرضية الأولى صحيحة لأن الجسم المضاد نوعي.', flawDescription:'مصادقة مجردة دون استنطاق الوثيقة ولا استخراج المعطيات الداعمة وغياب مواجهة الفرضية الثانية.', circledError:'الفرضية الأولى صحيحة لأن الجسم المضاد نوعي', errorTag:'missing_reference', scorePercent:20 },
+    criteria:[
+      { id:'val_c1', order:1, wording:{compass:'أستخرج الدليل العلمي الصريح من الوثيقة أولاً.',check:'استخراج الدليل من السند.',probe:'ما هي المعلومة التي أثبتتها الوثيقة؟',ar_label:'استخراج الدليل'}, selfProofPrompt:'حدد الدليل المستخرج من الوثيقة', errorTag:'unsupported_claim', weight:1 },
+      { id:'val_c2', order:2, wording:{compass:'أربط الدليل بنص الفرضية المراد تأكيدها أو نفيها.',check:'مواجهة الدليل مع الفرضية.',probe:'هل واجهت الدليل مع نص الفرضية؟',ar_label:'مواجهة الفرضية'}, selfProofPrompt:'حدد جملة الربط بالفرضية', errorTag:'unsupported_claim', weight:1 },
+      { id:'val_c3', order:3, wording:{compass:'أصوغ حكماً فاصلاً يؤكد صحة الفرضية الصائبة ويلغي الخاطئة.',check:'تأكيد أو إلغاء صريح للفرضيات.',probe:'هل ذكرت "يؤكد صحة الفرضية 1 وينفي الفرضية 2"؟',ar_label:'الحكم الفاصل'}, selfProofPrompt:'حدد عبارة التأكيد والإلغاء الصريحة', errorTag:'missing_conclusion', weight:1 }
     ]
   },
-  {
-    id: 'verb_explain_multi_v1',
-    verbAr: 'اشْرَحْ',
-    verbFr: 'Expliciter / Développer',
-    category: 'reasoned',
-    goal: 'الربط التركيبي بين عدة وثائق أو معطيات لتوضيح ظاهرة شاملة وبناء إجابة متناسقة متسلسلة.',
-    structureSteps: [
-      '1. استغلال الوثيقة الأولى واستخراج نتيجتها الجزئية',
-      '2. استغلال الوثيقة الثانية واستخراج نتيجتها الجزئية',
-      '3. الربط والتكامل التركيبي بين النتائج المستخرجة',
-      '4. حوصلة شاملة تجيب عن المشكل المطروح في التعليمة'
-    ],
-    requiredConnectors: [
-      'من الوثيقة (1) يتبين أن...',
-      'ومن الوثيقة (2) نجد أن...',
-      'بالربط بين معطيات الوثيقتين:...',
-      'الخلاصة التركيبية:...'
-    ],
-    forbiddenPatterns: [
-      'معالجة كل وثيقة كجزيرة معزولة دون بناء جسر تركيبي بينهما'
-    ],
-    stopCriteria: [
-      'المرور بجميع السندات المذكورة مع الربط المنطقي في فقرة متكاملة'
-    ],
-    goodExample: {
-      context: 'الوثيقة 1 تمثل بنية المشبك الكيميائي وتدفق شوارد Ca2+، والوثيقة 2 تمثل منحنى تحرير الأسيتيل كولين في الشق المشبكي.',
-      question: 'اشرح انطلاقاً من الوثيقتين آلية النقل المشبكي عند وصول موجة زوال الاستقطاب.',
-      answer: 'من الوثيقة 1: يؤدي وصول كمون العمل إلى النهاية قبل المشبكية إلى انفتاح قنوات Ca2+ الفولطية ودخول شوارد الكالسيوم إلى الهيولى.\nمن الوثيقة 2: نلاحظ أن ارتفاع تركيز Ca2+ الداخلي يحفز هجرة الحويصلات المشبكية والتحامها بالغشاء قبل المشبكي محررة الأسيتيل كولين في الشق المشبكي بظاهرة الإطراح الخلوي.\nالربط والتركيب: تتكامل المعطيات لتوضح أن شوارد الكالسيوم تلعب دور الوسيط الكيميائي الذي يحول الإشارة الكهربائية (كمون العمل) إلى إشارة كيميائية (تحرير المبلغ العصبي) تضمن استمرار الرسالة العصبية.',
-      annotatedSteps: [
-        { step: 1, text: 'من الوثيقة 1: يؤدي وصول كمون العمل إلى انفتاح قنوات Ca2+', color: '#3b82f6' },
-        { step: 2, text: 'من الوثيقة 2: ارتفاع تركيز Ca2+ يحفز هجرة الحويصلات', color: '#10b981' },
-        { step: 3, text: 'الربط والتركيب: تتكامل المعطيات لتوضح أن شوارد الكالسيوم تلعب دور الوسيط', color: '#f59e0b' }
-      ]
-    },
-    badExample: {
-      answer: 'الوثيقة 1 فيها كالسيوم والوثيقة 2 فيها حويصلات تفرز الأستيل كولين وتمر السيالة.',
-      flawDescription: 'سرد سطحي مقتضب جداً دون استغلال علمي ولا ربط تركيبي بين السندات.',
-      circledError: 'الوثيقة 1 فيها كالسيوم والوثيقة 2 فيها حويصلات',
-      errorTag: 'missing_reference',
-      scorePercent: 25
-    },
-    criteria: [
-      {
-        id: 'exp_m_c1',
-        order: 1,
-        wording: {
-          compass: 'أستغل الوثيقة الأولى وأبرز نتيجتها المستخلصة.',
-          check: 'استغلال الوثيقة الأولى بدقة.',
-          probe: 'ما هي المعلومة المقدمة من الوثيقة 1؟',
-          ar_label: 'استغلال الوثيقة 1'
-        },
-        selfProofPrompt: 'حدد استغلال الوثيقة 1',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'exp_m_c2',
-        order: 2,
-        wording: {
-          compass: 'أستغل الوثيقة الثانية وأربطها بالسياق العام.',
-          check: 'استغلال الوثيقة الثانية بدقة.',
-          probe: 'ما هي المعلومة المقدمة من الوثيقة 2؟',
-          ar_label: 'استغلال الوثيقة 2'
-        },
-        selfProofPrompt: 'حدد استغلال الوثيقة 2',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'exp_m_c3',
-        order: 3,
-        wording: {
-          compass: 'أبني فقرة تركيبية تجمع المعلومات وتجيب عن السؤال الشامل.',
-          check: 'بناء الربط التركيبي.',
-          probe: 'هل أنشأت الجسر الرابط بين معطيات السندات؟',
-          ar_label: 'التركيب الشامل'
-        },
-        selfProofPrompt: 'حدد فقرة الربط والتركيب',
-        errorTag: 'missing_conclusion',
-        weight: 1
-      }
+  { id:'verb_explain_multi_v1', verbAr:'اشْرَحْ', verbFr:'Expliciter / Développer', category:'reasoned',
+    goal:'الربط التركيبي بين عدة وثائق أو معطيات لتوضيح ظاهرة شاملة وبناء إجابة متناسقة متسلسلة.',
+    structureSteps:['1. استغلال الوثيقة الأولى واستخراج نتيجتها الجزئية','2. استغلال الوثيقة الثانية واستخراج نتيجتها الجزئية','3. الربط والتكامل التركيبي بين النتائج المستخرجة','4. حوصلة شاملة تجيب عن المشكل المطروح في التعليمة'],
+    requiredConnectors:['من الوثيقة (1) يتبين أن...','ومن الوثيقة (2) نجد أن...','بالربط بين معطيات الوثيقتين:...','الخلاصة التركيبية:...'],
+    forbiddenPatterns:['معالجة كل وثيقة كجزيرة معزولة دون بناء جسر تركيبي بينهما'],
+    stopCriteria:['المرور بجميع السندات المذكورة مع الربط المنطقي في فقرة متكاملة'],
+    goodExample:{ context:'الوثيقة 1 تمثل بنية المشبك الكيميائي وتدفق شوارد Ca2+، والوثيقة 2 تمثل منحنى تحرير الأسيتيل كولين في الشق المشبكي.', question:'اشرح انطلاقاً من الوثيقتين آلية النقل المشبكي عند وصول موجة زوال الاستقطاب.', answer:'من الوثيقة 1: يؤدي وصول كمون العمل إلى النهاية قبل المشبكية إلى انفتاح قنوات Ca2+ الفولطية ودخول شوارد الكالسيوم إلى الهيولى.\nمن الوثيقة 2: نلاحظ أن ارتفاع تركيز Ca2+ الداخلي يحفز هجرة الحويصلات المشبكية والتحامها بالغشاء قبل المشبكي محررة الأسيتيل كولين في الشق المشبكي بظاهرة الإطراح الخلوي.\nالربط والتركيب: تتكامل المعطيات لتوضح أن شوارد الكالسيوم تلعب دور الوسيط الكيميائي الذي يحول الإشارة الكهربائية (كمون العمل) إلى إشارة كيميائية (تحرير المبلغ العصبي) تضمن استمرار الرسالة العصبية.\nالخلاصة: تلعب شوارد الكالسيوم دور الوسيط الكيميائي المحول للإشارة الكهربائية إلى إشارة كيميائية يضمن استمرار الرسالة العصبية.', annotatedSteps:[{step:1,text:'من الوثيقة 1: يؤدي وصول كمون العمل إلى انفتاح قنوات Ca2+',color:'#3b82f6'},{step:2,text:'من الوثيقة 2: ارتفاع تركيز Ca2+ يحفز هجرة الحويصلات',color:'#10b981'},{step:3,text:'الربط والتركيب: تتكامل المعطيات لتوضح أن شوارد الكالسيوم تلعب دور الوسيط',color:'#f59e0b'}] },
+    badExample:{ answer:'الوثيقة 1 فيها كالسيوم والوثيقة 2 فيها حويصلات تفرز الأستيل كولين وتمر السيالة.', flawDescription:'سرد سطحي مقتضب جداً دون استغلال علمي ولا ربط تركيبي بين السندات.', circledError:'الوثيقة 1 فيها كالسيوم والوثيقة 2 فيها حويصلات', errorTag:'unsupported_claim', scorePercent:25 },
+    criteria:[
+      { id:'exp_m_c1', order:1, wording:{compass:'أستغل الوثيقة الأولى وأبرز نتيجتها المستخلصة.',check:'استغلال الوثيقة الأولى بدقة.',probe:'ما هي المعلومة المقدمة من الوثيقة 1؟',ar_label:'استغلال الوثيقة 1'}, selfProofPrompt:'حدد استغلال الوثيقة 1', errorTag:'unsupported_claim', weight:1 },
+      { id:'exp_m_c2', order:2, wording:{compass:'أستغل الوثيقة الثانية وأربطها بالسياق العام.',check:'استغلال الوثيقة الثانية بدقة.',probe:'ما هي المعلومة المقدمة من الوثيقة 2؟',ar_label:'استغلال الوثيقة 2'}, selfProofPrompt:'حدد استغلال الوثيقة 2', errorTag:'unsupported_claim', weight:1 },
+      { id:'exp_m_c3', order:3, wording:{compass:'أبني فقرة تركيبية تجمع المعلومات وتجيب عن السؤال الشامل.',check:'بناء الربط التركيبي.',probe:'هل أنشأت الجسر الرابط بين معطيات السندات؟',ar_label:'التركيب الشامل'}, selfProofPrompt:'حدد فقرة الربط والتركيب', errorTag:'unsupported_claim', weight:1 }
     ]
   },
-  {
-    id: 'verb_schema_v1',
-    verbAr: 'لَخِّصْ فِي مُخَطَّطْ',
-    verbFr: 'Schématiser / Résumer',
-    category: 'descriptive',
-    goal: 'تمثيل العلاقات الوظيفية والبيولوجية برسم تخطيطي وظيفي أو مخطط تحصيلي منظم ذي دلالة.',
-    structureSteps: [
-      '1. وضع العناصر الفاعلة داخل أطر هندسية منظمة ومتباعدة',
-      '2. تحديد اتجاه الأسهم المعبرة عن العلاقات السببية والزمنية بدقة',
-      '3. كتابة البيانات والمصطلحات العلمية كاملة دون اختصار مخل',
-      '4. وضع عنوان شامل ودقيق ومؤطر أسفل المخطط'
-    ],
-    requiredConnectors: [
-      'إطار العنصر الفاعل',
-      'سهم الاتجاه والتحفيز أو التثبيط (+ / -)',
-      'العنوان: مخطط تحصيلي يوضح آلية...'
-    ],
-    forbiddenPatterns: [
-      'أسهم بدون اتجاه محدد، غياب العنوان، خطوط متقاطعة فوضوية'
-    ],
-    stopCriteria: [
-      'مخطط مقروء، أسهم واضحة، وعنوان كامل مؤطر في الأسفل'
-    ],
-    goodExample: {
-      context: 'مخطط تحصيلي يلخص المراحل الأساسية للتعبير المورثي (الاستنساخ والترجمة).',
-      question: 'أنجز مخططاً تحصيلياً يلخص آليات التعبير المورثي في خلية حقيقية النواة.',
-      answer: '[ النواة: مورثة (ADN) ] ──(إنزيم ARN بوليميراز / الاستنساخ)──► [ جزيء ARNm ناضج ]\n                    │\n                    ▼ (انتقال عبر الثقوب النووية)\n[ الهيولى: ARNm + ريبوزومات + ARNt + أحماض أمينية ] ──(الترجمة)──► [ سلسلة ببتيدية (بروتين وظيفي) ]\n\nالعنوان: مخطط تحصيلي يبرز آليتي الاستنساخ والترجمة ومقرهما في التعبير المورثي لخلية حقيقية النواة.',
-      annotatedSteps: [
-        { step: 1, text: '[ النواة: مورثة ] ... [ الهيولى: ARNm ]', color: '#3b82f6' },
-        { step: 2, text: '──(الاستنساخ)──► ... ──(الترجمة)──►', color: '#10b981' },
-        { step: 3, text: 'سلسلة ببتيدية (بروتين وظيفي)', color: '#f59e0b' },
-        { step: 4, text: 'العنوان: مخطط تحصيلي يبرز آليتي الاستنساخ والترجمة', color: '#8b5cf6' }
-      ]
-    },
-    badExample: {
-      answer: 'رسم أسهم عشوائية بين كلمات "نواة"، "بروتين" بدون اتجاه الأسهم وبدون كتابة العنوان.',
-      flawDescription: 'غياب المنهجية الهندسية، غياب العنوان المؤطر، وعدم تحديد المقرات البيولوجية.',
-      circledError: 'أسهم بدون عناوين وبدون تأطير',
-      errorTag: 'missing_reference',
-      scorePercent: 15
-    },
-    criteria: [
-      {
-        id: 'sch_c1',
-        order: 1,
-        wording: {
-          compass: 'أضع العناصر البيولوجية الفاعلة داخل أشكال منظمة.',
-          check: 'تأطير العناصر وهيكلتها.',
-          probe: 'هل وضعت البيانات في أطر واضحة؟',
-          ar_label: 'هيكلة العناصر'
-        },
-        selfProofPrompt: 'حدد الأطر والعناصر الفاعلة',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'sch_c2',
-        order: 2,
-        wording: {
-          compass: 'أضبط اتجاهات الأسهم والمعاني الوظيفية بدقة.',
-          check: 'توجيه الأسهم ووضوح الدلالات.',
-          probe: 'هل لكل سهم اتجاه ووظيفة واضحة؟',
-          ar_label: 'اتجاه الأسهم'
-        },
-        selfProofPrompt: 'تأكد من اتجاه الأسهم',
-        errorTag: 'missing_reference',
-        weight: 1
-      },
-      {
-        id: 'sch_c3',
-        order: 3,
-        wording: {
-          compass: 'أكتب عنواناً شاملاً ومؤطراً يحدد موضوع وظروف المخطط.',
-          check: 'وجود عنوان دقيق مؤطر.',
-          probe: 'هل كتبت "مخطط تحصيلي يوضح..." وأطرته؟',
-          ar_label: 'العنوان المؤطر'
-        },
-        selfProofPrompt: 'حدد العنوان الشامل في أسفل المخطط',
-        errorTag: 'missing_conclusion',
-        weight: 1
-      }
+  { id:'verb_schema_v1', verbAr:'لَخِّصْ فِي مُخَطَّطْ', verbFr:'Schématiser / Résumer', category:'descriptive',
+    goal:'تمثيل العلاقات الوظيفية والبيولوجية برسم تخطيطي وظيفي أو مخطط تحصيلي منظم ذي دلالة.',
+    structureSteps:['1. وضع العناصر الفاعلة داخل أطر هندسية منظمة ومتباعدة','2. تحديد اتجاه الأسهم المعبرة عن العلاقات السببية والزمنية بدقة','3. كتابة البيانات والمصطلحات العلمية كاملة دون اختصار مخل','4. وضع عنوان شامل ودقيق ومؤطر أسفل المخطط'],
+    requiredConnectors:['إطار العنصر الفاعل','سهم الاتجاه والتحفيز أو التثبيط (+ / -)','العنوان: مخطط تحصيلي يوضح آلية...'],
+    forbiddenPatterns:['أسهم بدون اتجاه محدد، غياب العنوان، خطوط متقاطعة فوضوية'],
+    stopCriteria:['مخطط مقروء، أسهم واضحة، وعنوان كامل مؤطر في الأسفل'],
+    goodExample:{ context:'مخطط تحصيلي يلخص المراحل الأساسية للتعبير المورثي (الاستنساخ والترجمة).', question:'أنجز مخططاً تحصيلياً يلخص آليات التعبير المورثي في خلية حقيقية النواة.', answer:'[ النواة: مورثة (ADN) ] ──(إنزيم ARN بوليميراز / الاستنساخ)──► [ جزيء ARNm ناضج ]\n                    │\n                    ▼ (انتقال عبر الثقوب النووية)\n[ الهيولى: ARNm + ريبوزومات + ARNt + أحماض أمينية ] ──(الترجمة)──► [ سلسلة ببتيدية (بروتين وظيفي) ]\n\nالعنوان: مخطط تحصيلي يبرز آليتي الاستنساخ والترجمة ومقرهما في التعبير المورثي لخلية حقيقية النواة.', annotatedSteps:[{step:1,text:'[ النواة: مورثة ] ... [ الهيولى: ARNm ]',color:'#3b82f6'},{step:2,text:'──(الاستنساخ)──► ... ──(الترجمة)──►',color:'#10b981'},{step:3,text:'سلسلة ببتيدية (بروتين وظيفي)',color:'#f59e0b'},{step:4,text:'العنوان: مخطط تحصيلي يبرز آليتي الاستنساخ والترجمة',color:'#8b5cf6'}] },
+    badExample:{ answer:'رسم أسهم عشوائية بين كلمات "نواة"، "بروتين" بدون اتجاه الأسهم وبدون كتابة العنوان.', flawDescription:'غياب المنهجية الهندسية، غياب العنوان المؤطر، وعدم تحديد المقرات البيولوجية.', circledError:'أسهم بدون عناوين وبدون تأطير', errorTag:'missing_conclusion', scorePercent:15 },
+    criteria:[
+      { id:'sch_c1', order:1, wording:{compass:'أضع العناصر البيولوجية الفاعلة داخل أشكال منظمة.',check:'تأطير العناصر وهيكلتها.',probe:'هل وضعت البيانات في أطر واضحة؟',ar_label:'هيكلة العناصر'}, selfProofPrompt:'حدد الأطر والعناصر الفاعلة', errorTag:'unsupported_claim', weight:1 },
+      { id:'sch_c2', order:2, wording:{compass:'أضبط اتجاهات الأسهم والمعاني الوظيفية بدقة.',check:'توجيه الأسهم ووضوح الدلالات.',probe:'هل لكل سهم اتجاه ووظيفة واضحة؟',ar_label:'اتجاه الأسهم'}, selfProofPrompt:'تأكد من اتجاه الأسهم', errorTag:'unsupported_claim', weight:1 },
+      { id:'sch_c3', order:3, wording:{compass:'أكتب عنواناً شاملاً ومؤطراً يحدد موضوع وظروف المخطط.',check:'وجود عنوان دقيق مؤطر.',probe:'هل كتبت "مخطط تحصيلي يوضح..." وأطرته؟',ar_label:'العنوان المؤطر'}, selfProofPrompt:'حدد العنوان الشامل في أسفل المخطط', errorTag:'missing_conclusion', weight:1 }
     ]
   }
 ];
-
 export const TRAINING_EXERCISES: TrainingExercise[] = [
-  {
-    id: 'ex_analyse_protein_01',
-    verbId: 'verb_analyse_v1',
-    theme: 'protein_synthesis',
-    themeAr: 'تركيب البروتين',
-    supportType: 'courbe',
-    supportTitle: 'الوثيقة 1: تغيرات كمية الإشعاع في الخلايا',
-    context: 'تم وضع خلايا كبدية في وسط يحتوي على لوسين مشع لفترات زمنية قصيرة، ثم تم قياس نسبة الإشعاع في العضيات الخلوية (الشبكة الهيولية الفعالة، جهاز غولجي، الحويصلات الإفرازية).',
-    question: 'حلل منحنيات الوثيقة 1 الممثلة لتطور الإشعاع بدلالة الزمن.',
-    dataSnippet: 'في الشبكة الهيولية: يبلغ الإشعاع ذروته (80%) عند د 5 ثم ينخفض.\nفي جهاز غولجي: يبلغ ذروته (60%) عند د 20 ثم ينخفض.\nفي الحويصلات: يرتفع تدريجياً بعد د 30 ليصل 90% عند د 60.',
-    diagramUrl: '/assets/images/schemas/domaine1_proteines/schema_33_secretory_tracking_graph_modern_ar.svg',
-    stage1: {
-      expertAnswer: 'تمثل الوثيقة 1 منحنيات تطور نسبة الإشعاع في مختلف العضيات الخلوية بدلالة الزمن (بالدقائق)، حيث نلاحظ:\n- من د 0 إلى د 5: تزايد سريع لنسبة الإشعاع في الشبكة الهيولية الفعالة ليبلغ ذروة 80%، مع بقائه منعدماً في باقي العضيات.\n- من د 5 إلى د 20: تناقص نسبة الإشعاع في الشبكة الهيولية يقابله تزايد سريع في جهاز غولجي ليبلغ 60% عند د 20.\n- بعد د 20: تناقص الإشعاع في جهاز غولجي وتزايده تدريجياً في الحويصلات الإفرازية ليبلغ 90% عند د 60.\nالاستنتاج: يتم تركيب البروتين في الشبكة الهيولية المحببة ثم ينتقل عبر جهاز غولجي ليفرز خارج الخلية عبر الحويصلات الإفرازية.',
-      segments: [
-        { stepNumber: 1, text: 'تمثل الوثيقة 1 منحنيات تطور نسبة الإشعاع في مختلف العضيات الخلوية بدلالة الزمن (بالدقائق)', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'من د 0 إلى د 5: تزايد سريع... من د 5 إلى د 20: تناقص... بعد د 20: تناقص في غولجي وتزايد في الحويصلات ليبلغ 90% عند د 60', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'تناقص نسبة الإشعاع في الشبكة الهيولية يقابله تزايد سريع في جهاز غولجي', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'الاستنتاج: يتم تركيب البروتين في الشبكة الهيولية المحببة ثم ينتقل عبر جهاز غولجي ليفرز خارج الخلية', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'تمثل الوثيقة 1 {{1}} حيث نلاحظ:\n- في الفترة (0-5 د): تزايد سريع للإشعاع في {{2}} ليبلغ ذروة {{3}}.\n- في الفترة (5-20 د): انتقال الإشعاع إلى جهاز غولجي ووصوله إلى {{4}}.\n- بعد 20 دقيقة: تمركز الإشعاع في الحويصلات بنسبة {{5}}.\nالاستنتاج: نستنتج أن {{6}}.',
-      blanks: [
-        { id: '1', expectedText: 'تغيرات نسبة الإشعاع في العضيات بدلالة الزمن بالدقائق', hint: 'تقديم الوثيقة بدلالة المتغير' },
-        { id: '2', expectedText: 'الشبكة الهيولية المحببة', hint: 'اسم العضية الأولى' },
-        { id: '3', expectedText: '80%', hint: 'القيمة مع الوحدة' },
-        { id: '4', expectedText: '60%', hint: 'القيمة مع الوحدة' },
-        { id: '5', expectedText: '90%', hint: 'القيمة مع الوحدة' },
-        { id: '6', expectedText: 'مقر تركيب البروتين هو الشبكة الهيولية ثم ينتقل لجهاز غولجي للإفراز', hint: 'الاستنتاج العلمي' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 180,
-      hints: [
-        'تأكد من ذكر كلمة (تمثل الوثيقة)',
-        'تأكد من كتابة وحدة الزمن (دقيقة) ووحدة الإشعاع (%) بعد كل قيمة',
-        'لا تذكر سبب انتقال الإشعاع في التحليل، اتركه للاستنتاج'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 180,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_explain_enzymes_02',
-    verbId: 'verb_explain_v1',
-    theme: 'enzymology',
-    themeAr: 'النشاط الإنزيمي',
-    supportType: 'courbe',
-    supportTitle: 'الوثيقة 2: تأثير درجة الحموضة pH على نشاط إنزيم البيبسين',
-    context: 'تمت معايرة النشاط الإنزيمي لإنزيم البيبسين المعدي في درجات pH مختلفة (من pH=1 إلى pH=8). أظهرت النتائج نشاطاً أعظمياً عند pH=2 وانعداماً تاماً عند pH=6.',
-    question: 'فسر سبب انعدام النشاط الإنزيمي للبيبسين في الوسط ذي pH=6.',
-    dataSnippet: 'عند pH=2: نشاط أعظمي (100%).\nعند pH=6: نشاط منعدم (0%).',
-    stage1: {
-      expertAnswer: 'الملاحظة: انعدام النشاط الإنزيمي لإنزيم البيبسين عند درجة الحموضة pH=6.\nالتفسير: يعود ذلك إلى أن الوسط القاعدي المقارب للتعادل (pH=6) يؤدي إلى اكتساب المجموعات الكيميائية الحرة في السلاسل الجانبية للأحماض الأمينية للموقع الفعال شحنات سالبة إضافية (تأين COO-) وفقدان الشحنات الموجبة (NH3+)، مما يؤدي إلى كسر الروابط الشاردية وفقدان الموقع الفعال لشكله الفراغي المميز ثلاثي الأبعاد، وبالتالي عدم القدرة على التكامل البنيوي مع الركيزة وعدم تشكل المعقد (إنزيم-ركيزة).',
-      segments: [
-        { stepNumber: 1, text: 'انعدام النشاط الإنزيمي لإنزيم البيبسين عند درجة الحموضة pH=6', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'تغير الحالة الشاردية للأحماض الأمينية المشكلة للموقع الفعال وكسر الروابط الشاردية', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'يعود ذلك إلى أن الوسط... يؤدي إلى... وفقدان الموقع الفعال لشكله الفراغي', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'وبالتالي عدم القدرة على التكامل البنيوي مع الركيزة وعدم تشكل المعقد', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'الملاحظة: نلاحظ {{1}} عند pH=6.\nالتفسير: {{2}} أن تغير درجة الـ pH يغير الحالة الشاردية للوظائف الكيميائية في السلاسل الجانبية لأحماض {{3}}، مما يؤدي إلى كسر الروابط الشاردية وتخريب {{4}} للإنزيم، وبالتالي عدم حدوث {{5}} مع الركيزة.',
-      blanks: [
-        { id: '1', expectedText: 'انعدام النشاط الإنزيمي للبيبسين', hint: 'الملاحظة المراد تفسيرها' },
-        { id: '2', expectedText: 'يعود ذلك إلى', hint: 'الرابط السببي الإلزامي' },
-        { id: '3', expectedText: 'الموقع الفعال', hint: 'الموقع المستهدف' },
-        { id: '4', expectedText: 'البنية الفراغية ثلاثية الأبعاد', hint: 'الأثر البنيوي' },
-        { id: '5', expectedText: 'التكامل البنيوي وتشكل المعقد إنزيم-ركيزة', hint: 'الأثر الوظيفي' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 180,
-      hints: [
-        'تأكد من استخدام الرابط السببي (يعود ذلك إلى)',
-        'اشرح الأثر على الشحنات الكهربائية للموقع الفعال',
-        'بين عدم تشكل المعقد (E-S)'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 180,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_compare_immunity_03',
-    verbId: 'verb_compare_v1',
-    theme: 'immunology',
-    themeAr: 'المناعة',
-    supportType: 'tableau',
-    supportTitle: 'الوثيقة 3: مقارنة الاستجابة المناعية الخلطية والخلوية',
-    context: 'جدول مقارن يوضح خصائص الاستجابة المناعية الخلطية والاستجابة المناعية الخلوية من حيث: الخلايا المنفذة، طبيعة الجزيئات المؤثرة، والمستضدات المستهدفة.',
-    question: 'قارن بين الاستجابة المناعية النوعية ذات الوساطة الخلطية وذات الوساطة الخلوية.',
-    dataSnippet: 'الخلطية: خلايا LB / بلازموسيت، جزيئات أجسام مضادة نوعية، استهداف مستضدات حرة وسائلة.\nالخلوية: خلايا LTc سامة، جزيئات البيرفورين والغرانزيم، استهداف خلايا مصابة وسرطانية.',
-    stage1: {
-      expertAnswer: 'أوجه التشابه: كلاهما استجابة مناعية نوعية مكتسبة تعتمد على التكاثر والتمايز اللمفاوي وامتلاك ذاكرة مناعية.\nأوجه الاختلاف وفق المعايير:\n- الخلايا المنفذة: تتمثل في الخلايا البلازمية (البلزموسيت) في الاستجابة الخلطية، بينما تتمثل في اللمفاويات التائية السامة (LTc) في الاستجابة الخلوية.\n- طبيعة التأثير: تؤثر الاستجابة الخلطية بإفراز أجسام مضادة سارية في السوائل، في حين تؤثر الاستجابة الخلوية بالتماس المباشر وإفراز سم البيرفورين.\n- نوع المستضد المستهدف: تستهدف الخلطية المستضدات الحرة في الأخلاط، بينما تستهدف الخلوية الخلايا المصابة والسرطانية والخلايا الغريبة.\nالخلاصة: تتكامل الاستجابتان الخلطية والخلوية عبر اللمفاويات LT4 لضمان القضاء الشامل على مختلف أشكال المستضدات.',
-      segments: [
-        { stepNumber: 1, text: 'أوجه التشابه: كلاهما استجابة مناعية نوعية مكتسبة تعتمد على التكاثر والتمايز', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'أوجه الاختلاف وفق المعايير: الخلايا المنفذة، طبيعة التأثير، نوع المستضد المستهدف', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'في الاستجابة الخلطية بينما تتمثل في... في حين تؤثر الخلوية بـ...', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'الخلاصة: تتكامل الاستجابتان الخلطية والخلوية لضمان القضاء الشامل على المستضدات', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'أوجه التشابه: كلاهما استجابة مناعية {{1}} تكتسب بعد التماس مع المستضد.\nأوجه الاختلاف:\n- الخلية المنفذة: الخلايا البلازمية في الخلطية {{2}} الخلايا LTc في الخلوية.\n- الجزيئات الفاعلة: أجسام مضادة سارية {{3}} جزيئات البيرفورين والانحلال بالتماس.\n- المستضد: مستضدات حرة سائلة في الخلطية {{4}} خلايا ذاتية مصابة في الخلوية.\nالخلاصة: {{5}}.',
-      blanks: [
-        { id: '1', expectedText: 'نوعية مكتسبة ذات ذاكرة مناعية', hint: 'طبيعة الاستجابة' },
-        { id: '2', expectedText: 'بينما تتمثل في', hint: 'رابط التقابل' },
-        { id: '3', expectedText: 'في حين تفرز الخلوية', hint: 'رابط التقابل' },
-        { id: '4', expectedText: 'بالمقابل تستهدف الخلوية', hint: 'رابط التقابل' },
-        { id: '5', expectedText: 'تتكامل الاستجابتان للقضاء على مختلف أشكال الغزو الميكروبي', hint: 'الخلاصة الاستنتاجية' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 200,
-      hints: [
-        'قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)',
-        'لا تذكر كل استجابة في فقرة منعزلة',
-        'اختم بخلاصة تبين التكامل الوظيفي'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 200,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_analyse_glycemie_04',
-    verbId: 'verb_analyse_v1',
-    theme: 'regulations',
-    themeAr: 'التنظيم الهرموني',
-    supportType: 'courbe',
-    supportTitle: 'الوثيقة 4: منحنى تغير نسبة السكر في الدم',
-    context: 'تم قياس نسبة السكر في الدم لدى شخص سليم بعد تناول وجبة غنية بالكربوهيدرات. يلاحظ المنحنى ارتفاعاً طفيفاً ثم عودة تدريجية إلى القيمة الأساسية.',
-    question: 'حلل منحنى الوثيقة 4 الممثل لتغير نسبة السكر في الدم بدلالة الزمن.',
-    dataSnippet: 'قبل الوجبة: 0,9 g/L.\nبعد 30 دقيقة: 1,6 g/L.\nبعد 120 دقيقة: 0,9 g/L.',
-    stage1: {
-      expertAnswer: 'تمثل الوثيقة 4 منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات، حيث نلاحظ:\n- قبل الوجبة: قيمة أساسية مستقرة عند 0,9 g/L.\n- بعد 30 دقيقة: ارتفاع حاد إلى 1,6 g/L.\n- بعد 120 دقيقة: عودة تدريجية إلى القيمة الأساسية 0,9 g/L.\nالاستنتاج: يضمن التنظيم الهرموني استقرار نسبة السكر في الدم حول القيمة الأساسية.',
-      segments: [
-        { stepNumber: 1, text: 'تمثل الوثيقة 4 منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'قبل الوجبة: 0,9 g/L — بعد 30 دقيقة: 1,6 g/L — بعد 120 دقيقة: 0,9 g/L', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'ارتفاع حاد بعد الوجبة يعكس امتصاص الكربوهيدرات', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'الاستنتاج: يضمن التنظيم الهرموني استقرار نسبة السكر في الدم حول القيمة الأساسية', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'تمثل الوثيقة 4 {{1}} حيث نلاحظ:\n- القيمة الأساسية: {{2}}.\n- بعد 30 دقيقة: {{3}}.\n- بعد 120 دقيقة: عودة إلى {{4}}.\nالاستنتاج: يضمن التنظيم الهرموني {{5}}.',
-      blanks: [
-        { id: '1', expectedText: 'منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات', hint: 'تقديم الوثيقة' },
-        { id: '2', expectedText: '0,9 g/L', hint: 'القيمة الأساسية' },
-        { id: '3', expectedText: '1,6 g/L', hint: 'القيمة القصوى' },
-        { id: '4', expectedText: '0,9 g/L', hint: 'القيمة بعد恢复' },
-        { id: '5', expectedText: 'استقرار نسبة السكر في الدم حول القيمة الأساسية', hint: 'الاستنتاج' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 180,
-      hints: [
-        'تأكد من ذكر القيم مع الوحدات (g/L)',
-        'اشرح الارتفاع بعد الوجبة والعودة التدريجية',
-        'لا تذكر الأنسولين في التحليل، اتركه للاستنتاج'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 180,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_explain_synapse_05',
-    verbId: 'verb_explain_v1',
-    theme: 'neuro_comm',
-    themeAr: 'الاتصال العصبي',
-    supportType: 'schema',
-    supportTitle: 'الوثيقة 5: المشبك الكيميائي',
-    context: 'المشبك الكيميائي هو منطقة اتصال بين نهاية عصبية قبل مشبكية وخلايا بعد مشبكية، تسمح بنقل السيال العصبي عبر مواد كيميائية تسمى ناقلات عصبية.',
-    question: 'فسر آلية النقل المشبكي عند وصول موجة زوال الاستقطاب.',
-    dataSnippet: 'السيال العصبي يصل إلى النهاية قبل المشبكية → فتح قنوات Ca2+ → دخول الكالسيوم → تحرير الأستيل كولين في الشق المشبكي.',
-    diagramUrl: '/assets/images/schemas/domaine1_regulations/schema_82_synapse_modern_ar.svg',
-    stage1: {
-      expertAnswer: 'الملاحظة: وصول السيال العصبي إلى النهاية قبل المشبكية يسبب فتح قنوات الكالسيوم وتحرير الأستيل كولين في الشق المشبكي.\nالتفسير: يعود ذلك إلى أن كمون العمل يسبب فتح قنوات Ca2+ الفولطية، مما يدفع الحويصلات المشبكية للاندماج مع الغشاء قبل المشبكي وتحرير الأستيل كولين في الشق المشبكي، وبالتالي توليد كمون عمل بعد مشبكي.',
-      segments: [
-        { stepNumber: 1, text: 'وصول السيال العصبي إلى النهاية قبل المشبكية', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'فتح قنوات Ca2+ الفولطية ودخول الكالسيوم', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'يعود ذلك إلى... اندماج الحويصلات وتحرير الأستيل كولين', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'وبالتالي توليد كمون عمل بعد مشبكي', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'الملاحظة: نلاحظ {{1}} عند وصول السيال العصبي.\nالتفسير: {{2}} أن Ca2+ يدخل إلى الخلية، مما يسبب {{3}} وتحرير {{4}}، وبالتالي {{5}}.',
-      blanks: [
-        { id: '1', expectedText: 'تحرير الأستيل كولين في الشق المشبكي', hint: 'الملاحظة المراد تفسيرها' },
-        { id: '2', expectedText: 'يعود ذلك إلى', hint: 'الرابط السببي الإلزامي' },
-        { id: '3', expectedText: 'اندماج الحويصلات المشبكية', hint: 'الآلية' },
-        { id: '4', expectedText: 'الأستيل كولين', hint: 'الناقل العصبي' },
-        { id: '5', expectedText: 'توليد كمون عمل بعد مشبكي', hint: 'النتيجة' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 180,
-      hints: [
-        'تأكد من استخدام الرابط السببي (يعود ذلك إلى)',
-        'اشرح دور الكالسيوم في تحرير الناقل',
-        'بين تكامل البنية المشبكية'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 180,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_compare_immunity_06',
-    verbId: 'verb_compare_v1',
-    theme: 'immunology',
-    themeAr: 'المناعة',
-    supportType: 'schema',
-    supportTitle: 'الوثيقة 6: الاستجابة المناعية الأولية والثانوية',
-    context: 'مقارنة بين الاستجابة المناعية الأولية والثانوية من حيث المدة، شدة الاستجابة، ونوع الأجسام المضادة المنتجة.',
-    question: 'قارن بين الاستجابة المناعية الأولية والثانوية.',
-    dataSnippet: 'أولية: IgM أولاً ثم IgG، مدة 7-10 أيام، شدة ضعيفة.\nثانوية: IgG سريعاً، مدة 2-3 أيام، شدة قوية.',
-    diagramUrl: '/assets/images/schemas/domaine1_proteines/schema_85_anticorps_primaire_secondaire_modern_ar.svg',
-    stage1: {
-      expertAnswer: 'أوجه التشابه: كلاهما استجابة مناعية نوعية تعتمد على التكاثر اللمفاوي وامتلاك ذاكرة مناعية.\nأوجه الاختلاف وفق المعايير:\n- المدة: 7-10 أيام في الاستجابة الأولية مقابل 2-3 أيام في الاستجابة الثانوية.\n- شدة الاستجابة: ضعيفة في الاستجابة الأولية مقابل قوية في الاستجابة الثانوية.\n- نوع الأجسام المضادة: IgM أولاً ثم IgG في الاستجابة الأولية، مقابل IgG سريعاً في الاستجابة الثانوية.\nالخلاصة: الاستجابة الثانوية أسرع وأقوى بفضل الخلايا الذاكرة.',
-      segments: [
-        { stepNumber: 1, text: 'أوجه التشابه: كلاهما استجابة مناعية نوعية مكتسبة', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'أوجه الاختلاف: المدة، شدة الاستجابة، نوع الأجسام المضادة', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'بينما... في حين...', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'الخلاصة: الاستجابة الثانوية أسرع وأقوى', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'أوجه التشابه: كلاهما استجابة مناعية {{1}}.\nأوجه الاختلاف:\n- المدة: {{2}} أيام أولية مقابل {{3}} أيام ثانوية.\n- الشدة: {{4}} أولية مقابل {{5}} ثانوية.\nالخلاصة: {{6}}.',
-      blanks: [
-        { id: '1', expectedText: 'نوعية مكتسبة ذات ذاكرة مناعية', hint: 'طبيعة الاستجابة' },
-        { id: '2', expectedText: '7-10', hint: 'مدة الاستجابة الأولية' },
-        { id: '3', expectedText: '2-3', hint: 'مدة الاستجابة الثانوية' },
-        { id: '4', expectedText: 'ضعيفة', hint: 'شدة الاستجابة الأولية' },
-        { id: '5', expectedText: 'قوية', hint: 'شدة الاستجابة الثانوية' },
-        { id: '6', expectedText: 'الاستجابة الثانوية أسرع وأقوى بفضل الخلايا الذاكرة', hint: 'الخلاصة' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 200,
-      hints: [
-        'قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)',
-        'لا تذكر كل استجابة في فقرة منعزلة',
-        'اختم بخلاصة تبين الفرق الجوهري'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 200,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_analyse_photosynthesis_07',
-    verbId: 'verb_analyse_v1',
-    theme: 'energy_transformations',
-    themeAr: 'التحولات الطاقوية',
-    supportType: 'courbe',
-    supportTitle: 'الوثيقة 7: منحنى البناء الضوئي بدلالة شدة الإضاءة',
-    context: 'تم قياس معدل البناء الضوئي في نباتات خضراء تحت شدة إضاءة متزايدة. يلاحظ المنحنى ارتفاعاً ثم استقراراً.',
-    question: 'حلل منحنى الوثيقة 7 الممثل لمعدل البناء الضوئي بدلالة شدة الإضاءة.',
-    dataSnippet: 'عند شدة إضاءة منخفضة: معدل ضعيف.\nعند شدة إضاءة متوسطة: ارتفاع تدريجي.\nعند شدة إضاءة عالية: أقصى معدل.\nعند شدة إضاءة قصوى: استقرار.',
-    diagramUrl: '/assets/images/schemas/domaine2_energie/schema_86_photosynthese_intensite_lumiere_modern_ar.svg',
-    stage1: {
-      expertAnswer: 'تمثل الوثيقة 7 منحنى معدل البناء الضوئي بدلالة شدة الإضاءة، حيث نلاحظ:\n- عند شدة إضاءة منخفضة: معدل ضعيف.\n- عند شدة إضاءة متوسطة: ارتفاع تدريجي.\n- عند شدة إضاءة عالية: أقصى معدل.\n- عند شدة إضاءة قصوى: استقرار.\nالاستنتاج: يزيد معدل البناء الضوئي مع شدة الإضاءة حتى يصل إلى أقصى قيمة ثم يستقر.',
-      segments: [
-        { stepNumber: 1, text: 'تمثل الوثيقة 7 منحنى معدل البناء الضوئي بدلالة شدة الإضاءة', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'شدة منخفضة: ضعيف — متوسطة: ارتفاع — عالية: أقصى — قصوى: استقرار', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'ارتفاع تدريجي مع زيادة شدة الإضاءة', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'الاستنتاج: يزيد المعدل حتى أقصى قيمة ثم يستقر', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'تمثل الوثيقة 7 {{1}} حيث نلاحظ:\n- شدة منخفضة: {{2}}.\n- شدة متوسطة: {{3}}.\n- شدة عالية: {{4}}.\nالاستنتاج: {{5}}.',
-      blanks: [
-        { id: '1', expectedText: 'منحنى معدل البناء الضوئي بدلالة شدة الإضاءة', hint: 'تقديم الوثيقة' },
-        { id: '2', expectedText: 'ضعيف', hint: 'معدل ضعيف' },
-        { id: '3', expectedText: 'ارتفاع تدريجي', hint: 'تزايد' },
-        { id: '4', expectedText: 'أقصى معدل', hint: 'ذروة' },
-        { id: '5', expectedText: 'يزيد المعدل حتى أقصى قيمة ثم يستقر', hint: 'الاستنتاج' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 180,
-      hints: [
-        'تأكد من ذكر شدة الإضاءة مع الوحدات',
-        'اشرح مرحلة الاستقرار',
-        'لا تذكر الكلوروفيل في التحليل، اتركه للاستنتاج'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 180,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_explain_leaf_08',
-    verbId: 'verb_explain_v1',
-    theme: 'energy_transformations',
-    themeAr: 'التحولات الطاقوية',
-    supportType: 'schema',
-    supportTitle: 'الوثيقة 8: مقطع ورقة نباتية',
-    context: 'الورقة النباتية هي عضو أساسي في البناء الضوئي، تتكون من طبقات متعددة تسمح بامتصاص الضوء وتبادل الغازات.',
-    question: 'فسر بنية الورقة النباتية وكيف تتكيف للقيام بالبناء الضوئي.',
-    dataSnippet: 'البشرة العليا: حماية.\nالنسيج البالي: تبادل غازات.\nالنسيج المكون للأسفلية: موقع البناء الضوئي.\nالبشرة السفلية: ثغبات.',
-    diagramUrl: '/assets/images/schemas/domaine2_energie/schema_87_coupe_feuille_modern_ar.svg',
-    stage1: {
-      expertAnswer: 'الملاحظة: الورقة تتكون من بشرة علوية، نسيج بالي، نسيج مكون للأسفلية، وبشرة سفلية.\nالتفسير: يعود ذلك إلى أن كل طبقة لها دور محدد: البشرة العليا تحمي، النسيج البالي يسمح بتبادل الغازات، النسيج المكون للأسفلية يحتوي على بلاستيدات خضراء للبناء الضوئي، والبشرة السفلية تحتوي على ثغبات لتبادل CO2.',
-      segments: [
-        { stepNumber: 1, text: 'وصف طبقات الورقة: بشرة علوية، نسيج بالي، نسيج مكون للأسفلية، بشرة سفلية', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'كل طبقة لها دور محدد في الحماية وتبادل الغازات والبناء الضوئي', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'يعود ذلك إلى... تكيف كل طبقة لوظيفتها', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'وبالتالي تكيف الورقة للقيام بالبناء الضوئي', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'الملاحظة: نلاحظ {{1}} في الورقة.\nالتفسير: {{2}} أن كل طبقة لها دور:\n- البشرة العليا: {{3}}.\n- النسيج البالي: {{4}}.\n- النسيج المكون للأسفلية: {{5}}.\nالنتيجة: {{6}}.',
-      blanks: [
-        { id: '1', expectedText: 'طبقات متعددة متخصصة', hint: 'الملاحظة' },
-        { id: '2', expectedText: 'يعود ذلك إلى', hint: 'الرابط السببي' },
-        { id: '3', expectedText: 'حماية', hint: 'دور البشرة' },
-        { id: '4', expectedText: 'تبادل غازات', hint: 'دور النسيج البالي' },
-        { id: '5', expectedText: 'بناء ضوئي', hint: 'دور النسيج المكون للأسفلية' },
-        { id: '6', expectedText: 'تكيف الورقة للقيام بالبناء الضوئي', hint: 'النتيجة' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 180,
-      hints: [
-        'تأكد من ذكر جميع الطبقات',
-        'استخدم رابط سببي واضح',
-        'ربط كل طبقة بوظيفتها'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 180,
-      passIcmThreshold: 90
-    }
-  },
-  {
-    id: 'ex_compare_tectonics_09',
-    verbId: 'verb_compare_v1',
-    theme: 'geodynamics',
-    themeAr: 'الظواهر الجيولوجية',
-    supportType: 'schema',
-    supportTitle: 'الوثيقة 9: الاصطدام القاري',
-    context: 'مقارنة بين الاصطدام القاري والانDivergence القاري من حيث الحركة، النتيجة، والأشكال الجبلية المتكونة.',
-    question: 'قارن بين الاصطدام القاري والانDivergence القاري.',
-    dataSnippet: 'اصطدام: لوحتان تتحركان نحو بعضهما → سلسلة جبلية.\nانDivergence: لوحتان تتحركان بعيداً عن بعضهما → محيط جديد.',
-    diagramUrl: '/assets/images/schemas/domaine3_tectonique/schema_88_collision_continentale_modern_ar.svg',
-    stage1: {
-      expertAnswer: 'أوجه التشابه: كلاهما حركة للوحات القارية.\nأوجه الاختلاف وفق المعايير:\n- اتجاه الحركة: نحو بعضهما في الاصطدام مقابل بعيد عن بعضهما في الانDivergence.\n- النتيجة: سلسلة جبلية في الاصطدام مقابل محيط جديد في الانDivergence.\n- المثال: الهيمالايا في الاصطدام مقابل المحيط الأطلسي في الانDivergence.\nالخلاصة: الحركة النسبية للوحات القارية تحدد الأشكال الجيولوجية المتكونة.',
-      segments: [
-        { stepNumber: 1, text: 'أوجه التشابه: كلاهما حركة للوحات القارية', colorClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' },
-        { stepNumber: 2, text: 'أوجه الاختلاف: اتجاه الحركة، النتيجة، المثال', colorClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' },
-        { stepNumber: 3, text: 'بينما... في حين...', colorClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' },
-        { stepNumber: 4, text: 'الخلاصة: الحركة النسبية تحدد الأشكال الجيولوجية', colorClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300' }
-      ]
-    },
-    stage2: {
-      clozePrompt: 'أوجه التشابه: كلاهما {{1}}.\nأوجه الاختلاف:\n- اتجاه الحركة: {{2}}.\n- النتيجة: {{3}}.\nالخلاصة: {{4}}.',
-      blanks: [
-        { id: '1', expectedText: 'حركة للوحات القارية', hint: 'طبيعة الحركة' },
-        { id: '2', expectedText: 'نحو بعضهما في الاصطدام مقابل بعيد في الانDivergence', hint: 'اتجاه الحركة' },
-        { id: '3', expectedText: 'سلسلة جبلية مقابل محيط جديد', hint: 'النتيجة' },
-        { id: '4', expectedText: 'الحركة النسبية تحدد الأشكال الجيولوجية', hint: 'الخلاصة' }
-      ]
-    },
-    stage3: {
-      recommendedTimeSec: 200,
-      hints: [
-        'قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)',
-        'لا تذكر كل حركة في فقرة منعزلة',
-        'اختم بخلاصة تبين الفارق الجوهري'
-      ]
-    },
-    stage4: {
-      timeLimitSec: 200,
-      passIcmThreshold: 90
-    }
-  }
+  { id:'ex_analyse_protein_01', verbId:'verb_analyse_v1', theme:'protein_synthesis', themeAr:'تركيب البروتين', supportType:'courbe', supportTitle:'الوثيقة 1: تغيرات كمية الإشعاع في الخلايا', context:'تم وضع خلايا كبدية في وسط يحتوي على لوسين مشع لفترات زمنية قصيرة، ثم تم قياس نسبة الإشعاع في العضيات الخلوية.', question:'حلل منحنيات الوثيقة 1 الممثلة لتطور الإشعاع بدلالة الزمن.', dataSnippet:'في الشبكة الهيولية: يبلغ الإشعاع ذروته (80%) عند د 5 ثم ينخفض.\nفي جهاز غولجي: يبلغ ذروته (60%) عند د 20 ثم ينخفض.\nفي الحويصلات: يرتفع تدريجياً بعد د 30 ليصل 90% عند د 60.', diagramUrl:'/assets/images/schemas/domaine1_proteines/schema_33_secretory_tracking_graph_modern_ar.svg', stage1:{ expertAnswer:'تمثل الوثيقة 1 منحنيات تطور نسبة الإشعاع في مختلف العضيات الخلوية بدلالة الزمن (بالدقائق)، حيث نلاحظ:\n- من د 0 إلى د 5: تزايد سريع لنسبة الإشعاع في الشبكة الهيولية الفعالة ليبلغ ذروة 80%، مع بقائه منعدماً في باقي العضيات.\n- من د 5 إلى د 20: تناقص نسبة الإشعاع في الشبكة الهيولية يقابله تزايد سريع في جهاز غولجي ليبلغ 60% عند د 20.\n- بعد د 20: تناقص الإشعاع في جهاز غولجي وتزايده تدريجياً في الحويصلات الإفرازية ليبلغ 90% عند د 60.\nالاستنتاج: يتم تركيب البروتين في الشبكة الهيولية المحببة ثم ينتقل عبر جهاز غولجي ليفرز خارج الخلية عبر الحويصلات الإفرازية.', segments:[{stepNumber:1,text:'تمثل الوثيقة 1 منحنيات تطور نسبة الإشعاع في مختلف العضيات الخلوية بدلالة الزمن (بالدقائق)',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'من د 0 إلى د 5: تزايد سريع... من د 5 إلى د 20: تناقص... بعد د 20: تناقص في غولجي وتزايد في الحويصلات ليبلغ 90% عند د 60',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'تناقص نسبة الإشعاع في الشبكة الهيولية يقابله تزايد سريع في جهاز غولجي',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'الاستنتاج: يتم تركيب البروتين في الشبكة الهيولية المحببة ثم ينتقل عبر جهاز غولجي ليفرز خارج الخلية',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'تمثل الوثيقة 1 {{1}} حيث نلاحظ:\n- في الفترة (0-5 د): تزايد سريع للإشعاع في {{2}} ليبلغ ذروة {{3}}.\n- في الفترة (5-20 د): انتقال الإشعاع إلى جهاز غولجي ووصوله إلى {{4}}.\n- بعد 20 دقيقة: تمركز الإشعاع في الحويصلات بنسبة {{5}}.\nالاستنتاج: نستنتج أن {{6}}.', blanks:[{id:'1',expectedText:'تغيرات نسبة الإشعاع في العضيات بدلالة الزمن بالدقائق',hint:'تقديم الوثيقة بدلالة المتغير'},{id:'2',expectedText:'الشبكة الهيولية المحببة',hint:'اسم العضية الأولى'},{id:'3',expectedText:'80%',hint:'القيمة مع الوحدة'},{id:'4',expectedText:'60%',hint:'القيمة مع الوحدة'},{id:'5',expectedText:'90%',hint:'القيمة مع الوحدة'},{id:'6',expectedText:'مقر تركيب البروتين هو الشبكة الهيولية ثم ينتقل لجهاز غولجي للإفراز',hint:'الاستنتاج العلمي'}] }, stage3:{ recommendedTimeSec:180, hints:['تأكد من ذكر كلمة (تمثل الوثيقة)','تأكد من كتابة وحدة الزمن (دقيقة) ووحدة الإشعاع (%) بعد كل قيمة','لا تذكر الأنسولين في التحليل، اتركه للاستنتاج'] }, stage4:{ timeLimitSec:180, passIcmThreshold:90 } },
+  { id:'ex_explain_enzymes_02', verbId:'verb_explain_v1', theme:'enzymology', themeAr:'النشاط الإنزيمي', supportType:'courbe', supportTitle:'الوثيقة 2: تأثير درجة الحموضة pH على نشاط إنزيم البيبسين', context:'تمت معايرة النشاط الإنزيمي لإنزيم البيبسين المعدي في درجات pH مختلفة (من pH=1 إلى pH=8). أظهرت النتائج نشاطاً أعظمياً عند pH=2 وانعداماً تاماً عند pH=6.', question:'فسر سبب انعدام النشاط الإنزيمي للبيبسين في الوسط ذي pH=6.', dataSnippet:'عند pH=2: نشاط أعظمي (100%).\nعند pH=6: نشاط منعدم (0%).', diagramUrl:'/assets/images/schemas/domaine1_regulations/schema_82_synapse_modern_ar.svg', stage1:{ expertAnswer:'الملاحظة: انعدام النشاط الإنزيمي لإنزيم البيبسين عند درجة الحموضة pH=6.\nالتفسير: يعود ذلك إلى أن الوسط القاعدي المقارب للتعادل (pH=6) يؤدي إلى اكتساب المجموعات الكيميائية الحرة في السلاسل الجانبية للأحماض الأمينية للموقع الفعال شحنات سالبة إضافية (تأين COO-) وفقدان الشحنات الموجبة (NH3+)، مما يؤدي إلى كسر الروابط الشاردية وفقدان الموقع الفعال لشكله الفراغي المميز ثلاثي الأبعاد، وبالتالي عدم القدرة على التكامل البنيوي مع الركيزة وعدم تشكل المعقد (إنزيم-ركيزة).\nالاستنتاج: ينعدم النشاط الإنزيمي للبيبسين في الوسط القاعدي بسبب تخريب الموقع الفعال.', segments:[{stepNumber:1,text:'انعدام النشاط الإنزيمي لإنزيم البيبسين عند درجة الحموضة pH=6',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'تغير الحالة الشاردية للأحماض الأمينية المشكلة للموقع الفعال وكسر الروابط الشاردية',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'يعود ذلك إلى أن الوسط... يؤدي إلى... وفقدان الموقع الفعال لشكله الفراغي',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'وبالتالي عدم القدرة على التكامل البنيوي مع الركيزة وعدم تشكل المعقد',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'الملاحظة: نلاحظ {{1}} عند pH=6.\nالتفسير: {{2}} أن تغير درجة الـ pH يغير الحالة الشاردية للوظائف الكيميائية في السلاسل الجانبية لأحماض {{3}}، مما يؤدي إلى كسر الروابط الشاردية وتخريب {{4}} للإنزيم، وبالتالي عدم حدوث {{5}} مع الركيزة.', blanks:[{id:'1',expectedText:'انعدام النشاط الإنزيمي للبيبسين',hint:'الملاحظة المراد تفسيرها'},{id:'2',expectedText:'يعود ذلك إلى',hint:'الرابط السببي الإلزامي'},{id:'3',expectedText:'الموقع الفعال',hint:'الموقع المستهدف'},{id:'4',expectedText:'البنية الفراغية ثلاثية الأبعاد',hint:'الأثر البنيوي'},{id:'5',expectedText:'التكامل البنيوي وتشكل المعقد إنزيم-ركيزة',hint:'الأثر الوظيفي'}] }, stage3:{ recommendedTimeSec:180, hints:['تأكد من استخدام الرابط السببي (يعود ذلك إلى)','اشرح الأثر على الشحنات الكهربائية للموقع الفعال','بين عدم تشكل المعقد (E-S)'] }, stage4:{ timeLimitSec:180, passIcmThreshold:90 } },
+  { id:'ex_compare_immunity_03', verbId:'verb_compare_v1', theme:'immunology', themeAr:'المناعة', supportType:'tableau', supportTitle:'الوثيقة 3: مقارنة الاستجابة المناعية الخلطية والخلوية', context:'جدول مقارن يوضح خصائص الاستجابة المناعية الخلطية والاستجابة المناعية الخلوية من حيث: الخلايا المنفذة، طبيعة الجزيئات المؤثرة، والمستضدات المستهدفة.', question:'قارن بين الاستجابة المناعية النوعية ذات الوساطة الخلطية وذات الوساطة الخلوية.', dataSnippet:'الخلطية: خلايا LB / بلازموسيت، جزيئات أجسام مضادة نوعية، استهداف مستضدات حرة وسائلة.\nالخلوية: خلايا LTc سامة، جزيئات البيرفورين والغرانزيم، استهداف خلايا مصابة وسرطانية.', stage1:{ expertAnswer:'أوجه التشابه: كلاهما استجابة مناعية نوعية مكتسبة تعتمد على التكاثر والتمايز اللمفاوي وامتلاك ذاكرة مناعية.\nأوجه الاختلاف وفق المعايير:\n- الخلايا المنفذة: تتمثل في الخلايا البلازمية (البلزموسيت) في الاستجابة الخلطية، بينما تتمثل في اللمفاويات التائية السامة (LTc) في الاستجابة الخلوية.\n- طبيعة التأثير: تؤثر الاستجابة الخلطية بإفراز أجسام مضادة سارية في السوائل، في حين تؤثر الاستجابة الخلوية بالتماس المباشر وإفراز سم البيرفورين.\n- نوع المستضد المستهدف: تستهدف الخلطية المستضدات الحرة في الأخلاط، بينما تستهدف الخلوية الخلايا المصابة والسرطانية والخلايا الغريبة.\nالخلاصة: تتكامل الاستجابتان الخلطية والخلوية عبر اللمفاويات LT4 لضمان القضاء الشامل على مختلف أشكال المستضدات.', segments:[{stepNumber:1,text:'أوجه التشابه: كلاهما استجابة مناعية نوعية مكتسبة تعتمد على التكاثر والتمايز',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'أوجه الاختلاف وفق المعايير: الخلايا المنفذة، طبيعة التأثير، نوع المستضد المستهدف',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'في الاستجابة الخلطية بينما تتمثل في... في حين تؤثر الخلوية بـ...',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'الخلاصة: تتكامل الاستجابتان الخلطية والخلوية لضمان القضاء الشامل على المستضدات',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'أوجه التشابه: كلاهما استجابة مناعية {{1}} تكتسب بعد التماس مع المستضد.\nأوجه الاختلاف:\n- الخلية المنفذة: الخلايا البلازمية في الخلطية {{2}} الخلايا LTc في الخلوية.\n- الجزيئات الفاعلة: أجسام مضادة سارية {{3}} جزيئات البيرفورين والانحلال بالتماس.\n- المستضد: مستضدات حرة سائلة في الخلطية {{4}} خلايا ذاتية مصابة في الخلوية.\nالخلاصة: {{5}}.', blanks:[{id:'1',expectedText:'نوعية مكتسبة ذات ذاكرة مناعية',hint:'طبيعة الاستجابة'},{id:'2',expectedText:'بينما تتمثل في',hint:'رابط التقابل'},{id:'3',expectedText:'في حين تفرز الخلوية',hint:'رابط التقابل'},{id:'4',expectedText:'بالمقابل تستهدف الخلوية',hint:'رابط التقابل'},{id:'5',expectedText:'تتكامل الاستجابتان للقضاء على مختلف أشكال الغزو الميكروبي',hint:'الخلاصة الاستنتاجية'}] }, stage3:{ recommendedTimeSec:200, hints:['قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)','لا تذكر كل استجابة في فقرة منعزلة','اختم بخلاصة تبين التكامل الوظيفي'] }, stage4:{ timeLimitSec:200, passIcmThreshold:90 } },
+  { id:'ex_analyse_glycemie_04', verbId:'verb_analyse_v1', theme:'regulations', themeAr:'التنظيم الهرموني', supportType:'courbe', supportTitle:'الوثيقة 4: منحنى تغير نسبة السكر في الدم', context:'تم قياس نسبة السكر في الدم لدى شخص سليم بعد تناول وجبة غنية بالكربوهيدرات. يلاحظ المنحنى ارتفاعاً طفيفاً ثم عودة تدريجية إلى القيمة الأساسية.', question:'حلل منحنى الوثيقة 4 الممثل لتغير نسبة السكر في الدم بدلالة الزمن.', dataSnippet:'قبل الوجبة: 0,9 g/L.\nبعد 30 دقيقة: 1,6 g/L.\nبعد 120 دقيقة: 0,9 g/L.', stage1:{ expertAnswer:'تمثل الوثيقة 4 منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات، حيث نلاحظ:\n- قبل الوجبة: قيمة أساسية مستقرة عند 0,9 g/L.\n- بعد 30 دقيقة: ارتفاع حاد إلى 1,6 g/L.\n- بعد 120 دقيقة: عودة تدريجية إلى القيمة الأساسية 0,9 g/L.\nالاستنتاج: يضمن التنظيم الهرموني استقرار نسبة السكر في الدم حول القيمة الأساسية.', segments:[{stepNumber:1,text:'تمثل الوثيقة 4 منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'قبل الوجبة: 0,9 g/L — بعد 30 دقيقة: 1,6 g/L — بعد 120 دقيقة: 0,9 g/L',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'ارتفاع حاد بعد الوجبة يعكس امتصاص الكربوهيدرات',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'الاستنتاج: يضمن التنظيم الهرموني استقرار نسبة السكر في الدم حول القيمة الأساسية',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'تمثل الوثيقة 4 {{1}} حيث نلاحظ:\n- القيمة الأساسية: {{2}}.\n- بعد 30 دقيقة: {{3}}.\n- بعد 120 دقيقة: عودة إلى {{4}}.\nالاستنتاج: يضمن التنظيم الهرموني {{5}}.', blanks:[{id:'1',expectedText:'منحنى تغير نسبة السكر في الدم بدلالة الزمن بعد وجبة غنية بالكربوهيدرات',hint:'تقديم الوثيقة'},{id:'2',expectedText:'0,9 g/L',hint:'القيمة الأساسية'},{id:'3',expectedText:'1,6 g/L',hint:'القيمة القصوى'},{id:'4',expectedText:'0,9 g/L',hint:'القيمة بعد الاستقرار'},{id:'5',expectedText:'استقرار نسبة السكر في الدم حول القيمة الأساسية',hint:'الاستنتاج'}] }, stage3:{ recommendedTimeSec:180, hints:['تأكد من ذكر القيم مع الوحدات (g/L)','اشرح الارتفاع بعد الوجبة والعودة التدريجية','لا تذكر الأنسولين في التحليل، اتركه للاستنتاج'] }, stage4:{ timeLimitSec:180, passIcmThreshold:90 } },
+  { id:'ex_explain_synapse_05', verbId:'verb_explain_v1', theme:'neuro_comm', themeAr:'الاتصال العصبي', supportType:'schema', supportTitle:'الوثيقة 5: المشبك الكيميائي', context:'المشبك الكيميائي هو منطقة اتصال بين نهاية عصبية قبل مشبكية وخلايا بعد مشبكية، تسمح بنقل السيال العصبي عبر مواد كيميائية تسمى ناقلات عصبية.', question:'فسر آلية النقل المشبكي عند وصول موجة زوال الاستقطاب.', dataSnippet:'السيال العصبي يصل إلى النهاية قبل المشبكية → فتح قنوات Ca2+ → دخول الكالسيوم → تحرير الأستيل كولين في الشق المشبكي.', diagramUrl:'/assets/images/schemas/domaine1_regulations/schema_82_synapse_modern_ar.svg', stage1:{ expertAnswer:'الملاحظة: وصول السيال العصبي إلى النهاية قبل المشبكية يسبب فتح قنوات الكالسيوم وتحرير الأستيل كولين في الشق المشبكي.\nالتفسير: يعود ذلك إلى أن كمون العمل يسبب فتح قنوات Ca2+ الفولطية، مما يدفع الحويصلات المشبكية للاندماج مع الغشاء قبل المشبكي وتحرير الأستيل كولين في الشق المشبكي، وبالتالي توليد كمون عمل بعد مشبكي.\nالاستنتاج: يؤدي انفتاح قنوات Ca2+ الفولطية إلى تحرير الأستيل كولين وتوليد كمون عمل بعد مشبكي.', segments:[{stepNumber:1,text:'وصول السيال العصبي إلى النهاية قبل المشبكية',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'فتح قنوات Ca2+ الفولطية ودخول الكالسيوم',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'يعود ذلك إلى... اندماج الحويصلات وتحرير الأستيل كولين',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'وبالتالي توليد كمون عمل بعد مشبكي',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'الملاحظة: نلاحظ {{1}} عند وصول السيال العصبي.\nالتفسير: {{2}} أن Ca2+ يدخل إلى الخلية، مما يسبب {{3}} وتحرير {{4}}، وبالتالي {{5}}.', blanks:[{id:'1',expectedText:'تحرير الأستيل كولين في الشق المشبكي',hint:'الملاحظة المراد تفسيرها'},{id:'2',expectedText:'يعود ذلك إلى',hint:'الرابط السببي الإلزامي'},{id:'3',expectedText:'اندماج الحويصلات المشبكية',hint:'الآلية'},{id:'4',expectedText:'الأستيل كولين',hint:'الناقل العصبي'},{id:'5',expectedText:'توليد كمون عمل بعد مشبكي',hint:'النتيجة'}] }, stage3:{ recommendedTimeSec:180, hints:['تأكد من استخدام الرابط السببي (يعود ذلك إلى)','اشرح دور الكالسيوم في تحرير الناقل','بين تكامل البنية المشبكية'] }, stage4:{ timeLimitSec:180, passIcmThreshold:90 } },
+  { id:'ex_compare_immunity_06', verbId:'verb_compare_v1', theme:'immunology', themeAr:'المناعة', supportType:'schema', supportTitle:'الوثيقة 6: الاستجابة المناعية الأولية والثانوية', context:'مقارنة بين الاستجابة المناعية الأولية والثانوية من حيث المدة، شدة الاستجابة، ونوع الأجسام المضادة المنتجة.', question:'قارن بين الاستجابة المناعية الأولية والثانوية.', dataSnippet:'أولية: IgM أولاً ثم IgG، مدة 7-10 أيام، شدة ضعيفة.\nثانوية: IgG سريعاً، مدة 2-3 أيام، شدة قوية.', diagramUrl:'/assets/images/schemas/domaine1_proteines/schema_85_anticorps_primaire_secondaire_modern_ar.svg', stage1:{ expertAnswer:'أوجه التشابه: كلاهما استجابة مناعية نوعية تعتمد على التكاثر اللمفاوي وامتلاك ذاكرة مناعية.\nأوجه الاختلاف وفق المعايير:\n- المدة: 7-10 أيام في الاستجابة الأولية مقابل 2-3 أيام في الاستجابة الثانوية.\n- شدة الاستجابة: ضعيفة في الاستجابة الأولية مقابل قوية في الاستجابة الثانوية.\n- نوع الأجسام المضادة: IgM أولاً ثم IgG في الاستجابة الأولية، مقابل IgG سريعاً في الاستجابة الثانوية.\nالخلاصة: الاستجابة الثانوية أسرع وأقوى بفضل الخلايا الذاكرة.', segments:[{stepNumber:1,text:'أوجه التشابه: كلاهما استجابة مناعية نوعية مكتسبة',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'أوجه الاختلاف: المدة، شدة الاستجابة، نوع الأجسام المضادة',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'بينما... في حين...',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'الخلاصة: الاستجابة الثانوية أسرع وأقوى',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'أوجه التشابه: كلاهما استجابة مناعية {{1}}.\nأوجه الاختلاف:\n- المدة: {{2}} أيام أولية مقابل {{3}} أيام ثانوية.\n- الشدة: {{4}} أولية مقابل {{5}} ثانوية.\nالخلاصة: {{6}}.', blanks:[{id:'1',expectedText:'نوعية مكتسبة ذات ذاكرة مناعية',hint:'طبيعة الاستجابة'},{id:'2',expectedText:'7-10',hint:'مدة الاستجابة الأولية'},{id:'3',expectedText:'2-3',hint:'مدة الاستجابة الثانوية'},{id:'4',expectedText:'ضعيفة',hint:'شدة الاستجابة الأولية'},{id:'5',expectedText:'قوية',hint:'شدة الاستجابة الثانوية'},{id:'6',expectedText:'الاستجابة الثانوية أسرع وأقوى بفضل الخلايا الذاكرة',hint:'الخلاصة'}] }, stage3:{ recommendedTimeSec:200, hints:['قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)','لا تذكر كل استجابة في فقرة منعزلة','اختم بخلاصة تبين الفرق الجوهري'] }, stage4:{ timeLimitSec:200, passIcmThreshold:90 } },
+  { id:'ex_analyse_photosynthesis_07', verbId:'verb_analyse_v1', theme:'energy_transformations', themeAr:'التحولات الطاقوية', supportType:'courbe', supportTitle:'الوثيقة 7: منحنى البناء الضوئي بدلالة شدة الإضاءة', context:'تم قياس معدل البناء الضوئي في نباتات خضراء تحت شدة إضاءة متزايدة. يلاحظ المنحنى ارتفاعاً ثم استقراراً.', question:'حلل منحنى الوثيقة 7 الممثل لمعدل البناء الضوئي بدلالة شدة الإضاءة.', dataSnippet:'عند شدة إضاءة منخفضة: معدل ضعيف.\nعند شدة إضاءة متوسطة: ارتفاع تدريجي.\nعند شدة إضاءة عالية: أقصى معدل.\nعند شدة إضاءة قصوى: استقرار.', diagramUrl:'/assets/images/schemas/domaine2_energie/schema_86_photosynthese_intensite_lumiere_modern_ar.svg', stage1:{ expertAnswer:'تمثل الوثيقة 7 منحنى معدل البناء الضوئي بدلالة شدة الإضاءة، حيث نلاحظ:\n- عند شدة إضاءة منخفضة (20 ميكرومول/م².ث): معدل ضعيف يقدر بـ 2 ميكرومول/دقيقة.\n- عند شدة إضاءة متوسطة (50 ميكرومول/م².ث): ارتفاع تدريجي إلى 8 ميكرومول/دقيقة.\n- عند شدة إضاءة عالية (100 ميكرومول/م².ث): أقصى معدل يبلغ 15 ميكرومول/دقيقة.\n- عند شدة إضاءة قصوى (150 ميكرومول/م².ث): استقرار عند 15 ميكرومول/دقيقة.\nالاستنتاج: يزيد معدل البناء الضوئي مع شدة الإضاءة حتى يصل إلى أقصى قيمة ثم يستقر.', segments:[{stepNumber:1,text:'تمثل الوثيقة 7 منحنى معدل البناء الضوئي بدلالة شدة الإضاءة',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'شدة منخفضة: ضعيف — متوسطة: ارتفاع — عالية: أقصى — قصوى: استقرار',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'ارتفاع تدريجي مع زيادة شدة الإضاءة',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'الاستنتاج: يزيد المعدل حتى أقصى قيمة ثم يستقر',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'تمثل الوثيقة 7 {{1}} حيث نلاحظ:\n- شدة منخفضة: {{2}}.\n- شدة متوسطة: {{3}}.\n- شدة عالية: {{4}}.\nالاستنتاج: {{5}}.', blanks:[{id:'1',expectedText:'منحنى معدل البناء الضوئي بدلالة شدة الإضاءة',hint:'تقديم الوثيقة'},{id:'2',expectedText:'ضعيف',hint:'معدل ضعيف'},{id:'3',expectedText:'ارتفاع تدريجي',hint:'تزايد'},{id:'4',expectedText:'أقصى معدل',hint:'ذروة'},{id:'5',expectedText:'يزيد المعدل حتى أقصى قيمة ثم يستقر',hint:'الاستنتاج'}] }, stage3:{ recommendedTimeSec:180, hints:['تأكد من ذكر شدة الإضاءة مع الوحدات','اشرح مرحلة الاستقرار','لا تذكر الكلوروفيل في التحليل، اتركه للاستنتاج'] }, stage4:{ timeLimitSec:180, passIcmThreshold:90 } },
+  { id:'ex_explain_leaf_08', verbId:'verb_explain_v1', theme:'energy_transformations', themeAr:'التحولات الطاقوية', supportType:'schema', supportTitle:'الوثيقة 8: مقطع ورقة نباتية', context:'الورقة النباتية هي عضو أساسي في البناء الضوئي، تتكون من طبقات متعددة تسمح بامتصاص الضوء وتبادل الغازات.', question:'فسر بنية الورقة النباتية وكيف تتكيف للقيام بالبناء الضوئي.', dataSnippet:'البشرة العليا: حماية.\nالنسيج البالي: تبادل غازات.\nالنسيج المكون للأسفلية: موقع البناء الضوئي.\nالبشرة السفلية: ثغبات.', diagramUrl:'/assets/images/schemas/domaine2_energie/schema_87_coupe_feuille_modern_ar.svg', stage1:{ expertAnswer:'الملاحظة: الورقة تتكون من بشرة علوية، نسيج بالي، نسيج مكون للأسفلية، وبشرة سفلية.\nالتفسير: يعود ذلك إلى أن كل طبقة لها دور محدد: البشرة العليا تحمي، النسيج البالي يسمح بتبادل الغازات، النسيج المكون للأسفلية يحتوي على بلاستيدات خضراء للبناء الضوئي، والبشرة السفلية تحتوي على ثغبات لتبادل CO2.\nالاستنتاج: تتكيف بنية الورقة مع وظيفتها في البناء الضوئي.', segments:[{stepNumber:1,text:'وصف طبقات الورقة: بشرة علوية، نسيج بالي، نسيج مكون للأسفلية، بشرة سفلية',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'كل طبقة لها دور محدد في الحماية وتبادل الغازات والبناء الضوئي',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'يعود ذلك إلى... تكيف كل طبقة لوظيفتها',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'وبالتالي تكيف الورقة للقيام بالبناء الضوئي',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'الملاحظة: نلاحظ {{1}} في الورقة.\nالتفسير: {{2}} أن كل طبقة لها دور:\n- البشرة العليا: {{3}}.\n- النسيج البالي: {{4}}.\n- النسيج المكون للأسفلية: {{5}}.\nالنتيجة: {{6}}.', blanks:[{id:'1',expectedText:'طبقات متعددة متخصصة',hint:'الملاحظة'},{id:'2',expectedText:'يعود ذلك إلى',hint:'الرابط السببي'},{id:'3',expectedText:'حماية',hint:'دور البشرة'},{id:'4',expectedText:'تبادل غازات',hint:'دور النسيج البالي'},{id:'5',expectedText:'بناء ضوئي',hint:'دور النسيج المكون للأسفلية'},{id:'6',expectedText:'تكيف الورقة للقيام بالبناء الضوئي',hint:'النتيجة'}] }, stage3:{ recommendedTimeSec:180, hints:['تأكد من ذكر جميع الطبقات','استخدم رابط سببي واضح','ربط كل طبقة بوظيفتها'] }, stage4:{ timeLimitSec:180, passIcmThreshold:90 } },
+  { id:'ex_compare_tectonics_09', verbId:'verb_compare_v1', theme:'geodynamics', themeAr:'الظواهر الجيولوجية', supportType:'schema', supportTitle:'الوثيقة 9: الاصطدام القاري', context:'مقارنة بين الاصطدام القاري والانDivergence القاري من حيث الحركة، النتيجة، والأشكال الجبلية المتكونة.', question:'قارن بين الاصطدام القاري والانDivergence القاري.', dataSnippet:'اصطدام: لوحتان تتحركان نحو بعضهما → سلسلة جبلية.\nانDivergence: لوحتان تتحركان بعيداً عن بعضهما → محيط جديد.', diagramUrl:'/assets/images/schemas/domaine3_tectonique/schema_88_collision_continentale_modern_ar.svg', stage1:{ expertAnswer:'أوجه التشابه: كلاهما حركة للوحات قارية.\nأوجه الاختلاف وفق المعايير:\n- اتجاه الحركة: نحو بعضهما في الاصطدام مقابل بعيد عن بعضهما في الانDivergence.\n- النتيجة: سلسلة جبلية في الاصطدام مقابل محيط جديد في الانDivergence.\n- المثال: الهيمالايا في الاصطدام مقابل المحيط الأطلسي في الانDivergence.\nالخلاصة: الحركة النسبية للوحات القارية تحدد الأشكال الجيولوجية المتكونة.', segments:[{stepNumber:1,text:'أوجه التشابه: كلاهما حركة للوحات القارية',colorClass:'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'},{stepNumber:2,text:'أوجه الاختلاف: اتجاه الحركة، النتيجة، المثال',colorClass:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'},{stepNumber:3,text:'بينما... في حين...',colorClass:'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'},{stepNumber:4,text:'الخلاصة: الحركة النسبية تحدد الأشكال الجيولوجية',colorClass:'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'}] }, stage2:{ clozePrompt:'أوجه التشابه: كلاهما {{1}}.\nأوجه الاختلاف:\n- اتجاه الحركة: {{2}}.\n- النتيجة: {{3}}.\nالخلاصة: {{4}}.', blanks:[{id:'1',expectedText:'حركة للوحات قارية',hint:'طبيعة الحركة'},{id:'2',expectedText:'نحو بعضهما في الاصطدام مقابل بعيد في الانDivergence',hint:'اتجاه الحركة'},{id:'3',expectedText:'سلسلة جبلية مقابل محيط جديد',hint:'النتيجة'},{id:'4',expectedText:'الحركة النسبية تحدد الأشكال الجيولوجية',hint:'الخلاصة'}] }, stage3:{ recommendedTimeSec:200, hints:['قارن في جدول أو فقرة مدمجة بالأدوات (بينما / في المقابل)','لا تذكر كل حركة في فقرة منعزلة','اختم بخلاصة تبين الفارق الجوهري'] }, stage4:{ timeLimitSec:200, passIcmThreshold:90 } }
 ];
-
+export type StepId = 1 | 2 | 3 | 4;
+export type Switch = 'open' | 'closed';
+export type Step3Mode = 'none' | 'confront' | 'explain' | 'hypothesis';
+export type SpecialFormat = 'compare' | 'diagram' | 'hypothesis' | 'text' | null;
+export interface VerbV2Meta {
+  step3Mode: Step3Mode;
+  path: StepId[];
+  stepMap: StepId[];
+  format: SpecialFormat;
+  formatCheckAr?: string;
+  typicalErrorTag: 'premature_interpretation' | 'unsupported_claim';
+  step3Evidence?: RegExp;
+}
+export const switchOf = (c: Pick<VerbCard, 'category'>): Switch =>
+  c.category === 'reasoned' ? 'open' : 'closed';
+export const VERB_V2_META: Record<string, VerbV2Meta> = {
+  verb_analyse_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'premature_interpretation' },
+  verb_deduce_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
+  verb_compare_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:'compare', formatCheckAr:'هل قلتُ عن الطرفين نفس عدد الأشياء ؟', typicalErrorTag:'premature_interpretation' },
+  verb_schema_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,3,2,4], format:'diagram', formatCheckAr:'عنوان ✓ مفتاح ✓ أسهم مرقّمة ✓', typicalErrorTag:'premature_interpretation' },
+  verb_explain_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,3,4], format:null, typicalErrorTag:'unsupported_claim' },
+  verb_explain_multi_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'unsupported_claim', step3Evidence:/(بالربط|تتكامل|الربط والتركيب|يتبين أن|بربط)/ },
+  verb_validate_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,4], format:null, typicalErrorTag:'unsupported_claim', step3Evidence:/(يتوافق مع|يؤكد صحة|يفند|ينفي|يلغي|يدحض)/ },
+  verb_hypothesis_v1: { step3Mode:'hypothesis', path:[1,3], stepMap:[1,3,3,3], format:'hypothesis', formatCheckAr:'هل خلَت من «ربما / لعل / يمكن أن» ؟', typicalErrorTag:'unsupported_claim' },
+};
+export const STEP_TEMPLATES = {
+  2: ['انطلاقًا من الوثيقة (…) نلاحظ أنّ …', 'تمثل الوثيقة (…) … حيث نلاحظ …'],
+  3: { confront:['بينما …','في حين …','يقابله …'], explain:['وهذا لأنّ … وبالتالي …','يعود ذلك إلى … مما يؤدي إلى …'], hypothesis:['نفترض أنّ …','انطلاقًا من المعطيات السابقة، نقترح الفرضية التالية: …'], none:[] },
+  4: ['ومنه نستنتج أنّ …', 'الاستنتاج: نستنتج أنّ …', 'الخلاصة: …'],
+} as const;
+export interface VerbCardV2 extends VerbCard, VerbV2Meta { switch: Switch; }
+export const VERB_CARDS_V2: VerbCardV2[] = VERB_CARDS.map((c) => {
+  const meta = VERB_V2_META[c.id];
+  if (!meta) throw new Error(`[v2] VERB_V2_META manquent pour ${c.id}`);
+  return { ...c, ...meta, switch: switchOf(c) };
+});
+export const getVerbCardV2 = (id: string): VerbCardV2 | undefined =>
+  VERB_CARDS_V2.find((c) => c.id === id);
+if (import.meta.env?.DEV) {
+  for (const c of VERB_CARDS_V2) {
+    if (c.switch === 'closed' && c.step3Mode === 'explain') throw new Error(`[v2] ${c.id}: fermé mais step3Mode=explain`);
+    if (c.step3Mode === 'none' && c.path.includes(3)) throw new Error(`[v2] ${c.id}: step3Mode=none mais 3 ∈ path`);
+    if (c.stepMap.length !== c.structureSteps.length) throw new Error(`[v2] ${c.id}: stepMap (${c.stepMap.length}) ≠ structureSteps (${c.structureSteps.length})`);
+    if ((c.switch === 'open') !== (c.typicalErrorTag === 'unsupported_claim')) throw new Error(`[v2] ${c.id}: typicalErrorTag incohérent avec l'interrupteur`);
+  }
+}
 export interface StudentMasteryRecord {
-  verbId: string;
-  stage: 1 | 2 | 3 | 4;
-  consecutivePasses: number; // Besoin de 2 réussites à 100% pour monter
-  automated: boolean;        // Validé sur 3 thèmes distincts
-  validatedThemes: string[];
-  lastIcmScore: number;
-  lastTrainedDate: string;
-  nextReviewDate: string;    // J+1, J+3, J+7, J+16, J+30
-  errorCounters: Record<string, number>;
+  verbId: string; stage: 1 | 2 | 3 | 4; consecutivePasses: number; automated: boolean;
+  validatedThemes: string[]; lastIcmScore: number; lastTrainedDate: string;
+  nextReviewDate: string; errorCounters: Record<string, number>;
 }

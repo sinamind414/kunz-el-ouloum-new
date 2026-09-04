@@ -136,13 +136,14 @@ export function clearProductionLog(): void {
 
 export const ERROR_TAG_LABELS_AR: Record<string, string> = {
   missing_unit: 'غياب الوحدة القياسية',
-  missing_reference: 'تأكيد دون سند',
+  missing_reference: 'غياب ذكر السند',
   premature_interpretation: 'تفسير مبكر أثناء التحليل',
   conditional_hypothesis: 'فرضية بصيغة الشك',
   missing_conclusion: 'غياب الجملة الختامية',
   verb_confusion: 'الخلط بين أفعال الأداء',
   comparison_without_criteria: 'مقارنة بلا معايير',
   unbalanced_comparison: 'مقارنة غير متوازنة',
+  unsupported_claim: 'ربط بلا سند',
 };
 
 export interface NavigatorGrade {
