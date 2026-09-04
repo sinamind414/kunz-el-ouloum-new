@@ -403,13 +403,13 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               </div>
             )}
 
-            {/* 4 Stages Pills */}
+{/* 4 Stages Pills */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
               {[
-                { num: 1, title: 'النمذجة (Modelage)', desc: 'تحديد خطوات الخبير بالألوان' },
-                { num: 2, title: 'الإكمال (Complétion)', desc: 'ملء الفراغات مع روابط جاهزة' },
-                { num: 3, title: 'إنتاج موجه (Guidée)', desc: 'كتابة مع البوصلة والإثبات' },
-                { num: 4, title: 'محاكاة البكالوريا', desc: 'توقيت + مسودة 90ث + بدون مساعدة' }
+                { num: 1, desc: 'حدد الفعل والسند' },
+                { num: 2, desc: 'اجمع المعطيات بالوحدات' },
+                { num: 3, desc: 'اربط بالسبب أو بالتقابل' },
+                { num: 4, desc: 'اختم بالاستنتاج' }
               ].map(st => (
                 <button
                   key={st.num}
@@ -431,29 +431,52 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     )}
                   </div>
                   <div>
-                    <h4 className="font-bold text-xs md:text-sm text-gray-900 dark:text-white">{st.title}</h4>
+                    <div className="font-black text-sm md:text-base text-gray-900 dark:text-white">{STEP_NAMES_AR[st.num]}</div>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">{st.desc}</p>
+                    {st.num === 3 && (
+                      <div className={`mt-1 inline-block px-1.5 rounded text-[10px] font-bold ${
+                        switchChoice === 'open' ? 'bg-emerald-200/60 dark:bg-emerald-900/60' : 'bg-gray-200/80 dark:bg-gray-700 line-through'
+                      }`}>
+                        «لأنّ»
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Switch Gate Modal — stage 3+ only */}
-              {showSwitchGate && currentExercise && (
-                <SwitchGateModal
-                  verb={currentVerb.verbAr}
-                  verbAr={currentVerb.verbAr}
-                  onSwitch={(allowsBecause) => {
-                    setSwitchChoice(allowsBecause ? 'open' : 'closed');
-                    setShowSwitchGate(false);
-                  }}
-                  onSkip={() => {
-                    setSwitchChoice(null);
-                    setShowSwitchGate(false);
-                  }}
-                />
-              )}
+          {/* Switch Gate — stage 3 only */}
+          {showSwitchGate && currentStage === 3 && currentExercise && (
+            <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Key className="w-5 h-5 text-amber-500" />
+                <span>المفتاح — هل الفعل يسمح بـ«لأنّ»؟</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => { setSwitchChoice('closed'); setShowSwitchGate(false); }}
+                  className="p-4 rounded-xl border-2 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all font-bold text-center"
+                >
+                  <div className="text-2xl mb-1">🚫</div>
+                  <div>لا — مغلق</div>
+                  <div className="text-[10px] font-normal opacity-70 mt-1">١٢٤ — لا «لأنّ»</div>
+                </button>
+                <button
+                  onClick={() => { setSwitchChoice('open'); setShowSwitchGate(false); }}
+                  className="p-4 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all font-bold text-center"
+                >
+                  <div className="text-2xl mb-1">✅</div>
+                  <div>نعم — مفتوح</div>
+                  <div className="text-[10px] font-normal opacity-70 mt-1">١٢٣٤ — «لأنّ» مطلوبة</div>
+                </button>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>الخطوة 3 ({STEP_NAMES_AR[3]}) — السوتش يحدد إذا كنت ستستخدم «لأنّ»</span>
+                <button onClick={() => { setSwitchChoice(null); setShowSwitchGate(false); }} className="text-emerald-600 hover:underline">تخطٍ</button>
+              </div>
+            </div>
+          )}
 
               {/* Current Exercise Subject Context */}
           {currentExercise ? (
