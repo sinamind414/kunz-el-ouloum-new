@@ -198,6 +198,30 @@ export function evaluateStudentProduction(
         }
         break;
       }
+      case 'calc_c1':
+        passed = /(chargaff|%A|قانون|chargaff)/i.test(text) && text.length > 15;
+        feedback = passed ? 'القانون بالحروف مذكور.' : `تنبيه: « ${compass} » - اكتب القانون أولا.`;
+        break;
+      case 'calc_c2':
+        passed = /(بالتعويض|تعويض|=)/.test(text) && /=/.test(text);
+        feedback = passed ? 'التعويض حاضر.' : `تنبيه: « ${compass} » - عوّض خطوة بخطوة.`;
+        break;
+      case 'calc_c3':
+        passed = /%/.test(text) && /(ومنه|النتيجة|=)/.test(text) && bare.length===0;
+        feedback = passed ? 'النتيجة بوحدتها.' : `تنبيه: « ${compass} » - لا تنس % ومع «ومنه».`;
+        break;
+      case 'ped_c1':
+        passed = /(أبوان سليمان|I1.*I2|سليمان.*مصاب)/.test(text);
+        feedback = passed ? 'حدث السيادة مذكور.' : `تنبيه: « ${compass} » - اذكر أبوان سليمان ← مصاب.`;
+        break;
+      case 'ped_c2':
+        passed = /(بنت مصابة|ابن سليم|موقع|مرتبط بـ X)/.test(text);
+        feedback = passed ? 'حدث الموقع مذكور.' : `تنبيه: « ${compass} » - اذكر بنت/ابن للموقع.`;
+        break;
+      case 'ped_c3':
+        passed = /(متنح|سائد).*(جسمي|مرتبط)/.test(text) && /Aa|aa|AA/.test(text);
+        feedback = passed ? 'الحكمان + الأنماط.' : `تنبيه: « ${compass} » - الحكمان ثم الأنماط بالترميز.`;
+        break;
       default:
         passed = text.length > 40;
         feedback = passed ? 'معيار مستوفى.' : `يرجى مراجعة المعيار: « ${compass} ».`;
