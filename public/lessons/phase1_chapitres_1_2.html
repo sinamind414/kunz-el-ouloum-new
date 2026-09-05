@@ -459,6 +459,23 @@
             font-size: 0.95rem;
             display: none;
         }
+    
+        /* === MIFTAH + Sommaire + Badge (v3.2 prototype phase1) === */
+        .sommaire{position:sticky;top:60px;z-index:999;background:#ffffffee;backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 1.2rem;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+        .sommaire::-webkit-scrollbar{display:none}
+        .sommaire a{white-space:nowrap;font-size:.82rem;font-weight:800;color:var(--text-muted);text-decoration:none;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-main);transition:all .15s}
+        .sommaire a:hover{border-color:var(--accent);color:var(--accent)}
+        .sommaire a.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .sommaire .sep{width:1px;background:var(--border);margin:0 4px;flex-shrink:0}
+        .miftah-encadre{background:#fffdf4;border:1px solid #f3e0b0;border-right:4px solid #c08a1f;border-radius:10px;padding:10px 13px;margin:10px 0;font-size:.88rem;line-height:1.65}
+        .miftah-encadre b{color:#7a5610}
+        .quiz-badge{display:none;margin-top:12px;padding:10px 14px;border-radius:10px;font-weight:800;text-align:center;font-size:.95rem;animation:fadeIn .25s ease}
+        .quiz-badge.show{display:block}
+        .quiz-badge.faible{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+        .quiz-badge.moyen{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+        .quiz-badge.mumtaz{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+        @media(max-width:768px){.sommaire{top:96px}}
+
     </style>
 </head>
 <body>
@@ -474,6 +491,20 @@
             <button class="ch-btn" onclick="showChapter('ch2', event)">🧬 الدرس 2 : الشفرة الوراثية وتنشيط الأحماض الأمينية</button>
         </div>
     </nav>
+
+    
+    <!-- Sommaire sticky (prototype v3.2) -->
+    <div class="sommaire" id="sommaire">
+        <a href="#ch1-step1" id="link-ch1-step1" onclick="scrollToStep('ch1-step1',event)">📖 1-1 وضعية</a>
+        <a href="#ch1-step2" id="link-ch1-step2" onclick="scrollToStep('ch1-step2',event)">1-2 تحليل</a>
+        <a href="#ch1-step3" id="link-ch1-step3" onclick="scrollToStep('ch1-step3',event)">1-3 مستكشف</a>
+        <a href="#ch1-step4" id="link-ch1-step4" onclick="scrollToStep('ch1-step4',event)">1-4 خلاصة + Quiz</a>
+        <span class="sep"></span>
+        <a href="#ch2-step1" id="link-ch2-step1" onclick="scrollToStep('ch2-step1',event)">🧬 2-1 إشكالية</a>
+        <a href="#ch2-step2" id="link-ch2-step2" onclick="scrollToStep('ch2-step2',event)">2-2 فك الشفرة</a>
+        <a href="#ch2-step3" id="link-ch2-step3" onclick="scrollToStep('ch2-step3',event)">2-3 تنشيط</a>
+        <a href="#ch2-step4" id="link-ch2-step4" onclick="scrollToStep('ch2-step4',event)">2-4 تقويم</a>
+    </div>
 
     <div class="container">
 
@@ -492,7 +523,7 @@
             </header>
 
             <!-- Step 1: Problématique -->
-            <section class="card">
+            <section class="card" id="ch1-step1">
                 <div class="section-title">
                     <span class="step-num">1</span>
                     <span>وضعية الانطلاق وبناء الإشكالية العلميـة</span>
@@ -505,7 +536,7 @@
             </section>
 
             <!-- Step 2: Document Analyse -->
-            <section class="card">
+            <section class="card" id="ch1-step2">
                 <div class="section-title">
                     <span class="step-num">2</span>
                     <span>التحليل المنهجي لتجربة التصوير الإشعاعي الذاتي (الأحماض الأمينية المشعة)</span>
@@ -544,6 +575,7 @@
 
                     <div class="doc-analysis">
                         <span class="method-tag">منهجية البكالوريا : الاستدلال العلمي</span>
+                        <div class="miftah-encadre">🔑 <b>مفتاح المنهجية:</b> البوابة 1 → <b>📄 ورقة</b> (وثيقة حاضرة) · البوابة 2 → <b>📷 صورة</b> (حلّل/صِف → <span class="ltr-seq" style="font-size:.8rem">1→2→4</span>) · السنّ 2: استخرج <b>رقم + وحدة + اتجاه</b> قبل أي تفسير</div>
                         <h4 style="margin: 8px 0; color: var(--primary);">لماذا استعمل العلماء الأحماض الأمينية المشعة تحديدًا؟</h4>
                         <ul style="list-style-type: none; padding-right: 0;">
                             <li style="margin-bottom: 10px;">• <strong>الأحماض الأمينية</strong> هي الوحدات البنائية الأساسية لتركيب البروتينات.</li>
@@ -557,7 +589,7 @@
             </section>
 
             <!-- Step 3: Interactive Cell Explorer -->
-            <section class="card">
+            <section class="card" id="ch1-step3">
                 <div class="section-title">
                     <span class="step-num">3</span>
                     <span>المستكشف التفاعلي لحركية البروتين داخل الخلية الإفرازية</span>
@@ -578,7 +610,7 @@
             </section>
 
             <!-- Step 4: Bilan & Quiz Ch1 -->
-            <section class="card">
+            <section class="card" id="ch1-step4">
                 <div class="section-title">
                     <span class="step-num">4</span>
                     <span>الخلاصة والتقويم الذاتي (الدرس 1)</span>
@@ -599,6 +631,7 @@
                         <button class="option-btn" onclick="checkCh1Answer(2, false)">ج) لأنها تحتوي على ثقوب نووية تسمح بخروج الـ <span class="ltr-seq">ADN</span>.</button>
                     </div>
                     <div class="feedback-box" id="c1q1-feedback"></div>
+                    <div class="quiz-badge" id="c1-badge"></div>
                 </div>
             </section>
         </div>
@@ -618,7 +651,7 @@
             </header>
 
             <!-- Step 1: Problématique -->
-            <section class="card">
+            <section class="card" id="ch2-step1">
                 <div class="section-title">
                     <span class="step-num step-num-purple">1</span>
                     <span>الإشكالية الرياضية والبيولوجية للشفرة الوراثية</span>
@@ -636,11 +669,12 @@
             </section>
 
             <!-- Step 2: Interactive Decoder -->
-            <section class="card">
+            <section class="card" id="ch2-step2">
                 <div class="section-title">
                     <span class="step-num step-num-purple">2</span>
                     <span>فك شفرة البكالوريا التفاعلي (جدول الشفرة الوراثية)</span>
                 </div>
+                                        <div class="miftah-encadre">🔑 <b>تذكير منهجي:</b> البوابة 1 → <b>📄 ورقة</b> · البوابة 2 → <b>🎬 فيلم</b> (فسّر/علل → <span class="ltr-seq" style="font-size:.8rem">1→2→3→4</span>) · السنّ 3: <b>لأنّ</b> مسبوقة بمعطى من الوثيقة</div>
                 <p>اختر القواعد الآزوتية الثلاث (الرامزة على الـ <span class="ltr-seq">ARNm</span>) لاكتشاف الحمض الأميني الموافق ومعنى الرامزات الخاصة :</p>
                 
                 <div class="interactive-box" style="background: #0f172a;">
@@ -683,7 +717,7 @@
             </section>
 
             <!-- Step 3: Activation des Acides Aminés -->
-            <section class="card">
+            <section class="card" id="ch2-step3">
                 <div class="section-title">
                     <span class="step-num step-num-purple">3</span>
                     <span>آلية تنشيط الأحماض الأمينية (المرحلة التحضيرية للترجمة)</span>
@@ -702,6 +736,7 @@
                     </div>
 
                     <div class="doc-analysis">
+                                                <div class="miftah-encadre">🔑 <b>مفتاح المنهجية:</b> البوابة 1 → <b>📄 ورقة</b> · البوابة 2 → <b>🎬 فيلم</b> (فسّر/علل → <span class="ltr-seq" style="font-size:.8rem">1→2→3→4</span>) · السنّ 3: <b>لأنّ</b> مسبوقة بمعطى من الوثيقة</div>
                         <span class="method-tag" style="background: #f3e8ff; color: #6b21a8;">خطوات التنشيط في البكالوريا</span>
                         <p style="margin-top: 5px;">1. يتوضع كل من الحمض الأميني والـ <span class="ltr-seq">ARNt</span> في المواقع الفعالة النوعية لإنزيم التنشيط.</p>
                         <p>2. يتم إماتة جزيئة الـ <span class="ltr-seq">ATP</span> لربط الحمض الأميني بالـ <span class="ltr-seq">ARNt</span> برابطة إسترية غنية بالطاقة.</p>
@@ -711,7 +746,7 @@
             </section>
 
             <!-- Step 4: Quiz Ch2 -->
-            <section class="card">
+            <section class="card" id="ch2-step4">
                 <div class="section-title">
                     <span class="step-num step-num-purple">4</span>
                     <span>تقويم الدرس 2 : أسئلة البكالوريا المتكررة</span>
@@ -735,6 +770,7 @@
                         <button class="option-btn" onclick="checkCh2Answer(2, 2, false)">ج) لا يتحلل جزيء الـ <span class="ltr-seq">ATP</span> أبداً.</button>
                     </div>
                     <div class="feedback-box" id="c2q2-feedback"></div>
+                    <div class="quiz-badge" id="c2-badge"></div>
                 </div>
             </section>
         </div>
@@ -854,6 +890,67 @@
                 }
             }
         }
+    
+        // === v3.2 prototype: sommaire + badges faible/moyen/mumtaz ===
+        let c1Score = null, c2Correct = 0, c2Answered = 0;
+        function scrollToStep(id, evt){
+            if(evt) evt.preventDefault();
+            const el = document.getElementById(id);
+            if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 110, behavior:'smooth'});
+            document.querySelectorAll('.sommaire a').forEach(a=>a.classList.remove('active'));
+            const link = document.getElementById('link-'+id);
+            if(link) link.classList.add('active');
+            const ch = id.startsWith('ch1') ? 'ch1' : 'ch2';
+            if(!document.getElementById(ch).classList.contains('active')){
+                document.querySelectorAll('.chapter-view').forEach(el=>el.classList.remove('active'));
+                document.getElementById(ch).classList.add('active');
+                document.querySelectorAll('.ch-btn').forEach(b=>b.classList.remove('active'));
+                const btnIdx = ch==='ch1'?0:1;
+                document.querySelectorAll('.ch-btn')[btnIdx].classList.add('active');
+            }
+        }
+        function updateBadgeC1(isCorrect){
+            c1Score = isCorrect ? 100 : 0;
+            const badge = document.getElementById('c1-badge');
+            badge.classList.add('show');
+            if(c1Score===100){ badge.className='quiz-badge show mumtaz'; badge.innerHTML='ممتاز (fort) — 100% · <span style="font-weight:600">يمكنك المرور إلى الدرس 2 أو إعادة التحدي</span> <a href="#ch1-step2" onclick="scrollToStep(\'ch1-step2\',event)" style="color:#166534;text-decoration:underline">مراجعة التحليل</a>'; }
+            else { badge.className='quiz-badge show faible'; badge.innerHTML='ضعيف (faible) — 0% · راجع السنّ 2 (الريبوزومات على REG) ثم أعد المحاولة'; }
+        }
+        function updateBadgeC2(isCorrect){
+            c2Answered++; if(isCorrect) c2Correct++;
+            if(c2Answered<2) return;
+            const score = Math.round(c2Correct/2*100);
+            const badge = document.getElementById('c2-badge');
+            badge.classList.add('show');
+            if(score===100){ badge.className='quiz-badge show mumtaz'; badge.textContent='ممتاز (fort) — 100% · جاهز للتدريب المنهجي : حلّل وثيقة الشفرة'; }
+            else if(score===50){ badge.className='quiz-badge show moyen'; badge.textContent='متوسط (moyen) — 50% · راجع رامزات التوقف (UAA/UAG/UGA) ثم أعد'; }
+            else { badge.className='quiz-badge show faible'; badge.textContent='ضعيف (faible) — 0% · راجع الإشكالية الرياضية 4^3=64'; }
+        }
+        (function(){
+            const _origCheckCh1 = window.checkCh1Answer;
+            window.checkCh1Answer = function(optIdx, isCorrect){
+                _origCheckCh1(optIdx, isCorrect);
+                updateBadgeC1(isCorrect);
+            };
+            const _origCheckCh2 = window.checkCh2Answer;
+            window.checkCh2Answer = function(qIdx, optIdx, isCorrect){
+                _origCheckCh2(qIdx, optIdx, isCorrect);
+                updateBadgeC2(isCorrect);
+            };
+        })();
+        const observer = new IntersectionObserver((entries)=>{
+            entries.forEach(e=>{
+                if(e.isIntersecting){
+                    document.querySelectorAll('.sommaire a').forEach(a=>a.classList.remove('active'));
+                    const link = document.getElementById('link-'+e.target.id);
+                    if(link) link.classList.add('active');
+                }
+            });
+        }, {rootMargin:'-120px 0px -70% 0px', threshold:0});
+        window.addEventListener('DOMContentLoaded', ()=>{
+            document.querySelectorAll('section.card[id]').forEach(s=>observer.observe(s));
+        });
+
     </script>
 </body>
 </html>
