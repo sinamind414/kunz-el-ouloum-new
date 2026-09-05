@@ -36,6 +36,8 @@ const swAr = (s: Switch): string => (s === 'open' ? 'مفتوح' : 'مغلق');
 
 // m2 · seuil d'automatisation unique (code + texte d'aide)
 const AUTOMATION_THRESHOLD = 90;
+const icmLabel = (icm: number | null): string => icm === null ? '' : icm < 60 ? 'ضعيف' : icm < 90 ? 'متوسط' : 'ممتاز';
+const icmLabelFr = (icm: number | null): string => icm === null ? '' : icm < 60 ? 'faible' : icm < 90 ? 'moyen' : 'fort';
 
 const REVIEW_GAPS = [1, 3, 7, 16, 30];
 
@@ -206,7 +208,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
       setDrillActive(false);
       const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
       const unlocked = recordDrillResult(score);
-      setExtensionUnlocked(unlocked || isExtensionUnlocked());
+      setExtensionUnlocked(unlocked.unlocked || isExtensionUnlocked());
       return;
     }
     const id = setInterval(()=> setDrillSec(s=> s-1), 1000);
@@ -422,6 +424,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             <div className="text-center px-3 border-l border-white/20">
               <span className="block text-[11px] text-white/80 font-bold">مؤشر ICM الحالي</span>
               <span className="text-xl md:text-2xl font-black text-[#fed65b]">{lastIcm === null ? '—' : `${lastIcm}%`}</span>
+              {lastIcm !== null && <span className="block text-[10px] font-black leading-none mt-0.5 text-white">{icmLabel(lastIcm)} <span className="opacity-70 font-normal latin">({icmLabelFr(lastIcm)})</span></span>}
             </div>
             <div className="text-center px-3">
               <span className="block text-[11px] text-white/80 font-bold">المرحلة النشطة</span>
@@ -635,7 +638,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               <button onClick={()=>{
                 const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
                 const unlocked = recordDrillResult(score);
-                setExtensionUnlocked(unlocked || isExtensionUnlocked());
+                setExtensionUnlocked(unlocked.unlocked || isExtensionUnlocked());
                 setDrillActive(false);
               }} className="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm">صحّح — {Object.keys(drillAnswers).length}/12</button>
             </div>
@@ -1215,7 +1218,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                       : 'bg-red-500 text-white'
                   }`}>
                     <span className="text-2xl md:text-3xl block leading-none">{scoreReport.icm}%</span>
-                    <span className="text-[10px] uppercase">معدل ICM</span>
+                    <span className="text-[10px] uppercase">معدل ICM · {icmLabel(scoreReport.icm)} <span className="latin opacity-80">({icmLabelFr(scoreReport.icm)})</span></span>
                   </div>
                 </div>
               </div>
