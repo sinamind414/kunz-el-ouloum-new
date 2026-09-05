@@ -7,48 +7,51 @@ export default function MiftahCard() {
   return (
     <div dir="rtl" lang="ar" className="miftah-root">
       <style>{`
-        .miftah-root{ --gold:#c8962e; --gold-l:#fbf3e2; --gold-d:#8a6116; --teal:#0f6b6b; --teal-l:#e5f3f3; --red:#b23a3a; --red-l:#fdecec; --ink:#1f2328; --mute:#5b6470; --line:#e3e6ea; --bg:#fff; font-family:"Noto Naskh Arabic","Cairo",serif; color:var(--ink); line-height:1.75; font-size:14.5px }
-        .miftah-root .latin{font-family:"Inter","Cairo",sans-serif; direction:ltr; unicode-bidi:isolate}
-        .miftah-page{background:var(--bg); max-width:960px; margin:18px auto; padding:28px 34px; border-radius:14px; box-shadow:0 2px 14px rgba(0,0,0,.06)}
-        .miftah-root h1{font-family:"Cairo","Noto Naskh Arabic",sans-serif; margin:0; font-size:30px; font-weight:800; color:var(--gold-d)}
-        .miftah-root h2{font-family:"Cairo","Noto Naskh Arabic",sans-serif; margin:0; font-size:21px; font-weight:800; color:var(--teal); border-bottom:2px solid var(--teal); padding-bottom:6px; margin:22px 0 12px}
-        .miftah-root h3{font-family:"Cairo","Noto Naskh Arabic",sans-serif; margin:0; font-size:16.5px; font-weight:800; color:var(--ink); margin:18px 0 8px; display:flex; align-items:center; gap:8px}
-        .miftah-root h3 .num{display:inline-flex; align-items:center; justify-content:center; width:26px;height:26px;border-radius:50%; background:var(--gold); color:#fff; font-size:14px}
+.miftah-root{ --gold:#c08a1f; --gold-l:#fdf6e3; --gold-d:#7a5610; --gold-mid:#ecd9a8; --teal:#0e6b6b; --teal-l:#eaf4f4; --teal-mid:#148080; --teal-d:#0a4f4f; --red:#b91c1c; --red-l:#fef2f2; --ink:#151a21; --mute:#475569; --line:#e2e8f0; --bg:#ffffff; --shadow:0 4px 24px rgba(14,107,107,.08),0 1px 4px rgba(0,0,0,.05),0 0 0 1px rgba(226,232,240,.9); --radius:16px; font-family:"Noto Naskh Arabic","Cairo",serif; color:var(--ink); line-height:1.85; font-size:15px; -webkit-font-smoothing:antialiased }
+        .miftah-root .latin{font-family:"Inter","Cairo",sans-serif; direction:ltr; unicode-bidi:isolate; font-feature-settings:"tnum" 1}
+        .miftah-page{background:var(--bg); max-width:970px; margin:20px auto; padding:32px 36px; border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid rgba(226,232,240,.6)}
+        .miftah-root h1{font-family:"Cairo","Noto Naskh Arabic",sans-serif; margin:0; font-size:31.5px; font-weight:800; color:var(--gold-d); line-height:1.25; letter-spacing:-.015em}
+        .miftah-root h2{font-family:"Cairo","Noto Naskh Arabic",sans-serif; margin:0; font-size:21.5px; font-weight:800; color:var(--teal); border-bottom:2.5px solid var(--teal); padding-bottom:7px; margin:24px 0 14px}
+        .miftah-root h3{font-family:"Cairo","Noto Naskh Arabic",sans-serif; margin:0; font-size:16.8px; font-weight:800; color:var(--ink); margin:20px 0 9px; display:flex; align-items:center; gap:9px; line-height:1.4}
+        .miftah-root h3 .num{display:inline-flex; align-items:center; justify-content:center; width:27px;height:27px;border-radius:50%; background:linear-gradient(135deg,var(--gold) 0%,var(--gold-d) 100%); color:#fff; font-size:13px; font-weight:800; box-shadow:0 2px 6px rgba(192,138,31,.32)}
         .miftah-brand{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:3px solid var(--gold); padding-bottom:14px}
-        .miftah-brand .app{font-size:13px; color:var(--mute)}
-        .miftah-tag{color:var(--mute); font-size:14px; margin-top:4px}
-        .miftah-teacher{background:#f7f8fa; border:1px dashed #c9cfd6; border-radius:10px; padding:10px 14px; font-size:12.5px; color:var(--mute); margin:14px 0}
-        .miftah-root table{width:100%; border-collapse:collapse; margin:8px 0 14px; font-size:14px}
-        .miftah-root th,.miftah-root td{border:1px solid var(--line); padding:8px 10px; vertical-align:top; text-align:right}
-        .miftah-root th{background:var(--teal-l); color:var(--teal); font-family:"Cairo",sans-serif; font-weight:800}
-        .miftah-root td.c{text-align:center; font-weight:800; color:var(--gold-d); font-family:"Cairo",sans-serif; white-space:nowrap}
-        .miftah-root td.corr{background:var(--red-l); font-size:13.3px}
-        .miftah-root th.corr{background:#f6dada; color:var(--red)}
-        .miftah-box{border-radius:10px; padding:12px 16px; margin:10px 0}
-        .miftah-gold{background:var(--gold-l); border:1px solid #ecd9ad}
-        .miftah-teal{background:var(--teal-l); border:1px solid #bcdcdc}
-        .miftah-red{background:var(--red-l); border:1px solid #f0c9c9}
-        .miftah-corr-note{background:var(--red-l); border-right:4px solid var(--red); padding:8px 12px; border-radius:6px; font-size:13.3px; margin:8px 0}
-        .miftah-gate{background:#fbfbfc; border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:10px 0}
-        .miftah-gate .q{font-family:"Cairo",sans-serif; font-weight:800; font-size:16px; color:var(--gold-d)}
-        .miftah-gate .opt{margin:6px 22px 6px 0; padding:6px 10px; border-radius:8px}
-        .miftah-gate .opt.a{background:var(--gold-l)} .miftah-gate .opt.b{background:var(--teal-l)}
-        .miftah-path{font-family:"Inter",sans-serif; direction:ltr; unicode-bidi:isolate; background:#fff; border:1px solid var(--line); border-radius:6px; padding:1px 8px; font-weight:600; color:var(--teal); white-space:nowrap}
-        .miftah-chain{display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center; background:#fbfbfc; border:1px solid var(--line); border-radius:10px; padding:12px; margin:10px 0}
-        .miftah-chain .node{background:#fff; border:2px solid var(--teal); border-radius:8px; padding:4px 10px; font-family:"Cairo",sans-serif; font-weight:800; color:var(--teal); font-size:13.5px}
-        .miftah-chain .node.z{border-color:var(--gold); color:var(--gold-d)} .miftah-chain .node.s{border-color:var(--red); color:var(--red)}
-        .miftah-chain .ar{color:var(--mute); font-size:18px}
-        .miftah-sent{margin:6px 0; padding:8px 12px; background:#fff; border:1px solid var(--line); border-radius:8px; border-right:4px solid var(--gold)}
+        .miftah-brand .app{font-size:12.5px; color:var(--mute); line-height:1.6}
+        .miftah-tag{color:var(--mute); font-size:13.8px; margin-top:3px}
+        .miftah-teacher{background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:11px 14px; font-size:12.3px; color:var(--mute); margin:14px 0; line-height:1.6}
+        .miftah-root table{width:100%; border-collapse:separate; border-spacing:0; margin:10px 0 16px; font-size:14px; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+        .miftah-root th,.miftah-root td{border-bottom:1px solid var(--line); border-left:1px solid var(--line); padding:9px 11px; vertical-align:top; text-align:right}
+        .miftah-root th{background:#eef6f6; color:var(--teal); font-family:"Cairo",sans-serif; font-weight:800; font-size:13px}
+        .miftah-root th:last-child,.miftah-root td:last-child{border-left:none}
+        .miftah-root tr:last-child td{border-bottom:none}
+        .miftah-root td.c{text-align:center; font-weight:800; color:var(--gold-d); font-family:"Cairo",sans-serif; white-space:nowrap; background:#fffdf4}
+        .miftah-root td.corr{background:var(--red-l); font-size:13px; line-height:1.6}
+        .miftah-root th.corr{background:#fee2e2; color:var(--red)}
+        .miftah-box{border-radius:12px; padding:13px 16px; margin:11px 0; line-height:1.7}
+        .miftah-gold{background:var(--gold-l); border:1px solid var(--gold-mid)}
+        .miftah-teal{background:var(--teal-l); border:1px solid #c2e0e0}
+        .miftah-red{background:var(--red-l); border:1px solid #fecaca}
+        .miftah-corr-note{background:var(--red-l); border-right:4px solid var(--red); padding:9px 13px; border-radius:8px; font-size:13px; margin:9px 0; line-height:1.6}
+        .miftah-gate{background:#fbfcfd; border:1px solid var(--line); border-radius:12px; padding:15px 18px; margin:11px 0}
+        .miftah-gate .q{font-family:"Cairo",sans-serif; font-weight:800; font-size:16px; color:var(--gold-d); margin-bottom:4px}
+        .miftah-gate .opt{margin:7px 22px 7px 0; padding:7px 11px; border-radius:8px; font-size:13.8px; line-height:1.5}
+        .miftah-gate .opt.a{background:var(--gold-l); border:1px solid #f0d9a8} .miftah-gate .opt.b{background:var(--teal-l); border:1px solid #b9d9d9}
+        .miftah-path{font-family:"Inter",sans-serif; direction:ltr; unicode-bidi:isolate; background:#fff; border:1px solid var(--line); border-radius:6px; padding:1px 7px; font-weight:600; color:var(--teal); white-space:nowrap; font-size:12.5px}
+        .miftah-chain{display:flex; align-items:center; gap:7px; flex-wrap:wrap; justify-content:center; background:#fbfcfd; border:1px solid var(--line); border-radius:12px; padding:13px; margin:11px 0}
+        .miftah-chain .node{background:#fff; border:2px solid var(--teal); border-radius:9px; padding:4px 11px; font-family:"Cairo",sans-serif; font-weight:800; color:var(--teal); font-size:13.5px; box-shadow:0 1px 3px rgba(14,107,107,.08)}
+        .miftah-chain .node.z{border-color:var(--gold); color:var(--gold-d); background:#fffdf4} .miftah-chain .node.s{border-color:var(--red); color:var(--red); background:#fef2f2}
+        .miftah-chain .ar{color:var(--mute); font-size:18px; font-weight:300}
+        .miftah-sent{margin:7px 0; padding:9px 13px; background:#fff; border:1px solid var(--line); border-radius:9px; border-right:4px solid var(--gold); font-size:13.8px}
         .miftah-check{display:flex; flex-wrap:wrap; gap:8px}
-        .miftah-check div{flex:1 1 200px; background:var(--gold-l); border-radius:8px; padding:8px 12px; font-size:13.5px}
-        .miftah-check b{color:var(--gold-d); font-family:"Cairo",sans-serif; font-size:16px}
-        .miftah-key-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin:10px 0}
+        .miftah-check div{flex:1 1 200px; background:var(--gold-l); border:1px solid #f3e0b0; border-radius:10px; padding:9px 12px; font-size:13.3px; line-height:1.5}
+        .miftah-check b{color:var(--gold-d); font-family:"Cairo",sans-serif; font-size:15px}
+        .miftah-key-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin:12px 0}
+        .miftah-key-wrap svg{flex:0 0 auto; filter:drop-shadow(0 2px 8px rgba(192,138,31,.18))}
         .miftah-teeth{display:flex; gap:8px; flex-wrap:wrap}
-        .miftah-teeth span{background:var(--gold); color:#fff; border-radius:8px; padding:6px 12px; font-family:"Cairo",sans-serif; font-weight:800}
-        .miftah-card-label{display:inline-block; background:var(--teal); color:#fff; border-radius:999px; padding:2px 14px; font-family:"Cairo",sans-serif; font-weight:800; font-size:13px; margin-bottom:6px}
-        .miftah-card-label.plus{background:var(--gold-d)}
-        .miftah-root footer{color:var(--mute); font-size:12px; text-align:center; margin:20px 0 6px}
-        @media print{ .miftah-page{box-shadow:none; margin:0; border-radius:0; max-width:none; padding:12mm 12mm} .miftah-teacher{display:none} .miftah-break{page-break-before:always} }
+        .miftah-teeth span{background:linear-gradient(135deg,var(--gold) 0%,var(--gold-d) 100%); color:#fff; border-radius:9px; padding:6px 13px; font-family:"Cairo",sans-serif; font-weight:800; box-shadow:0 2px 6px rgba(192,138,31,.22)}
+        .miftah-card-label{display:inline-block; background:var(--teal); color:#fff; border-radius:999px; padding:3px 14px; font-family:"Cairo",sans-serif; font-weight:800; font-size:12.5px; margin-bottom:7px}
+        .miftah-card-label.plus{background:linear-gradient(135deg,var(--gold) 0%,var(--gold-d) 100%)}
+        .miftah-root footer{color:var(--mute); font-size:11.5px; text-align:center; margin:22px 0 6px}
+        @media print{ .miftah-page{box-shadow:none; margin:0; border-radius:0; max-width:none; padding:10mm 11mm; border:none} .miftah-teacher{display:none} .miftah-break{page-break-before:always; break-before:page} .miftah-root{font-size:10.7px; line-height:1.62} .miftah-root h1{font-size:22.5px} .miftah-root h2{font-size:14.8px; margin:13px 0 8px} .miftah-root h3{font-size:12.8px} }
       `}</style>
 
       {/* RECTO */}
