@@ -1,0 +1,48 @@
+# ============================================================
+# docker-compose.yml — boussole + PostgreSQL (lot échelle)
+# Démarrage multi-instances (plusieurs `npm start` derrière nginx)
+# avec une vraie base partagée. Sans ce fichier, l'app reste
+# monobloc sur SQLite (zéro service externe) — les deux chemins
+# sont équivalents (même contrat d'API, parité testée).
+#
+#   docker compose up -d --build
+#   docker compose logs -f app
+# ============================================================
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: boussole
+      POSTGRES_PASSWORD: change-me-strong
+      POSTGRES_DB: boussole
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U boussole -d boussole']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://boussole:change-me-strong@db:5432/boussole
+      # ⚠️ À CHANGER en production (sinon les JWT sont forgeables) :
+      JWT_SECRET: change-moi-64-caracteres-aleatoires
+      # Compte enseignant amorcé au premier démarrage (PUIS MODIFIER !) :
+      ADMIN_EMAIL: maitre@ecole.dz
+      ADMIN_PASSWORD: change-moi-strong-123
+      # Derrière nginx : l'IP réelle des élèves (limiteur par compte) :
+      TRUST_PROXY: '1'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

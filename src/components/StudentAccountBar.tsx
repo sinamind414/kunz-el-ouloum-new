@@ -10,7 +10,7 @@ interface Props {
 type Mode = 'menu' | 'forgot' | 'reset';
 
 export default function StudentAccountBar({ onOpenTeacher }: Props) {
-  const [student, setStudent] = useState<{ name: string; email: string } | null>(null);
+  const [student, setStudent] = useState<{ id: string; name: string; email: string } | null>(null);
   const [online, setOnline] = useState<boolean>(navigator.onLine);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('menu');

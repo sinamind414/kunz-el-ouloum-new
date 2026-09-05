@@ -4,55 +4,14 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { openStore, SqliteStore } from "./server/store";
+import { PostgresStore, migrateJsonFilesToPostgres } from "./server/store.pg";
+import { makeRateLimiter } from "./server/rateLimit";
+import type { ProductionEntry, ActivityEntry, DashboardStudentRow, Student, Teacher } from "./server/store";
 
 dotenv.config();
 
-type Student = {
-  id: string;
-  email: string;
-  passwordHash: string;
-  name: string;
-  createdAt: string;
-};
-
-type ProductionEntry = {
-  id: string;
-  studentId: string;
-  verbId: string;
-  theme: string;
-  stage: number;
-  text: string;
-  icm: number;
-  criteriaSummary: { label: string; passed: boolean }[];
-  errorTags: string[];
-  durationSec?: number;
-  createdAt: string;
-};
-
-type ActivityEntry = {
-  id: string;
-  studentId: string;
-  type: 'quiz' | 'mission' | 'drill' | 'production';
-  payload: Record<string, unknown>;
-  createdAt: string;
-};
-
-type PasswordResetCode = {
-  code: string;
-  studentId: string;
-  expiresAt: string;
-  used: boolean;
-};
-
-type Teacher = {
-  email: string;
-  passwordHash: string;
-  name: string;
-};
-
-const DB_FILE = process.env.KUNZ_DB_FILE || path.join(process.cwd(), "data", "students.json");
-const TEACHER_DB_FILE = process.env.KUNZ_TEACHER_DB_FILE || path.join(process.cwd(), "data", "teachers.json");
+const DB_FILE = process.env.KUNZ_DB_FILE || path.join(process.cwd(), "data", "students.db");
 // Sécurité : pas de secret par défaut. Le serveur refuse de démarrer sans JWT_SECRET explicite.
 if (!process.env.JWT_SECRET) {
   console.error("REFUS DE DÉMARRAGE : JWT_SECRET manquant. Définissez-le dans .env (ex. openssl rand -hex 32).");
@@ -60,54 +19,57 @@ if (!process.env.JWT_SECRET) {
 }
 const JWT_SECRET = process.env.JWT_SECRET;
 
-function readDb(): { students: Student[]; entries: ProductionEntry[]; activities: ActivityEntry[]; resetCodes: PasswordResetCode[] } {
-  try {
-    if (!existsSync(DB_FILE)) return { students: [], entries: [], activities: [], resetCodes: [] };
-    return JSON.parse(readFileSync(DB_FILE, "utf-8"));
-  } catch {
-    return { students: [], entries: [], activities: [], resetCodes: [] };
-  }
-}
+// ── Limiteurs (fenêtre glissante, en mémoire — voir server/rateLimit.ts) ──
+// Par IP : anti-spam (généreux — une école partage souvent 1 IP publique).
+const IP_LIMIT = 60;
+// Par COMPTE : 5 échecs / 15 min, remis à zéro après une connexion réussie
+// (une école derrière un NAT n'est jamais bloquée en bloc).
+const ACCOUNT_LIMIT = 5;
+const WINDOW_MS = 15 * 60 * 1000;
+const ipLimiter = makeRateLimiter(IP_LIMIT, WINDOW_MS);
+const loginAccountLimiter = makeRateLimiter(ACCOUNT_LIMIT, WINDOW_MS);
 
-function writeDb(data: { students: Student[]; entries: ProductionEntry[]; activities: ActivityEntry[]; resetCodes: PasswordResetCode[] }) {
-  const dir = path.dirname(DB_FILE);
-  if (!existsSync(dir)) {
-    import("fs").then((fs) => fs.mkdirSync(dir, { recursive: true }));
-  }
-  writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+// ── Cache du tableau de bord (30 s, invalidé à chaque écriture) ──
+const DASH_TTL_MS = 30_000;
+let dashCache: { at: number; data: DashboardStudentRow[] } | null = null;
+async function dashboardRows(store: Store): Promise<DashboardStudentRow[]> {
+  const now = Date.now();
+  if (dashCache && now - dashCache.at < DASH_TTL_MS) return dashCache.data;
+  dashCache = { at: now, data: await store.dashboardRows() };
+  return dashCache.data;
 }
+function invalidateDashboard(): void { dashCache = null; }
 
-function readTeachers(): Teacher[] {
-  try {
-    if (!existsSync(TEACHER_DB_FILE)) return [];
-    return JSON.parse(readFileSync(TEACHER_DB_FILE, "utf-8"));
-  } catch {
-    return [];
+// ── Backend de persistance : PostgreSQL si DATABASE_URL, sinon SQLite ──
+export type Store = SqliteStore | PostgresStore;
+
+/** Ouvre le backend ; migre les JSON hérités (v1) si le backend est vide. */
+async function selectStore(): Promise<Store> {
+  const url = process.env.DATABASE_URL || process.env.KUNZ_DB_URL;
+  const studentsJson = path.join(process.cwd(), "data", "students.json");
+  const teachersJson = path.join(process.cwd(), "data", "teachers.json");
+  if (url) {
+    console.log(`[store] backend PostgreSQL : ${url.replace(/:[^:@]+@/, ":***@")}`);
+    const pg = new PostgresStore(url);
+    await pg.ensureReady();
+    // Migration JSON → PG (idempotente, uniquement si base vide).
+    if (await migrateJsonFilesToPostgres(pg, studentsJson, teachersJson)) {
+      console.log("[store] JSON migré vers PostgreSQL (élèves/productions/activités/enseignants)");
+    }
+    return pg;
   }
-}
-
-function writeTeachers(teachers: Teacher[]) {
-  const dir = path.dirname(TEACHER_DB_FILE);
-  if (!existsSync(dir)) {
-    import("fs").then((fs) => fs.mkdirSync(dir, { recursive: true }));
-  }
-  writeFileSync(TEACHER_DB_FILE, JSON.stringify(teachers, null, 2), "utf-8");
-}
-
-function ensureTeacher() {
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-  if (!email || !password) return;
-  const teachers = readTeachers();
-  if (teachers.find((t) => t.email === email)) return;
-  const hash = bcrypt.hashSync(password, 10);
-  teachers.push({ email, passwordHash: hash, name: email.split("@")[0] });
-  writeTeachers(teachers);
+  console.log("[store] backend SQLite (aucune DATABASE_URL)");
+  return openStore(process.env.KUNZ_DB_FILE);
 }
 
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
+
+  // Derrière nginx/Caddy : TRUST_PROXY=1 → req.ip = IP réelle de l'élève.
+  if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1);
+
+  const store = await selectStore();
 
   app.use(express.json());
 
@@ -124,24 +86,22 @@ async function startServer() {
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
+      if (!ipLimiter.hit(req.ip || "unknown")) return res.status(429).json({ error: "too_many_attempts" });
       const { email, password, name } = req.body;
       if (!email || !password || !name) {
         return res.status(400).json({ error: "missing_fields" });
       }
-      const db = readDb();
-      if (db.students.find((s) => s.email === email)) {
+      if (await store.findStudentByEmail(email)) {
         return res.status(409).json({ error: "email_exists" });
       }
       const passwordHash = await bcrypt.hash(password, 10);
-      const student: Student = {
-        id: `stu_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      const student = await store.createStudent(
+        `stu_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
         email,
         passwordHash,
         name,
-        createdAt: new Date().toISOString(),
-      };
-      db.students.push(student);
-      writeDb(db);
+      );
+      invalidateDashboard();
       const token = jwt.sign({ studentId: student.id, email: student.email }, JWT_SECRET, { expiresIn: "7d" });
       res.status(201).json({ token, student: { id: student.id, email: student.email, name: student.name } });
     } catch (e) {
@@ -152,11 +112,14 @@ async function startServer() {
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
-      const db = readDb();
-      const student = db.students.find((s) => s.email === email);
+      if (!ipLimiter.hit(req.ip || "unknown") || !loginAccountLimiter.hit(String(email || ""))) {
+        return res.status(429).json({ error: "too_many_attempts" });
+      }
+      const student = await store.findStudentByEmail(email);
       if (!student || !(await bcrypt.compare(password, student.passwordHash))) {
         return res.status(401).json({ error: "invalid_credentials" });
       }
+      loginAccountLimiter.reset(String(email)); // succès → compteur remis à zéro
       const token = jwt.sign({ studentId: student.id, email: student.email }, JWT_SECRET, { expiresIn: "7d" });
       res.json({ token, student: { id: student.id, email: student.email, name: student.name } });
     } catch {
@@ -177,14 +140,13 @@ async function startServer() {
     }
   }
 
-  app.get("/api/auth/me", authMiddleware, (req: Request, res: Response) => {
-    const db = readDb();
-    const student = db.students.find((s) => s.id === (req as any).studentId);
+  app.get("/api/auth/me", authMiddleware, async (req: Request, res: Response) => {
+    const student = await store.findStudentById((req as any).studentId);
     if (!student) return res.status(404).json({ error: "not_found" });
     res.json({ student: { id: student.id, email: student.email, name: student.name } });
   });
 
-  app.post("/api/student/sync", authMiddleware, (req: Request, res: Response) => {
+  app.post("/api/student/sync", authMiddleware, async (req: Request, res: Response) => {
     try {
       const studentId = (req as any).studentId;
       const body = req.body || {};
@@ -193,35 +155,19 @@ async function startServer() {
       if ((!Array.isArray(entries) || entries.length === 0) && (!Array.isArray(events) || events.length === 0)) {
         return res.status(400).json({ error: "invalid_payload" });
       }
-      const db = readDb();
-      let synced = 0;
-      for (const entry of entries.slice(0, 100)) {
-        const exists = db.entries.find((e) => e.id === entry.id && e.studentId === studentId);
-        if (!exists) {
-          db.entries.push({ ...entry, studentId });
-          synced++;
-        }
-      }
-      for (const ev of events.slice(0, 100)) {
-        const exists = db.activities.find((e) => e.id === ev.id && e.studentId === studentId);
-        if (!exists) {
-          db.activities.push({ ...ev, studentId });
-          synced++;
-        }
-      }
-      writeDb(db);
-      res.json({ ok: true, synced, total: db.entries.filter((e) => e.studentId === studentId).length, totalEvents: db.activities.filter((e) => e.studentId === studentId).length });
+      // ⚡ UNE transaction SQL pour tout le lot (upsert « si absent » — idempotent).
+      const addedEntries = await store.addEntriesIfNew(studentId, entries);
+      const addedEvents = await store.addActivitiesIfNew(studentId, events);
+      const synced = addedEntries + addedEvents;
+      if (synced > 0) invalidateDashboard();
+      res.json({ ok: true, synced, total: await store.countEntries(studentId), totalEvents: await store.countActivities(studentId) });
     } catch {
       res.status(500).json({ error: "server_error" });
     }
   });
 
-  app.get("/api/student/entries", authMiddleware, (req: Request, res: Response) => {
-    const db = readDb();
-    const entries = db.entries
-      .filter((e) => e.studentId === (req as any).studentId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    res.json({ entries });
+  app.get("/api/student/entries", authMiddleware, async (req: Request, res: Response) => {
+    res.json({ entries: await store.listEntries((req as any).studentId) });
   });
 
   function teacherAuth(req: Request, res: Response, next: express.NextFunction) {
@@ -240,11 +186,14 @@ async function startServer() {
   app.post("/api/teacher/login", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
-      const teachers = readTeachers();
-      const teacher = teachers.find((t) => t.email === email);
+      if (!ipLimiter.hit(req.ip || "unknown") || !loginAccountLimiter.hit(String(email || ""))) {
+        return res.status(429).json({ error: "too_many_attempts" });
+      }
+      const teacher = await store.findTeacherByEmail(email);
       if (!teacher || !(await bcrypt.compare(password, teacher.passwordHash))) {
         return res.status(401).json({ error: "invalid_credentials" });
       }
+      loginAccountLimiter.reset(String(email));
       const token = jwt.sign({ email: teacher.email, role: "teacher" }, JWT_SECRET, { expiresIn: "7d" });
       res.json({ token, teacher: { email: teacher.email, name: teacher.name } });
     } catch {
@@ -252,62 +201,26 @@ async function startServer() {
     }
   });
 
-  app.get("/api/teacher/dashboard", teacherAuth, (req: Request, res: Response) => {
-    const db = readDb();
-    const students = db.students.map((student) => {
-      const entries = db.entries.filter((e) => e.studentId === student.id);
-      const activities = db.activities.filter((e) => e.studentId === student.id);
-      const quizEvents = activities.filter((e) => e.type === 'quiz');
-      const missionEvents = activities.filter((e) => e.type === 'mission');
-      const avgQuizPercent = quizEvents.length ? Math.round(quizEvents.reduce((s, e) => s + (Number(e.payload?.percent) || 0), 0) / quizEvents.length) : null;
-      const avgIcm = entries.length ? Math.round(entries.reduce((s, e) => s + e.icm, 0) / entries.length) : 0;
-      const dominantErrors = entries.flatMap((e) => e.errorTags).reduce<Record<string, number>>((acc, tag) => {
-        acc[tag] = (acc[tag] || 0) + 1;
-        return acc;
-      }, {});
-      const topErrors = Object.entries(dominantErrors)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([tag, count]) => ({ tag, count }));
-      return {
-        id: student.id,
-        name: student.name,
-        email: student.email,
-        productions: entries.length,
-        avgIcm,
-        dominantErrors: topErrors,
-        lastProduction: entries.length ? entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt : null,
-        activities,
-        quizCount: quizEvents.length,
-        missionCount: missionEvents.length,
-        avgQuizPercent,
-      };
-    });
-    res.json({ students });
+  app.get("/api/teacher/dashboard", teacherAuth, async (req: Request, res: Response) => {
+    // Agrégats SQL + cache 30 s (invalidé à chaque écriture).
+    res.json({ students: await dashboardRows(store) });
   });
 
-  app.get("/api/teacher/entries", teacherAuth, (req: Request, res: Response) => {
+  app.get("/api/teacher/entries", teacherAuth, async (req: Request, res: Response) => {
     const studentId = req.query.studentId as string | undefined;
     if (!studentId) return res.status(400).json({ error: "missing_student_id" });
-    const db = readDb();
-    const entries = db.entries
-      .filter((e) => e.studentId === studentId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    res.json({ entries });
+    res.json({ entries: await store.listEntries(studentId) });
   });
 
-  app.post("/api/teacher/reset-password", teacherAuth, (req: Request, res: Response) => {
+  app.post("/api/teacher/reset-password", teacherAuth, async (req: Request, res: Response) => {
     try {
       const { studentId } = req.body;
       if (!studentId) return res.status(400).json({ error: "missing_student_id" });
-      const db = readDb();
-      const student = db.students.find((s) => s.id === studentId);
+      const student = await store.findStudentById(studentId);
       if (!student) return res.status(404).json({ error: "student_not_found" });
       const code = Math.random().toString(36).slice(2, 10).toUpperCase();
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-      db.resetCodes = db.resetCodes.filter((c) => c.studentId !== studentId);
-      db.resetCodes.push({ code, studentId, expiresAt, used: false });
-      writeDb(db);
+      await store.createResetCode(studentId, code, expiresAt);
       res.json({ code, expiresAt });
     } catch {
       res.status(500).json({ error: "server_error" });
@@ -318,65 +231,76 @@ async function startServer() {
     try {
       const { code, password } = req.body;
       if (!code || !password) return res.status(400).json({ error: "missing_fields" });
-      const db = readDb();
-      const resetCode = db.resetCodes.find((c) => c.code === code && !c.used);
+      const resetCode = await store.findUsableResetCode(code);
       if (!resetCode) return res.status(400).json({ error: "invalid_or_used_code" });
       if (new Date(resetCode.expiresAt).getTime() < Date.now()) {
-        db.resetCodes = db.resetCodes.filter((c) => c.code !== code);
-        writeDb(db);
+        await store.markResetUsed(code);
         return res.status(400).json({ error: "expired_code" });
       }
-      const student = db.students.find((s) => s.id === resetCode.studentId);
+      const student = await store.findStudentById(resetCode.studentId);
       if (!student) return res.status(404).json({ error: "student_not_found" });
-      student.passwordHash = await bcrypt.hash(password, 10);
-      resetCode.used = true;
-      writeDb(db);
+      const passwordHash = await bcrypt.hash(password, 10);
+      await store.updateStudentPassword(student.id, passwordHash);
+      await store.markResetUsed(code);
+      invalidateDashboard();
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "server_error" });
     }
   });
 
-  app.post("/api/student/activity", authMiddleware, (req: Request, res: Response) => {
+  app.post("/api/student/activity", authMiddleware, async (req: Request, res: Response) => {
     try {
       const studentId = (req as any).studentId;
       const { type, payload } = req.body;
       if (!type || !payload) return res.status(400).json({ error: "missing_fields" });
-      const db = readDb();
-      db.activities.push({
-        id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      await store.pushActivity(
         studentId,
         type,
         payload,
-        createdAt: new Date().toISOString(),
-      });
-      writeDb(db);
+        `act_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      );
+      invalidateDashboard();
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "server_error" });
     }
   });
 
-  app.get("/api/teacher/export/csv", teacherAuth, (req: Request, res: Response) => {
-    const db = readDb();
+  app.get("/api/teacher/export/csv", teacherAuth, async (req: Request, res: Response) => {
     const studentId = req.query.studentId as string | undefined;
-    const rows: string[][] = [['student_id', 'name', 'email', 'productions', 'avg_icm', 'last_production', 'top_errors']];
-    const students = studentId ? db.students.filter((s) => s.id === studentId) : db.students;
-    for (const student of students) {
-      const entries = db.entries.filter((e) => e.studentId === student.id);
-      const avgIcm = entries.length ? Math.round(entries.reduce((s, e) => s + e.icm, 0) / entries.length) : 0;
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="boussole-export-${studentId || "all"}.csv"`);
+    res.write("\uFEFF"); // BOM → Excel ouvre l'arabe correctement
+    res.write(["student_id", "name", "email", "productions", "avg_icm", "last_production", "top_errors"].join(";") + "\n");
+    if (studentId) {
+      // Un seul élève : même forme de ligne (petit volume).
+      const entries = await store.listEntries(studentId);
+      const avgIcm = entries.length ? Math.round(entries.reduce((s, e) => s + (Number(e.icm) || 0), 0) / entries.length) : 0;
       const dominantErrors = entries.flatMap((e) => e.errorTags).reduce<Record<string, number>>((acc, tag) => {
         acc[tag] = (acc[tag] || 0) + 1;
         return acc;
       }, {});
-      const topErrors = Object.entries(dominantErrors).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([tag, count]) => `${tag}:${count}`).join('; ');
-      rows.push([student.id, student.name, student.email, String(entries.length), String(avgIcm), student.createdAt, topErrors]);
+      const topErrors = Object.entries(dominantErrors).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([tag, count]) => `${tag}:${count}`).join("; ");
+      const student = await store.findStudentById(studentId);
+      res.write([studentId, student?.name || "", student?.email || "", String(entries.length), String(avgIcm), student?.createdAt || "", topErrors].join(";") + "\n");
+    } else {
+      // Streaming : itérateur SQL — 300 000 lignes sans jamais tout charger en RAM.
+      for await (const row of store.iterateExportRows()) {
+        res.write([row.id, row.name, row.email, String(row.productions), String(row.avgIcm), row.lastProduction || "", row.topErrors].join(";") + "\n");
+      }
     }
-    const csv = rows.map((r) => r.join(';')).join('\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="boussole-export-${studentId || 'all'}.csv"`);
-    res.send('\uFEFF' + csv);
+    res.end();
   });
+
+  async function ensureTeacher() {
+    const email = process.env.ADMIN_EMAIL;
+    const password = process.env.ADMIN_PASSWORD;
+    if (!email || !password) return;
+    if (await store.findTeacherByEmail(email)) return;
+    const hash = bcrypt.hashSync(password, 10);
+    await store.createTeacher(email, hash, email.split("@")[0]);
+  }
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -392,7 +316,7 @@ async function startServer() {
     });
   }
 
-  ensureTeacher();
+  await ensureTeacher();
 
   app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`[Kunz El Ouloum Server] Running on http://localhost:${PORT} (Offline Mode)`);

@@ -242,13 +242,17 @@ describe('sessionEffectsService', () => {
     expect(mockedSave).toHaveBeenCalledWith('lesson-1', expect.objectContaining({ state: 'SESSION_SUSPENDED' }));
   });
 
-  it('E6 — InteractiveLessonView et LiveDocumentUracile n\'importent pas de services interdits directement', () => {
+  it('E6 — les surfaces de leçon/document n\'importent pas de services interdits directement', () => {
+    // Les fichiers InteractiveLessonView / LiveDocumentUracile ont été
+    // refondus : les surfaces actuelles sont LessonTwoView (leçons
+    // interactives) et UnitIntroPortal (documents d\'unité). Le contrat reste
+    // le même : une vue n\'écrit JAMAIS la télémétrie directement.
     const forbidden = ['recordDocumentTrace', 'recordLessonTransferEvidence', 'scheduleSpacedRecall', 'recordEvidence', 'writeRaw'];
-    const viewSource = fs.readFileSync(path.join(__dirname, '../../components/InteractiveLessonView.tsx'), 'utf-8');
-    const liveDocSource = fs.readFileSync(path.join(__dirname, '../../components/LiveDocumentUracile.tsx'), 'utf-8');
-    for (const fn of forbidden) {
-      expect(viewSource).not.toContain(fn);
-      expect(liveDocSource).not.toContain(fn);
+    for (const file of ['LessonTwoView.tsx', 'UnitIntroPortal.tsx']) {
+      const source = fs.readFileSync(path.join(__dirname, `../../components/${file}`), 'utf-8');
+      for (const fn of forbidden) {
+        expect(source, `${file} ne doit pas appeler ${fn} directement`).not.toContain(fn);
+      }
     }
   });
 });

@@ -10,7 +10,11 @@ export const DRILL_LABEL = 'مراجعة مفردات — ليست محاكاة 
 // Unités à forte densité documentaire (= élite BAC readiness).
 const ELITE_UNIT_IDS = new Set<number>([1, 2, 6, 7, 9, 11]);
 
-export const SVT_QUIZ_QUESTIONS_CORPUS: QuizQuestion[] = SVT_QUIZ_QUESTIONS.map((q) => ({
+// QuizQuestion du corpus : le type de base ne porte pas `corpus` —
+// on l'étend localement (aucun impact au runtime, typage seulement).
+export type CorpusQuizQuestion = QuizQuestion & { corpus: 'elite' | 'drill' };
+
+export const SVT_QUIZ_QUESTIONS_CORPUS: CorpusQuizQuestion[] = SVT_QUIZ_QUESTIONS.map((q) => ({
   ...q,
   corpus: ELITE_UNIT_IDS.has(q.unitId) ? 'elite' : 'drill',
 }));

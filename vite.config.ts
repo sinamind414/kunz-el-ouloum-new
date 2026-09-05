@@ -35,6 +35,8 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Preview/AI Studio host (sandbox) — sinon Vite répond 403.
+      allowedHosts: true,
     },
   };
 });
