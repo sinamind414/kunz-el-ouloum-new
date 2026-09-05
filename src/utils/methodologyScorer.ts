@@ -44,6 +44,7 @@ const STEP3_EVIDENCE: Record<Step3Mode, RegExp | null> = {
   explain:    /(لأنّ?|يعود ذلك|يرجع|بسبب|مما يؤدي|وبالتالي|يفسر ذلك|نتيجة ل)/i,
   confront:   /(بينما|في المقابل|في حين|مقابل|يقابله|كلاهما|أوجه التشابه|أوجه الاختلاف|alors que|tandis que)/i,
   hypothesis: /(نفترض|الفرضية|نقترح)/i,
+  dual:       /(من الوثيقة|انطلاقا من الوثيقة|الوثيقة.*ومن الدرس|وثيقة.*درس|من الدرس)/i,
   none:       null,
 };
 const DOUBT_RE      = /(ربما|قد يكون|لعل|احتمال|يمكن أن يكون|peut-être)/i;
@@ -100,17 +101,24 @@ export function evaluateStudentProduction(
     if (card.format === 'compare' && !STEP3_EVIDENCE.confront!.test(text)) {
       detected.add('comparison_without_criteria');
     }
-  } else if (card.step3Mode === 'none' && numbers.length > 0) {
-    detected.add('verb_confusion');
+  } else if (card.step3Mode === 'none' && numbers.length > 0 && verbId !== 'verb_list_v1' && verbId !== 'verb_define_v1') {
+    // V3.1: حفظ list uses numbered 1. 2. 3. — not verb_confusion
+    const isListNumbering = verbId === 'verb_list_v1' && /^\s*\d+[\.)]/.test(text);
+    if (!isListNumbering) detected.add('verb_confusion');
   }
 
   if (card.step3Mode === 'hypothesis' && DOUBT_RE.test(text)) {
     detected.add('conditional_hypothesis');
   }
 
-  if (writes(4)) {
+  if (writes(4) && verbId !== 'verb_define_v1' && verbId !== 'verb_list_v1') {
     const closingRe = card.format === 'diagram' ? TITLE_RE : CONCLUSION_RE;
     if (!closingRe.test(text)) detected.add('missing_conclusion');
+  }
+  // V3.1 حفظ: لا خاتمة منفصلة — التعريف/القائمة هي الجواب الكامل (spec §وضع الحفظ)
+  if ((verbId === 'verb_define_v1' || verbId === 'verb_list_v1') && writes(4)) {
+    // pas de missing_conclusion : la fin de la définition/liste vaut conclusion
+    detected.delete('missing_conclusion');
   }
 
   const criteriaResults: ScoreReport['criteriaResults'] = [];
@@ -162,6 +170,34 @@ export function evaluateStudentProduction(
         passed = !detected.has('verb_confusion');
         feedback = passed ? 'استنتاج مجرّد بلا أرقام معادة.' : `تنبيه: « ${compass} » - الأرقام مكانها التحليل لا الاستنتاج.`;
         break;
+      case 'def_c1':
+        passed = text.length > 20 && /(هو|هي)\s+.+\s+(يتميز|يسرّع|يحتوي|يمتلك|يقوم)/.test(text) && text.length < 500;
+        feedback = passed ? 'تم ذكر الانتماء والخاصية.' : `تنبيه: « ${compass} » - اذكر الانتماء والخاصية.`;
+        break;
+      case 'def_c2':
+        passed = /(بفضل|حيث|يمنح|دور|وظيفة|بروتين|حفّاز|موقع فعّال|تخصص)/i.test(text);
+        feedback = passed ? 'دور ومصطلح علمي حاضران.' : `تنبيه: « ${compass} » - أضف الدور والمصطلح.`;
+        break;
+      case 'def_c3':
+        passed = !REFERENCE_RE.test(text) && bare.length === 0;
+        feedback = passed ? 'بلا وثيقة ولا أرقام — تعريف نقي.' : `تنبيه: « ${compass} » - لا تذكر وثيقة في التعريف.`;
+        break;
+      case 'list_c1': case 'list_c2': case 'list_c3': {
+        const isList = /(^|\n)\s*\d+[\.)\-]\s*\S/.test(text) || /(^|\n)\s*[•\-\*]\s*\S/.test(text);
+        const lineCount = text.split(/\n/).filter(l=>l.trim().length>0).length;
+        const hasSentence = /\.\s+[A-Z\u0600-\u06FF]/.test(text) && text.length > 80 && !isList;
+        if (c.id === 'list_c1') {
+          passed = isList;
+          feedback = passed ? 'قائمة مرقّمة حاضرة.' : `تنبيه: « ${compass} » - اكتب قائمة مرقّمة.`;
+        } else if (c.id === 'list_c2') {
+          passed = isList && lineCount >= 2 && lineCount <= 5;
+          feedback = passed ? 'عدد الأسطر مطابق.' : `تنبيه: « ${compass} » - احترم العدد.`;
+        } else {
+          passed = isList && !hasSentence;
+          feedback = passed ? 'بلا فقرة نثرية.' : `تنبيه: « ${compass} » - تجنب الفقرة.`;
+        }
+        break;
+      }
       default:
         passed = text.length > 40;
         feedback = passed ? 'معيار مستوفى.' : `يرجى مراجعة المعيار: « ${compass} ».`;

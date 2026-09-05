@@ -161,6 +161,35 @@ export const VERB_CARDS: VerbCard[] = [
       { id:'sch_c2', order:2, wording:{compass:'أضبط اتجاهات الأسهم والمعاني الوظيفية بدقة.',check:'توجيه الأسهم ووضوح الدلالات.',probe:'هل لكل سهم اتجاه ووظيفة واضحة؟',ar_label:'اتجاه الأسهم'}, selfProofPrompt:'تأكد من اتجاه الأسهم', errorTag:'unsupported_claim', weight:1 },
       { id:'sch_c3', order:3, wording:{compass:'أكتب عنواناً شاملاً ومؤطراً يحدد موضوع وظروف المخطط.',check:'وجود عنوان دقيق مؤطر.',probe:'هل كتبت "مخطط تحصيلي يوضح..." وأطرته؟',ar_label:'العنوان المؤطر'}, selfProofPrompt:'حدد العنوان الشامل في أسفل المخطط', errorTag:'missing_conclusion', weight:1 }
     ]
+  },
+  // V3.1 — حفظ : رأس (sans document) — deux verbes du noyau étendu 8→10
+  { id:'verb_define_v1', verbAr:'عَرِّفْ', verbFr:'Définir', category:'descriptive',
+    goal:'تعريف عنصر علمي بذكر انتمائه وخاصته المميزة ودوره — بلا وثيقة.',
+    structureSteps:['1. الانتماء الرئيسي (ما هو؟)','2. الخاصية المميزة','3. الدور إن وُجد'],
+    requiredConnectors:['هو','يتميز بـ','بفضل','حيث'],
+    forbiddenPatterns:['ذكر وثيقة أو منحنى','إعادة أرقام تجريبية'],
+    stopCriteria:['الانتماء + الخاصية + دور + كلمة علمية واحدة على الأقل','لا خاتمة — التعريف هو الجواب'],
+    goodExample:{ context:'تعريف الإنزيم.', question:'عرّف الإنزيم.', answer:'الإنزيم هو بروتين حفّاز حيوي (الانتماء)، يسرّع تفاعلا نوعيا دون أن يُستهلك (الخاصية)، بفضل موقع فعّال يمنحه تخصصا تجاه مادة التفاعل (الدور).', annotatedSteps:[{step:1,text:'الإنزيم هو بروتين حفّاز حيوي',color:'#3b82f6'},{step:2,text:'يسرّع تفاعلا نوعيا دون أن يُستهلك',color:'#10b981'},{step:3,text:'بفضل موقع فعّال يمنحه تخصصا',color:'#f59e0b'}] },
+    badExample:{ answer:'الإنزيم مهم للجسم.', flawDescription:'تعريف ناقص : انتماء فقط بلا خاصية ولا دور ولا كلمة علمية دقيقة.', circledError:'الإنزيم مهم', errorTag:'unsupported_claim', scorePercent:25 },
+    criteria:[
+      { id:'def_c1', order:1, wording:{compass:'أذكر الانتماء (ما هو؟) + الخاصية المميزة.',check:'الانتماء والخاصية حاضران.',probe:'هل ذكرت ما هو العنصر وما يميزه؟',ar_label:'الانتماء والخاصية'}, selfProofPrompt:'حدد الانتماء والخاصية', errorTag:'unsupported_claim', weight:1 },
+      { id:'def_c2', order:2, wording:{compass:'أذكر الدور إن وُجد بكلمة علمية واحدة على الأقل.',check:'دور + مصطلح علمي.',probe:'هل ذكرت دور العنصر بكلمة علمية؟',ar_label:'الدور والمصطلح'}, selfProofPrompt:'حدد الدور والمصطلح', errorTag:'unsupported_claim', weight:1 },
+      { id:'def_c3', order:3, wording:{compass:'لا أذكر وثيقة ولا أرقام — التعريف هو الجواب.',check:'بلا وثيقة / بلا أرقام.',probe:'هل تجنبت ذكر الوثيقة؟',ar_label:'بلا سند رقمي'}, selfProofPrompt:'تأكد من عدم ذكر وثيقة', errorTag:'verb_confusion', weight:1 }
+    ]
+  },
+  { id:'verb_list_v1', verbAr:'اذْكُرْ / عَدِّدْ / سَمِّ', verbFr:'Lister / Énumérer', category:'descriptive',
+    goal:'سرد قائمة مرقّمة لعناصر محددة — بلا جُمل، عنصر في كل سطر.',
+    structureSteps:['1. قائمة مرقّمة','2. عنصر في كل سطر','3. العدد المطلوب = الفحص الأخير'],
+    requiredConnectors:['1.','2.','3.'],
+    forbiddenPatterns:['فقرة نثرية بدل قائمة','عنصر زائد خاطئ'],
+    stopCriteria:['قائمة مرقّمة بعدد الأسطر المطلوب','بلا جُمل'],
+    goodExample:{ context:'اذكر ثلاث إنزيمات هضمية.', question:'اذكر ثلاث إنزيمات تشارك في هضم البروتين.', answer:'1. إنزيم ليباز\n2. إنزيم بروتياز\n3. إنزيم أميلاز', annotatedSteps:[{step:1,text:'1. إنزيم ليباز',color:'#3b82f6'},{step:2,text:'2. إنزيم بروتياز',color:'#10b981'},{step:3,text:'3. إنزيم أميلاز',color:'#f59e0b'}] },
+    badExample:{ answer:'الإنزيمات هي الليباز والبروتياز والأميلاز وهي مهمة للهضم وتعمل في المعدة.', flawDescription:'فقرة بدل قائمة — المصحح يبحث عن العناصر وقد لا يجدها.', circledError:'الإنزيمات هي... وهي مهمة', errorTag:'unbalanced_comparison', scorePercent:30 },
+    criteria:[
+      { id:'list_c1', order:1, wording:{compass:'أكتب قائمة مرقّمة، عنصر في كل سطر.',check:'قائمة مرقّمة.',probe:'هل كتبت قائمة مرقّمة؟',ar_label:'قائمة مرقّمة'}, selfProofPrompt:'حدد القائمة المرقّمة', errorTag:'unbalanced_comparison', weight:1 },
+      { id:'list_c2', order:2, wording:{compass:'أحترم العدد المطلوب في السؤال.',check:'العدد مطابق.',probe:'هل عدد الأسطر = العدد المطلوب؟',ar_label:'العدد المطلوب'}, selfProofPrompt:'عدّ الأسطر', errorTag:'unbalanced_comparison', weight:1 },
+      { id:'list_c3', order:3, wording:{compass:'بلا جُمل — عناصر فقط.',check:'بلا فقرة.',probe:'هل تجنبت الفقرة النثرية؟',ar_label:'بلا فقرة'}, selfProofPrompt:'تأكد من عدم كتابة فقرة', errorTag:'verb_confusion', weight:1 }
+    ]
   }
 ];
 export const TRAINING_EXERCISES: TrainingExercise[] = [
@@ -177,8 +206,49 @@ export const TRAINING_EXERCISES: TrainingExercise[] = [
 export type StepId = 1 | 2 | 3 | 4;
 export const STEP_NAMES_AR: Record<StepId, string> = { 1: 'اِقْرَأْ', 2: 'اِجْمَعْ', 3: 'اِرْبِطْ', 4: 'اِخْتِمْ' };
 export type Switch = 'open' | 'closed';
-export type Step3Mode = 'none' | 'confront' | 'explain' | 'hypothesis';
+export type Step3Mode = 'none' | 'confront' | 'explain' | 'hypothesis' | 'dual';
 export type SpecialFormat = 'compare' | 'diagram' | 'hypothesis' | 'text' | null;
+export type SourceGate = 'paper' | 'memory'; // ورقة (وثيقة موجودة) vs رأس (حفظ)
+
+// V3.1 — Gate 1 : ورقة vs رأس (هل سطّرت وثيقة/شكل/جدول/منحنى/رسم؟)
+const DOC_KEYWORDS_RE = /(وثيق|شكل|جدول|منحن|رسم|صورة|سند|بيان|مخطط)/;
+const DUAL_KW_RE = /معلومات/;
+export function detectSourceGate(instruction: string): SourceGate {
+  const t = (instruction || '').normalize('NFC');
+  return DOC_KEYWORDS_RE.test(t) ? 'paper' : 'memory';
+}
+export function isDualSource(instruction: string): boolean {
+  const t = (instruction || '').normalize('NFC');
+  return DUAL_KW_RE.test(t) && DOC_KEYWORDS_RE.test(t);
+}
+export function getSourceGateInfo(instruction: string): { source: SourceGate; isDual: boolean } {
+  return { source: detectSourceGate(instruction), isDual: isDualSource(instruction) };
+}
+
+// V3.1 — Step 0 template + preservation templates
+export const STEP0_TEMPLATE_AR = 'الهدف العام: …… (≈ ≤5 كلمات) — يُكتب أعلى المسودة بعد قراءة سياق التمرين';
+export const MEMORY_TEMPLATES = {
+  define: {
+    ar: 'الانتماء (ما هو؟) + الخاصية المميزة + الدور إن وُجد — كلمة علمية واحدة على الأقل',
+    exampleAr: 'الإنزيم هو بروتين حفّاز حيوي (الانتماء)، يسرّع تفاعلا نوعيا دون أن يُستهلك (الخاصية)، بفضل موقع فعّال يمنحه تخصصا تجاه مادة التفاعل (الدور).',
+  },
+  list: {
+    ar: 'قائمة مرقّمة، عنصر في كل سطر، بلا جُمَل — العدد المطلوب = الفحص الأخير',
+    exampleAr: '1. …\n2. …\n3. …',
+  },
+} as const;
+
+// V3.1 — عام vs خاص (هل الجملة صحيحة لو غيّرنا اسم الجزيئة/الكائن؟)
+export function classifyConclusion(conclusion: string, moleculeName: string): 'generic' | 'specific' {
+  const t = (conclusion || '').trim();
+  const m = (moleculeName || '').trim();
+  if (!t || !m) return 'generic';
+  // heuristique minimale conforme au harnais : si la conclusion contient un nom spécifique ≠ générique, elle est spécifique
+  const genericTerms = ['الإنزيم', 'البروتين', 'الخلية', 'العضية'];
+  const isGenericMolecule = genericTerms.includes(m);
+  if (isGenericMolecule) return 'generic';
+  return t.includes(m) ? 'specific' : 'generic';
+}
 export interface VerbV2Meta {
   step3Mode: Step3Mode;
   path: StepId[];
@@ -191,6 +261,8 @@ export interface VerbV2Meta {
 export const switchOf = (c: Pick<VerbCard, 'category'>): Switch =>
   c.category === 'reasoned' ? 'open' : 'closed';
 export const VERB_V2_META: Record<string, VerbV2Meta> = {
+  verb_define_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
+  verb_list_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
   verb_analyse_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'premature_interpretation' },
   verb_deduce_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
   verb_compare_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:'compare', formatCheckAr:'هل قلتُ عن الطرفين نفس عدد الأشياء ؟', typicalErrorTag:'premature_interpretation' },
@@ -202,7 +274,7 @@ export const VERB_V2_META: Record<string, VerbV2Meta> = {
 };
 export const STEP_TEMPLATES = {
   2: ['انطلاقًا من الوثيقة (…) نلاحظ أنّ …', 'تمثل الوثيقة (…) … حيث نلاحظ …'],
-  3: { confront:['بينما …','في حين …','يقابله …'], explain:['وهذا لأنّ … وبالتالي …','يعود ذلك إلى … مما يؤدي إلى …'], hypothesis:['نفترض أنّ …','انطلاقًا من المعطيات السابقة، نقترح الفرضية التالية: …'], none:[] },
+  3: { confront:['بينما …','في حين …','يقابله …'], explain:['وهذا لأنّ … وبالتالي …','يعود ذلك إلى … مما يؤدي إلى …'], hypothesis:['نفترض أنّ …','انطلاقًا من المعطيات السابقة، نقترح الفرضية التالية: …'], dual:['من الوثيقة … | من الدرس …','وثيقة: … — درس: …'], none:[] },
   4: ['ومنه نستنتج أنّ …', 'الاستنتاج: نستنتج أنّ …', 'الخلاصة: …'],
 } as const;
 export interface VerbCardV2 extends VerbCard, VerbV2Meta { switch: Switch; }
