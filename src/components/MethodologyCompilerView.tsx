@@ -9,13 +9,15 @@ import {
 import {
   VERB_CARDS, UNIVERSAL_GRAMMAR_RULES, TRAINING_EXERCISES,
   ERROR_TAXONOMY, TrainingExercise, Switch, StepId, STEP_NAMES_AR, STEP_TEMPLATES, VERB_CARDS_V2, getVerbCardV2,
-  detectSourceGate, isDualSource, SourceGate, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion
+  detectSourceGate, isDualSource, SourceGate, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion,
+  MIFTAH_VERSION, MIFTAH_NOMENCLATURE, READY_SENTENCES, SYNTHESIS, SPECIAL_FORMS
 } from '../data/methodologyEngine';
 import { isExtensionUnlocked, recordDrillResult, getDrillStreak } from '../data/v3Progress';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry } from '../utils/methodologyLog';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
 import BoussoleCard from './BoussoleCard';
+import MiftahCard from './MiftahCard';
 import { TIME_RULES, getStepData } from '../data/boussoleData';
 
 // B1 · tons du rapport + libellés interrupteur au niveau module (le bloc « 4 étapes » les lit hors closure)
@@ -409,9 +411,9 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               <Cpu className="w-3.5 h-3.5" />
               <span>نظام التجميع البيداغوجي الموحد (Compilateur SVT)</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight">محرك المنهجية الخوارزمي للبكالوريا</h1>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight">🔑 {MIFTAH_NOMENCLATURE.miftah} · MIFTAH — مفتاح الكنز v{MIFTAH_VERSION}</h1>
             <p className="text-white/90 text-sm md:text-base mt-1 max-w-2xl font-medium">
-              تحويل المنهجية من حفظ نظري إلى نظام آلي محكم: مدخلات متغيرة ➔ محرك ثابت ➔ مخرجات مطابقة لعلامة 20/20.
+              4 أسنان · 2 بوابتان · إجابة تفتح النقطة — منهجية الإجابة في علوم الحياة والأرض · بكالوريا
             </p>
           </div>
 
@@ -487,7 +489,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>بطاقة البوصلة (للطباعة)</span>
+            <span>🔑 {MIFTAH_NOMENCLATURE.miftah} (MIFTAH) — للطباعة</span>
           </button>
         </div>
       </header>
@@ -1765,21 +1767,25 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
         </section>
       )}
 
-      {/* TAB 5: FICHE ÉLève IMPRIMABLE (projection directe du moteur v2) */}
+      {/* TAB 5: MIFTAH — بطاقة المفتاح recto/verso (pro) */}
       {activeTab === 'boussole_card' && (
         <section className="space-y-4">
-          <div className="flex items-center justify-between print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
             <p className="text-xs font-bold text-gray-500 dark:text-gray-400">
-              البطاقة مولّدة آلياً من محرك المنهجية — لا تُكتَب يدوياً، فلا تتباعد عنه أبداً.
+              بطاقة {MIFTAH_NOMENCLATURE.miftah} v{MIFTAH_VERSION} — مطابقة 100% للـ HTML المستقل <span className="latin">/miftah.html</span> — تُطبع A4 recto/verso
             </p>
-            <button
-              onClick={() => window.print()}
-              className="px-4 py-2 bg-[#006d37] hover:bg-[#00562b] text-white rounded-xl font-bold text-sm shadow-md"
-            >
-              طباعة (A4)
-            </button>
+            <div className="flex gap-2">
+              <a href="/miftah.html" target="_blank" rel="noopener" className="px-3 py-2 bg-white border border-gray-200 rounded-xl font-bold text-xs">فتح HTML المستقل</a>
+              <button onClick={() => window.print()} className="px-4 py-2 bg-[#006d37] hover:bg-[#00562b] text-white rounded-xl font-bold text-sm shadow-md">
+                طباعة (A4)
+              </button>
+            </div>
           </div>
-          <BoussoleCard />
+          <MiftahCard />
+          <details className="print:hidden bg-gray-50 dark:bg-black/20 rounded-xl border p-3 text-xs">
+            <summary className="font-bold cursor-pointer">بطاقة البوصلة المدمجة (legacy) — للمرجع السريع</summary>
+            <div className="mt-3"><BoussoleCard /></div>
+          </details>
         </section>
       )}
 
