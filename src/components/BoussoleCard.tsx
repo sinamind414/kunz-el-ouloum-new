@@ -1,7 +1,9 @@
 // src/components/BoussoleCard.tsx
-// Fiche élève · 1 page A4 · arabe seul · à imprimer. Aucune logique, aucune donnée locale.
+// Fiche élève · 1 page A4 · arabe seul · à imprimer. V3.1 : double porte ورقة/رأس + صورة/فيلم,
+// preservation estompé si non débloqué, STEP0 et عام/خاص en note. Sans logique lourde.
 import {
   VERB_CARDS_V2, STEP_NAMES_AR, STEP_TEMPLATES, StepId, VerbCardV2, Step3Mode,
+  MEMORY_TEMPLATES, STEP0_TEMPLATE_AR,
 } from '../data/methodologyEngine';
 
 const AR_DIGITS = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
@@ -24,23 +26,32 @@ const CHECKS: Record<StepId, string> = {
 };
 
 export default function BoussoleCard() {
-  const closed = VERB_CARDS_V2.filter(c => c.switch === 'closed');
-  const open   = VERB_CARDS_V2.filter(c => c.switch === 'open');
+  const memoryVerbs = VERB_CARDS_V2.filter(c => c.id === 'verb_define_v1' || c.id === 'verb_list_v1');
+  const paperVerbs = VERB_CARDS_V2.filter(c => c.id !== 'verb_define_v1' && c.id !== 'verb_list_v1');
+  const closed = paperVerbs.filter(c => c.switch === 'closed');
+  const open   = paperVerbs.filter(c => c.switch === 'open');
 
   return (
     <article dir="rtl" lang="ar" className="boussole-card mx-auto max-w-[210mm] p-6 text-[13px] leading-relaxed print:p-4">
       <header className="text-center border-b-2 border-black pb-2 mb-3">
         <h1 className="text-xl font-black">بوصلة الإجابة — علوم الطبيعة والحياة</h1>
-        <p className="mt-1">قبل كل إجابة: أربع خطوات، ومفتاح واحد. الإبهام يلمس الأصابع الأربعة: ١ · ٢ · ٣ · ٤</p>
+        <p className="mt-1">قبل كل إجابة: أربع خطوات، ومفتاحان. {STEP0_TEMPLATE_AR.split('—')[0].trim()} ثم الإبهام: ٠ · ١ · ٢ · ٣ · ٤</p>
       </header>
 
-      {/* المفتاح */}
+      {/* المفتاحان V3.1 — Gate1 ورقة/رأس + Gate2 صورة/فيلم (renommage de مغلق/مفتوح) */}
       <section className="border-2 border-black rounded-lg p-3 mb-3">
-        <h2 className="font-black text-base mb-2">🔑 السؤال الوحيد: هل الفعل يسمح بـ«لأنّ» ؟</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <VerbFamily title="مغلق — لا «لأنّ»" cards={closed} />
-          <VerbFamily title="مفتوح — «لأنّ» مطلوبة" cards={open} />
+        <h2 className="font-black text-base mb-2">🔑 المفتاح ١ — ورقة أم رأس؟</h2>
+        <p className="text-[11px] mb-2">هل سطّرتَ وثيقة/شكل/جدول/منحنى/رسم؟ لا → 🧠 رأس (حفظ) · نعم → 📄 ورقة → المفتاح ٢</p>
+        <div className="grid grid-cols-2 gap-3 text-[11px]">
+          <div><span className="font-black">🧠 رأس:</span> {memoryVerbs.map(v=>v.verbAr).join(' · ')} — {MEMORY_TEMPLATES.define.ar.slice(0,22)}… / {MEMORY_TEMPLATES.list.ar.slice(0,18)}…</div>
+          <div><span className="font-black">📄 ورقة:</span> {paperVerbs.length} أفعال — تمرّ إلى المفتاح ٢</div>
         </div>
+        <h2 className="font-black text-base mt-3 mb-2">🔑 المفتاح ٢ — صورة أم فيلم؟</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <VerbFamily title="📷 صورة — لا «لأنّ»" cards={closed} />
+          <VerbFamily title="🎬 فيلم — «لأنّ» مطلوبة" cards={open} />
+        </div>
+        <p className="text-[11px] mt-2">«معلوماتك + الوثيقة» → 📄 ورقة بعمودين [من الوثيقة | من الدرس]</p>
       </section>
 
       {/* الخطوات الأربع */}

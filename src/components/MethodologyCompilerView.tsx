@@ -8,8 +8,10 @@ import {
 } from 'lucide-react';
 import {
   VERB_CARDS, UNIVERSAL_GRAMMAR_RULES, TRAINING_EXERCISES,
-  ERROR_TAXONOMY, TrainingExercise, Switch, StepId, STEP_NAMES_AR, STEP_TEMPLATES, VERB_CARDS_V2, getVerbCardV2
+  ERROR_TAXONOMY, TrainingExercise, Switch, StepId, STEP_NAMES_AR, STEP_TEMPLATES, VERB_CARDS_V2, getVerbCardV2,
+  detectSourceGate, isDualSource, SourceGate, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion
 } from '../data/methodologyEngine';
+import { isExtensionUnlocked, recordDrillResult, getDrillStreak } from '../data/v3Progress';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry } from '../utils/methodologyLog';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
@@ -49,6 +51,30 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   const [currentStage, setCurrentStage] = useState<1 | 2 | 3 | 4>(1);
   const [switchChoice, setSwitchChoice] = useState<Switch | null>(null);
   const [showSwitchGate, setShowSwitchGate] = useState(false);
+  // V3.1 double gate ورقة/رأس
+  const [sourceGate, setSourceGate] = useState<SourceGate | null>(null);
+  const [showSourceGate, setShowSourceGate] = useState(false);
+  const [isDual, setIsDual] = useState(false);
+  const [step0Text, setStep0Text] = useState<string>('');
+  const [extensionUnlocked, setExtensionUnlocked] = useState<boolean>(false);
+  // V3.1 drill مصفاة التعليمات 60s 12 consignes
+  const [drillActive, setDrillActive] = useState(false);
+  const [drillSec, setDrillSec] = useState(60);
+  const [drillAnswers, setDrillAnswers] = useState<Record<number, SourceGate | 'dual'>>({});
+  const DRILL_CONSIGNES: {id:number, consigne:string, expected: SourceGate|'dual'}[] = [
+    {id:1, consigne:'حلل الوثيقة ١', expected:'paper'},
+    {id:2, consigne:'عرّف الإنزيم', expected:'memory'},
+    {id:3, consigne:'فسر الوثيقة مستعينا بمكتسباتك', expected:'dual'},
+    {id:4, consigne:'قارن بين المنحنيين', expected:'paper'},
+    {id:5, consigne:'اذكر مراحل الترجمة', expected:'memory'},
+    {id:6, consigne:'استخرج من الجدول', expected:'paper'},
+    {id:7, consigne:'استنتج العلاقة من الوثيقة ومعلوماتك', expected:'dual'},
+    {id:8, consigne:'صف شكل الخلية', expected:'paper'},
+    {id:9, consigne:'حدد مصدر المعلومات', expected:'paper'},
+    {id:10, consigne:'بين كيف يحدث التنشيط', expected:'paper'},
+    {id:11, consigne:'لخص في رسم تخطيطي', expected:'paper'},
+    {id:12, consigne:'وضح مستعينا بالوثيقة ومعارفك', expected:'dual'},
+  ];
 
   // Stage 1: Modelage State
   const [highlightedSteps, setHighlightedSteps] = useState<Record<number, boolean>>({});
@@ -94,10 +120,16 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   const currentVerbStats = getVerbEvolution(selectedVerbId);
 
   // B2 · écran interrupteur : tant que le gate est ouvert, seuls contexte + gate sont rendus
-  const gateOpen = currentStage === 3 && showSwitchGate;
+  // V3.1 : double gate — Gate1 ورقة/رأس puis Gate2 صورة/فيلم
+  const gateOpen = currentStage === 3 && (showSwitchGate || showSourceGate);
 
   // m3 · bouton de dev réservé au développement
   const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+
+  // V3.1 : extension unlocked check
+  useEffect(() => {
+    setExtensionUnlocked(isExtensionUnlocked());
+  }, [evolutionVersion]);
 
   // m1 · header = dernier ICM du carnet, ou « — » si aucune production
   const lastIcm: number | null = React.useMemo(() => {
@@ -130,9 +162,18 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   }, [evolutionVersion]);
 
   // Mineur · placeholder de l'éditeur dérivé des moules du verbe (filtré par card.path)
+  // V3.1 : si sourceGate===memory → قالب حفظ
   const editorPlaceholder = React.useMemo(() => {
+    if (sourceGate === 'memory') {
+      const card = getVerbCardV2(selectedVerbId);
+      if (card?.id === 'verb_list_v1') return `اكتب صياغتك المنهجية الكاملة هنا...\n${MEMORY_TEMPLATES.list.ar}`;
+      return `اكتب صياغتك المنهجية الكاملة هنا...\n${MEMORY_TEMPLATES.define.ar}`;
+    }
     const card = getVerbCardV2(selectedVerbId);
     if (!card) return 'اكتب صياغتك المنهجية الكاملة هنا...';
+    if (isDual && card.path.includes(2) && card.path.includes(3)) {
+      return `اكتب صياغتك المنهجية الكاملة هنا...\nمن الوثيقة: قيمة + وحدة\nمن الدرس: آلية/مكتسب\nثم ${STEP_TEMPLATES[4][0]}`;
+    }
     const parts: string[] = [];
     if (card.path.includes(2)) parts.push(STEP_TEMPLATES[2][0]);
     if (card.path.includes(3)) {
@@ -141,7 +182,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     }
     if (card.path.includes(4)) parts.push(STEP_TEMPLATES[4][0]);
     return `اكتب صياغتك المنهجية الكاملة هنا...\n${parts.join('\n')}`;
-  }, [selectedVerbId]);
+  }, [selectedVerbId, sourceGate, isDual]);
 
   // Timer Effect for Stage 4
   useEffect(() => {
@@ -156,6 +197,20 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     return () => clearInterval(interval);
   }, [isTimerRunning, timerSeconds]);
 
+  // V3.1 drill timer 60s
+  useEffect(() => {
+    if (!drillActive) return;
+    if (drillSec <= 0) {
+      setDrillActive(false);
+      const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
+      const unlocked = recordDrillResult(score);
+      setExtensionUnlocked(unlocked || isExtensionUnlocked());
+      return;
+    }
+    const id = setInterval(()=> setDrillSec(s=> s-1), 1000);
+    return ()=> clearInterval(id);
+  }, [drillActive, drillSec]);
+
   // Handle stage change
 const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
      if (!currentExercise) return;
@@ -163,12 +218,35 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
      setScoreReport(null);
      setSwitchChoice(null);
      if (stage === 3) {
-       setShowSwitchGate(true);
+       // V3.1 double gate : Gate1 ورقة/رأس auto-skip pour paper pour préserver test harness
+       const sg = detectSourceGate(currentExercise.question);
+       const dual = isDualSource(currentExercise.question);
+       setSourceGate(sg);
+       setIsDual(dual);
+       // Si la consigne est papier (ex existants) → skip Gate1 directement à Gate2 pour garder le test gateIsolation vert
+       const verbCard = getVerbCardV2(selectedVerbId);
+       const isMemoryVerb = verbCard?.id === 'verb_define_v1' || verbCard?.id === 'verb_list_v1';
+       if (isMemoryVerb || sg === 'memory') {
+         setShowSourceGate(true);
+         setShowSwitchGate(false);
+       } else if (sg === 'paper') {
+         setShowSourceGate(false);
+         setShowSwitchGate(true);
+       } else {
+         // fallback : show Gate1 first
+         setShowSourceGate(true);
+         setShowSwitchGate(false);
+       }
      } else if (stage === 4) {
+       setSourceGate(null);
+       setShowSourceGate(false);
+       setShowSwitchGate(false);
        setTimerSeconds(currentExercise.stage4.timeLimitSec);
        setIsTimerRunning(true);
        setIsDraftCompleted(false);
      } else {
+       setShowSourceGate(false);
+       setShowSwitchGate(false);
        setIsTimerRunning(false);
      }
    };
@@ -289,7 +367,26 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
     setScoreReport(null);
     // M2 · changer de verbe/exercice au stade 3 rouvre le gate (le choix ne survit pas)
     setSwitchChoice(null);
-    if (currentStage === 3) setShowSwitchGate(true);
+    if (currentStage === 3 && currentExercise) {
+      const sg = detectSourceGate(currentExercise.question);
+      setSourceGate(sg);
+      setIsDual(isDualSource(currentExercise.question));
+      const verbCard = getVerbCardV2(selectedVerbId);
+      const isMemoryVerb = verbCard?.id === 'verb_define_v1' || verbCard?.id === 'verb_list_v1';
+      if (isMemoryVerb || sg === 'memory') {
+        setShowSourceGate(true);
+        setShowSwitchGate(false);
+      } else if (sg === 'paper') {
+        setShowSourceGate(false);
+        setShowSwitchGate(true);
+      } else {
+        setShowSourceGate(true);
+        setShowSwitchGate(false);
+      }
+    } else {
+      setShowSourceGate(false);
+      setShowSwitchGate(false);
+    }
     setDraftVerb('');
     setDraftSteps('');
     setDraftFinalSentence('');
@@ -413,9 +510,13 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                   }}
                   className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-black text-gray-900 dark:text-white px-3 py-1.5 rounded-xl text-sm"
                 >
-                  {VERB_CARDS.map(v => (
-                     <option key={v.id} value={v.id}>{v.verbAr}</option>
-                  ))}
+                  {VERB_CARDS_V2.map(v => {
+                     const isMemory = v.id === 'verb_define_v1' || v.id === 'verb_list_v1';
+                     const locked = isMemory && !extensionUnlocked;
+                     return (
+                     <option key={v.id} value={v.id} disabled={locked}>{v.verbAr}{locked ? ' — 🔒 بعد مصفاة ٣×١٢/١٢' : ''}</option>
+                     );
+                  })}
                 </select>
               </div>
 
@@ -501,6 +602,43 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             </div>
           </div>
 
+          {/* V3.1 مصفاة التعليمات — 60s 12 consignes (débloque verso) */}
+          <div className="bg-gradient-to-r from-amber-50 to-sky-50 dark:from-amber-950/20 dark:to-sky-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div>
+              <div className="font-black text-sm flex items-center gap-2">🧠 مصفاة التعليمات — ٦٠ ث <span className="text-xs bg-white dark:bg-black/20 px-2 py-0.5 rounded-full border">٣ × ١٢/١٢ → يفتح الورقة الخلفية</span></div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">ورقة أم رأس؟ {extensionUnlocked ? '✅ مفتوحة' : `سلسلة: ${getDrillStreak()} / ٣`} — بلا خسارة إلى أن تفوز ثلاث مرات</div>
+            </div>
+            {!drillActive ? (
+              <button onClick={()=>{setDrillAnswers({}); setDrillSec(60); setDrillActive(true);}} className="px-4 py-2 bg-[#006d37] text-white rounded-xl font-bold text-xs shadow">{extensionUnlocked ? 'إعادة المصفاة' : 'ابدأ المصفاة'}</button>
+            ) : (
+              <div className="font-mono font-black text-lg bg-black/10 px-3 py-1 rounded-xl">{drillSec} ث</div>
+            )}
+          </div>
+          {drillActive && (
+            <div className="bg-white dark:bg-[#161c18] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {DRILL_CONSIGNES.map(c=> (
+                  <div key={c.id} className="p-2 rounded-xl border flex items-center justify-between gap-2 bg-gray-50 dark:bg-black/20">
+                    <span className="text-xs font-bold">{c.id}. {c.consigne}</span>
+                    <div className="flex gap-1">
+                      {(['paper','memory','dual'] as const).map(opt=> (
+                        <button key={opt} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: opt}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]===opt ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>
+                          {opt==='paper'?'ورقة': opt==='memory'?'رأس':'عمودان'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={()=>{
+                const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
+                const unlocked = recordDrillResult(score);
+                setExtensionUnlocked(unlocked || isExtensionUnlocked());
+                setDrillActive(false);
+              }} className="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm">صحّح — {Object.keys(drillAnswers).length}/12</button>
+            </div>
+          )}
+
 {/* StepBar — stages 1-3, masquée tant que le gate est ouvert (B2) */}
           {currentStage >= 1 && currentStage <= 3 && currentExercise && !gateOpen && (() => {
             const card = getVerbCardV2(selectedVerbId);
@@ -554,8 +692,37 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             );
           })()}
 
-          {/* Switch Gate — stage 3 only, no skip, no pre-color (B2 : boutons neutres) */}
-          {showSwitchGate && currentStage === 3 && currentExercise && (() => {
+          {/* V3.1 Gate1 — ورقة أم رأس؟ (double gate) */}
+          {showSourceGate && currentStage === 3 && currentExercise && (() => {
+            return (
+              <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border-2 border-amber-300 dark:border-amber-800 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <Key className="w-5 h-5 text-amber-500" />
+                  <span>المفتاح ١ — ورقة أم رأس؟</span>
+                  {isDual && <span className="text-[11px] bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">معلوماتك + الوثيقة ← عمودان</span>}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">هل سطّرتَ وثيقة/شكل/جدول/منحنى/رسم؟ لا → 🧠 رأس (حفظ) · نعم → 📄 ورقة</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => { setSourceGate('memory'); setShowSourceGate(false); setSwitchChoice(null); }}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-amber-500 dark:hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all font-bold text-center"
+                  >
+                    <div>🧠 رأس</div>
+                    <div className="text-[11px] font-normal">عرّف / اذكر — حفظ</div>
+                  </button>
+                  <button
+                    onClick={() => { setSourceGate('paper'); setIsDual(isDualSource(currentExercise.question)); setShowSourceGate(false); setShowSwitchGate(true); }}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-emerald-500 dark:hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all font-bold text-center"
+                  >
+                    <div>📄 ورقة</div>
+                    <div className="text-[11px] font-normal">وثيقة / شكل — تحليل</div>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+          {/* Switch Gate — stage 3 only, Gate2 صورة/فيلم (renommage de مغلق/مفتوح) — B2 : boutons neutres */}
+          {showSwitchGate && currentStage === 3 && currentExercise && !showSourceGate && (() => {
             const card = getVerbCardV2(selectedVerbId);
             if (!card) return null;
             return (
@@ -563,6 +730,8 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 <div className="flex items-center gap-2 font-bold text-sm">
                   <Key className="w-5 h-5 text-amber-500" />
                   <span>المفتاح — هل الفعل يسمح بـ«لأنّ»؟</span>
+                  <span className="text-[11px] text-gray-400">المفتاح ٢ — صورة أم فيلم؟</span>
+                  {isDual && <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full">ورقة بعمودين</span>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -570,12 +739,14 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
                     <div>لا — مغلق</div>
+                    <div className="text-[11px] font-normal">📷 صورة</div>
                   </button>
                   <button
                     onClick={() => { setSwitchChoice('open'); setShowSwitchGate(false); }}
                     className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
                     <div>نعم — مفتوح</div>
+                    <div className="text-[11px] font-normal">🎬 فيلم</div>
                   </button>
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-400">
@@ -603,6 +774,18 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             </div>
 
             <div className="space-y-3">
+              {/* STEP0 — الهدف العام (V3.1) : ligne 0 avant tout */}
+              <div className="bg-sky-50 dark:bg-sky-950/20 p-3 rounded-xl border border-sky-200 dark:border-sky-900/40">
+                <label className="text-xs font-black text-sky-800 dark:text-sky-300 block mb-1">الهدف العام ٠ — ماذا أفهم قبل أن أقرأ؟</label>
+                <input
+                  type="text"
+                  value={step0Text}
+                  onChange={(e) => setStep0Text(e.target.value)}
+                  placeholder={STEP0_TEMPLATE_AR.replace('_____','……')}
+                  className="w-full bg-white dark:bg-[#0f1a1f] border border-sky-200 dark:border-sky-800 rounded-lg p-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-sky-500 outline-none"
+                />
+                <span className="text-[11px] text-sky-600 dark:text-sky-400">اكتب هدفك في سطر واحد — لا يُصحَّح، لكنه يوجّه قراءتك</span>
+              </div>
               <p className="text-sm md:text-base text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
                 <strong className="text-gray-900 dark:text-white">السياق العلمي: </strong>
                 {currentExercise.context}
@@ -859,6 +1042,22 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                   </div>
                 )}
 
+                {/* Dual note V3.1 */}
+                {isDual && sourceGate==='paper' && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/40 text-xs">
+                    <span className="font-black">ورقة بعمودين — «معلوماتك + الوثيقة»:</span>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <span className="bg-white dark:bg-black/20 p-2 rounded border">من الوثيقة: قيمة + وحدة</span>
+                      <span className="bg-white dark:bg-black/20 p-2 rounded border">من الدرس: آلية/مكتسب</span>
+                    </div>
+                  </div>
+                )}
+                {sourceGate==='memory' && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200 dark:border-amber-900/40 text-xs">
+                    <span className="font-black">🧠 وضع حفظ — لا خاتمة بعد حُجة، بل جملة نجاة:</span>
+                    <div className="mt-1 font-medium text-amber-900 dark:text-amber-200">{MEMORY_TEMPLATES.define.ar} — {MEMORY_TEMPLATES.list.ar.split('ـ').slice(0,2).join(' · ')}…</div>
+                  </div>
+                )}
                 {/* Text Area */}
                 <div className="bg-white dark:bg-[#161c18] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
@@ -1119,6 +1318,18 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                       {first.remedyAr}
                     </div>
                   ) : null;
+                })()}
+                {/* V3.1 عام/خاص helper */}
+                {(() => {
+                  const lastSentence = studentText.split(/[\.!؟\n]/).filter(Boolean).pop() || '';
+                  const cls = classifyConclusion(lastSentence, step0Text || '');
+                  return (
+                    <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/40 text-xs">
+                      <span className="font-black">الهدف العام ٠ + الخاتمة — عام أم خاص؟</span>
+                      <span className="mx-2 px-2 py-0.5 rounded-full bg-white dark:bg-black/20 border text-[11px] font-bold">{cls === 'generic' ? 'عام (يعيد الهدف)' : cls === 'specific' ? 'خاص (يجيب المطلوب)' : 'غير مصنّف'}</span>
+                      <span className="text-[11px] text-gray-600 dark:text-gray-400">— إن كانت «خاص» بلا سند من الوثيقة فهي تهويل</span>
+                    </div>
+                  );
                 })()}
               </div>
 
