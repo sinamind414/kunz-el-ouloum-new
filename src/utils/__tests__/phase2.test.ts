@@ -1,7 +1,7 @@
 // Phase 2 (audit §3.3) — le verdict auto ne couvre que la FORME (3 portes) ;
 // et B (§3.8) — la cellule de matrice est un ratio glissant de binaires du scoreur.
 import { describe, expect, it } from 'vitest';
-import { evaluatePhase2, PHASE2_FORM_THRESHOLD } from '../phase2';
+import { evaluatePhase2, remediationTargets, PHASE2_FORM_THRESHOLD } from '../phase2';
 import { verbSlidingRatio, ProductionLogEntry } from '../methodologyLog';
 
 const base = { sourceGateOk: null as boolean | null, switchGateOk: null as boolean | null, icm: 100, typicalErrorViolated: false };
@@ -43,6 +43,26 @@ describe('Phase 2 — verdict « forme validée »', () => {
     expect(v.messageAr).toContain('الباب ١');
     expect(v.messageAr).toContain('الباب ٢');
     expect(v.messageAr).toContain('ICM');
+  });
+});
+
+describe('Renvoi ciblé — remediationTargets (micro-2a)', () => {
+  const mkLine = (step: 1 | 2 | 3 | 4, applicable: boolean, passed: boolean, remedyAr?: string) =>
+    ({ step, applicable, passed, errorTags: passed ? [] : ['x'], remedyAr });
+
+  it('expose uniquement les étapes applicables et en échec', () => {
+    const targets = remediationTargets([
+      mkLine(1, true, true),
+      mkLine(2, true, false, 'répare 2'),
+      mkLine(3, false, false), // non applicable → exclue
+      mkLine(4, true, false),
+    ]);
+    expect(targets.map(t => t.step)).toEqual([2, 4]);
+    expect(targets[0].remedyAr).toBe('répare 2');
+  });
+
+  it('aucun échec → vide', () => {
+    expect(remediationTargets([mkLine(1, true, true), mkLine(4, true, true)])).toEqual([]);
   });
 });
 

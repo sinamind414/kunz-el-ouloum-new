@@ -16,7 +16,8 @@ import { isExtensionUnlocked, recordDrillResult, getDrillStatus, getMasteryStatu
 import { DRILL_BANK, drawDailyConsignes, gradeDrill, PHASE0_DEMOS, isPhase0Done, completePhase0, resetPhase0, DrillAnswer, DrillConsigne, DrillGrade } from '../data/drillBank';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, verbSlidingRatio } from '../utils/methodologyLog';
-import { evaluatePhase2 } from '../utils/phase2';
+import { evaluatePhase2, remediationTargets } from '../utils/phase2';
+import { addCorrectionItem, getCorrectionQueue, markCorrection, correctionStats } from '../utils/correctionQueue';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
 import BoussoleCard from './BoussoleCard';
 import MiftahCard from './MiftahCard';
@@ -49,7 +50,10 @@ interface MethodologyProps {
 
 export default function MethodologyCompilerView({ onBackToHome }: MethodologyProps) {
   // Navigation Tabs: 'engine_rules' (Couche 0) | 'verbs_ref' (Fiches) | 'simulator' (4 Stades) | 'mastery_matrix' (Analytics & Erreurs)
-  const [activeTab, setActiveTab] = useState<'simulator' | 'verbs_ref' | 'engine_rules' | 'mastery_matrix' | 'boussole_card'>('simulator');
+  const [activeTab, setActiveTab] = useState<'simulator' | 'verbs_ref' | 'engine_rules' | 'mastery_matrix' | 'correction' | 'boussole_card'>('simulator');
+  // File de correction (Phase 3) — bump pour rafraîchir l'onglet + le badge
+  const [correctionVersion, setCorrectionVersion] = useState(0);
+  const [refCardOpen, setRefCardOpen] = useState(false); // carte-référence en stage 4
 
   // Selected Verb & Exercise for Training
   const [selectedVerbId, setSelectedVerbId] = useState<string>('verb_analyse_v1');
@@ -323,6 +327,29 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
       setMasteryStatus(getMasteryStatus());
       setExtensionUnlocked(isExtensionUnlocked());
     }
+
+    // Phase 3 (audit §3.5) : la production passe au correcteur UNIQUEMENT si la
+    // FORME est validée — sinon renvoi ciblé (micro-2a), pas de file.
+    if (currentStage >= 3) {
+      const q = currentExercise.question;
+      const expectedSource = isDualSource(q) ? 'paper' : detectSourceGate(q);
+      const sourceOk = (currentStage === 3 && sourceGate) ? sourceGate === expectedSource : null;
+      const verdict = evaluatePhase2({
+        sourceGateOk: sourceOk,
+        switchGateOk: rep.switchLine.choiceCorrect,
+        icm: rep.icm,
+        typicalErrorViolated: rep.switchLine.violated,
+      });
+      if (verdict.formeValidee) {
+        addCorrectionItem({
+          verbId: selectedVerbId, verbAr: currentVerb.verbAr, theme: currentExercise.theme,
+          stage: currentStage === 4 ? 4 : 3,
+          dateISO: new Date().toISOString(),
+          text: fullDraft, icm: rep.icm, errorTags: rep.detectedErrors.map(e => e.tag),
+        });
+        setCorrectionVersion(v => v + 1);
+      }
+    }
     setEvolutionVersion(v => v + 1);
 
     // Update matrix score & error counters
@@ -478,6 +505,18 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           >
             <Layers className="w-4 h-4" />
             <span>مصفوفة الإتقان</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('correction')}
+            className={`px-4 py-2 rounded-xl font-bold text-xs md:text-sm whitespace-nowrap transition-all flex items-center gap-2 ${
+              activeTab === 'correction'
+                ? 'bg-white text-[#006d37] shadow-md'
+                : 'bg-white/15 text-white hover:bg-white/25'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>المصححة {correctionStats().pending > 0 ? `(${correctionStats().pending})` : ''}</span>
           </button>
 
           <button
@@ -1087,6 +1126,27 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                       </div>
                     </div>
 
+                    {/* Phase 3 — carte-référence : rédaction libre avec la carte à portée de main */}
+                    <div className="bg-white/10 backdrop-blur-sm p-3.5 rounded-xl border border-white/20 text-xs space-y-2">
+                      <button onClick={()=> setRefCardOpen(o=>!o)} className="w-full flex items-center justify-between font-bold text-white">
+                        <span>📇 البطاقة — مرجع حر (افتحها في أي لحظة)</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${refCardOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {refCardOpen && (
+                        <div className="space-y-1.5 pt-1 border-t border-white/15">
+                          <div className="font-bold text-emerald-300">{currentVerb.verbAr} — {currentVerb.goal}</div>
+                          {currentVerb.structureSteps.map((st, i) => (
+                            <div key={i} className="text-white/80 leading-relaxed">• {st}</div>
+                          ))}
+                          <div className="pt-1 text-white/70"><span className="font-bold text-amber-300">الروابط:</span> {currentVerb.requiredConnectors.join(' · ')}</div>
+                          <details className="pt-1">
+                            <summary className="cursor-pointer font-bold text-white/70">المثال النموذجي</summary>
+                            <p className="mt-1 text-white/60 whitespace-pre-line">{currentVerb.goodExample.answer}</p>
+                          </details>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Compulsory 90s Draft Accordion */}
                     <div className="bg-white/10 backdrop-blur-sm p-3.5 rounded-xl border border-white/20 text-xs space-y-2">
                       <div className="flex items-center justify-between font-bold">
@@ -1317,12 +1377,46 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                   <div className={`p-4 rounded-2xl border flex items-start gap-3 ${v.formeValidee ? 'bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800/60' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60'}`}>
                     <ShieldAlert className={`w-5 h-5 shrink-0 mt-0.5 ${v.formeValidee ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400'}`} />
                     <div className="flex-1">
-                      <h4 className={`font-black text-sm ${v.formeValidee ? 'text-sky-900 dark:text-sky-300' : 'text-amber-900 dark:text-amber-300'}`}>حكم المرحلة ٢ — {v.formeValidee ? 'الشكل مُتحقَّق منه' : 'الشكل ناقص'}</h4>
+                      <h4 className={`font-black text-sm ${v.formeValidee ? 'text-sky-900 dark:text-sky-300' : 'text-amber-900 dark:text-amber-300'}`}>الحكم الآلي — {v.formeValidee ? 'الشكل مُتحقَّق منه' : 'الشكل ناقص'}</h4>
                       <p className={`text-xs md:text-sm font-medium mt-0.5 ${v.formeValidee ? 'text-sky-800 dark:text-sky-400' : 'text-amber-800 dark:text-amber-400'}`}>{v.messageAr}</p>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {v.gates.map(g => (
                           <span key={g.id} className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${g.passed === null ? 'bg-gray-100 dark:bg-gray-800/50 text-gray-400 border-gray-200 dark:border-gray-700' : g.passed ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' : 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60'}`}>{g.passed === null ? '—' : g.passed ? '✓' : '✗'} {g.labelAr}</span>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Renvoi ciblé (audit §3.7) : micro-2a sur la sous-étape en défaut, pas la re-Phase-2 */}
+              {currentStage < 4 && (() => {
+                const targets = remediationTargets(scoreReport.stepReport);
+                if (targets.length === 0) return null;
+                return (
+                  <div className="bg-red-50 dark:bg-red-950/30 p-4 rounded-2xl border border-red-200 dark:border-red-800/60 space-y-2">
+                    <div className="flex items-start gap-3">
+                      <RotateCcw className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-black text-sm text-red-900 dark:text-red-300">الرجوع المستهدف — إكمال 2a مصغّر</h4>
+                        <p className="text-xs text-red-800 dark:text-red-400 font-medium mt-0.5">لا إعادة المرحلة 2 كاملة: نعكف فقط على الخطوة الناقصة في النموذج، ثم نعود للإنتاج.</p>
+                        <div className="mt-1.5 space-y-1">
+                          {targets.map(t => (
+                            <div key={t.step} className="text-xs font-bold text-red-900 dark:text-red-300 flex items-start gap-1.5">
+                              <span className="shrink-0">الخطوة {t.step}:</span>
+                              <span className="font-medium">{t.remedyAr ?? 'راجع نموذج هذه الخطوة ثم أعد كتابتها.'}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <button onClick={()=>{
+                            setCurrentStage(1);
+                            setHighlightedSteps(Object.fromEntries(scoreReport.stepReport.filter(l=>l.applicable && !l.passed).map(l=>[l.step, true])));
+                            setShowSourceGate(false);
+                            setShowSwitchGate(false);
+                          }} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs">🔁 إعادة الخطوات الناقصة (النموذج)</button>
+                          <button onClick={()=> setCurrentStage(3)} className="px-3 py-1.5 bg-white dark:bg-black/30 text-red-700 dark:text-red-300 rounded-xl font-bold text-xs border border-red-200 dark:border-red-800/60">العودة للإنتاج</button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1902,6 +1996,60 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
       )}
 
       {/* TAB 5: MIFTAH — بطاقة المفتاح recto/verso (pro) */}
+      {activeTab === 'correction' && (() => {
+        const queue = getCorrectionQueue();
+        const stats = correctionStats();
+        return (
+          <section className="space-y-4">
+            <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+              <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">المصححة — قائمة التصحيح</h2>
+              <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                القاعدة: الآلة تحقّق من الشكل (٣ أبواب) — الأستاذ يضمن المضمون. كل إنتاج «صحيح الشكل» يصل هنا.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">بانتظار: {stats.pending}</span>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">مضمونها سليم: {stats.approved}</span>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300">تحتاج تصحيحاً: {stats.corrections}</span>
+              </div>
+            </div>
+            {queue.length === 0 ? (
+              <div className="bg-white dark:bg-[#161c18] p-8 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-sm text-gray-400">
+                لا إنتاجات بعد — أرسل إنتاجاً من المحاكاة (الشكل الصحيح يصل تلقائياً إلى هنا).
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {queue.map(item => (
+                  <div key={item.id} className={`bg-white dark:bg-[#161c18] p-4 rounded-2xl border shadow-sm ${item.status === 'pending' ? 'border-amber-200 dark:border-amber-900/50' : item.status === 'approved' ? 'border-emerald-200 dark:border-emerald-900/50' : 'border-red-200 dark:border-red-900/50'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-black text-sm text-gray-900 dark:text-white">{item.verbAr} {item.theme ? <span className="text-xs font-bold text-gray-400">· {item.theme}</span> : null}</div>
+                      <div className="flex items-center gap-2 text-[11px] font-bold">
+                        <span className="text-gray-400">{new Date(item.dateISO).toLocaleDateString('fr-DZ')}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800/60 text-gray-600 dark:text-gray-300">ICM {item.icm}%</span>
+                        <span className={`px-2 py-0.5 rounded-full ${item.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300' : item.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300'}`}>
+                          {item.status === 'pending' ? 'بانتظار المصحح' : item.status === 'approved' ? 'المضمون سليم' : 'تحتاج تصحيحاً'}
+                        </span>
+                      </div>
+                    </div>
+                    {item.errorTags.length > 0 && (
+                      <div className="mt-1 text-[11px] text-gray-400 font-bold">أخطاء الشكل المرصودة: {item.errorTags.join(' · ')}</div>
+                    )}
+                    <p className="mt-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-black/20 p-3 rounded-xl whitespace-pre-line max-h-40 overflow-y-auto">{item.text}</p>
+                    {item.status === 'pending' ? (
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <button onClick={()=>{ markCorrection(item.id, 'approved'); setCorrectionVersion(v=>v+1); }} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs">✅ المضمون سليم</button>
+                        <button onClick={()=>{ markCorrection(item.id, 'corrections'); setCorrectionVersion(v=>v+1); }} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs">✏️ تحتاج تصحيحاً</button>
+                      </div>
+                    ) : item.noteAr ? (
+                      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">ملاحظة المصحح: {item.noteAr}</div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })()}
+
       {activeTab === 'boussole_card' && (
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">

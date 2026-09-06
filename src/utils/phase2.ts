@@ -37,6 +37,23 @@ export interface Phase2Verdict {
   messageAr: string;
 }
 
+// ── Renvoi ciblé (audit §3.7) : micro-séquence 2a sur la SOUS-ÉTAPE en défaut,
+//    pas la re-Phase-2 intégrale. Pur + testable.
+import type { StepLine } from './methodologyScorer';
+
+export interface RemediationTarget {
+  step: StepLine['step'];
+  tags: string[];
+  remedyAr?: string;
+}
+
+/** Les étapes applicables et en échec du rapport (ordre du parcours). */
+export function remediationTargets(stepReport: StepLine[]): RemediationTarget[] {
+  return stepReport
+    .filter(l => l.applicable && !l.passed)
+    .map(l => ({ step: l.step, tags: l.errorTags, remedyAr: l.remedyAr }));
+}
+
 export function evaluatePhase2(inp: Phase2GateInput): Phase2Verdict {
   const gates: Phase2GateResult[] = [
     { id: 'source', labelAr: 'الباب ١ — المصدر', passed: inp.sourceGateOk },
