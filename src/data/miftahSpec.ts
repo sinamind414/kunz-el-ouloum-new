@@ -37,13 +37,25 @@ export const MIFTAH_NOMENCLATURE = {
   asnan: 'الأسنان',
   qafal: 'القفل',
   bawaba: 'البوابة',
-  bawaba1: 'البوابة 1 — ورقة أم رأس؟',
-  bawaba2: 'البوابة 2 — صورة أم فيلم؟',
+  // Update 2026-09-06 (MARQUE §12) — TROIS portes, cascade :
+  bawaba1: 'البوابة ١ — الوجود (قفل أم لا؟)',
+  bawaba2: 'البوابة ٢ — المصدر (وثيقة أم مختلط؟)',
+  bawaba3: 'البوابة ٣ — الحركة (📷 أم 🎬 أم 🔨؟)',
   s0: 'اِفهم',
-  s1: 'اِقْرَأْ',
-  s2: 'اِجْمَعْ',
-  s3: 'اِرْبِطْ',
-  s4: 'اِخْتِمْ',
+  s1: 'تعرّف',
+  s2: 'أدخل',
+  s3: 'أدر',
+  s4: 'افتح',
+} as const;
+
+// Phrase-mnémotechnique unique (MARQUE §12) — le geste physique de la clé
+export const KEY_MNEMONIC_AR = 'تعرّف · أدخل · أدر · افتح — أربع حركات، لا أكثر، وينفتح القفل.';
+
+// Les 3 mouvements de la porte 3 (MARQUE §12) — le 🔨 حدّاد est l'angle mort corrigé
+export const MOVEMENTS = {
+  photo: { id: 'photo' as const, labelAr: '📷 الصورة', verbsAr: 'حلل، صِف، استخرج، قارن', gearAr: 'وصف ثم استنتاج بسيط' },
+  film: { id: 'film' as const, labelAr: '🎬 الفيلم', verbsAr: 'اشرح، فسر، اربط، بيّن آلية', gearAr: 'استنتاج يفسّر «لماذا»' },
+  smith: { id: 'smith' as const, labelAr: '🔨 الحدّاد', verbsAr: 'اقترح، برر، ناقض، قدّم حلا', gearAr: 'تصنيع: منتج منطقي جديد (فرضية/اقتراح/توصية)' },
 } as const;
 
 export const STEP0 = {
@@ -55,12 +67,13 @@ export const STEP0 = {
   checkAr: 'هل كتبت الهدف العام في سطر واحد قبل القراءة التفصيلية؟',
 } as const;
 
-// Les 4 dents — aligné avec le tableau أ du recto
+// Les 4 dents — Update 2026-09-06 (MARQUE §12) : chaque dent nomme le GESTE d'une clé.
+// Contenu pédagogique (actionAr/correctorAr) inchangé — seul le nom change.
 export const ASNAN = [
-  { id: 1 as const, nameAr: 'اِقْرَأْ', actionAr: 'أطوّق الفعل · أسطّر الكلمات المفتاحية · أرقّم إجابتي برقم السؤال', correctorAr: 'إجابة بلا رقم أو تحت رقم خاطئ = 0. الفعل الخاطئ = تفقد نقطة الفعل كاملة.' },
-  { id: 2 as const, nameAr: 'اِجْمَعْ', actionAr: 'أستخرج من الوثيقة أرقاما + وحدات + اتجاه التغيّر', correctorAr: 'نقطة الاستخراج للرقم مع وحدته. «يرتفع» وحدها = نصف نقطة. رقم بلا وحدة = خطأ.' },
-  { id: 3 as const, nameAr: 'اِرْبِطْ', noteAr: 'إن سمح الفعل', actionAr: 'أربط المعطى بالسبب/الآلية من الدرس: «لأنّ…»', correctorAr: 'ربط بلا معطى = نصف النقطة. معطى بلا ربط والفعل يطلبه = نصف النقطة.' },
-  { id: 4 as const, nameAr: 'اِخْتِمْ', actionAr: 'جملة واحدة تجيب حرفيا على الكلمات التي سطّرتُها في السنّ 1', correctorAr: 'خاتمة غائبة = نقطة ضائعة. خاتمة لا تحوي كلمات السؤال = لا تُقرأ.' },
+  { id: 1 as const, nameAr: 'تعرّف', iconAr: '🔍', actionAr: 'أطوّق الفعل · أسطّر الكلمات المفتاحية · أرقّم إجابتي برقم السؤال', correctorAr: 'إجابة بلا رقم أو تحت رقم خاطئ = 0. الفعل الخاطئ = تفقد نقطة الفعل كاملة.' },
+  { id: 2 as const, nameAr: 'أدخل', iconAr: '🔑', actionAr: 'أستخرج من الوثيقة أرقاما + وحدات + اتجاه التغيّر', correctorAr: 'نقطة الاستخراج للرقم مع وحدته. «يرتفع» وحدها = نصف نقطة. رقم بلا وحدة = خطأ.' },
+  { id: 3 as const, nameAr: 'أدر', iconAr: '🔄', noteAr: 'إن سمح الفعل', actionAr: 'أربط المعطى بالسبب/الآلية من الدرس: «لأنّ…»', correctorAr: 'ربط بلا معطى = نصف النقطة. معطى بلا ربط والفعل يطلبه = نصف النقطة.' },
+  { id: 4 as const, nameAr: 'افتح', iconAr: '🔓', actionAr: 'جملة واحدة تجيب حرفيا على الكلمات التي سطّرتُها في السنّ 1', correctorAr: 'خاتمة غائبة = نقطة ضائعة. خاتمة لا تحوي كلمات السؤال = لا تُقرأ.' },
 ] as const;
 
 // Les 3 phrases prêtes (d)
@@ -116,10 +129,10 @@ export const DRILL = {
   totalSec: 60,
   goal: '12/12 على ثلاثة أيام مختلفة',
   examples: [
-    'اذكر من الوثيقة 2 العناصر… (ورقة/صورة)',
-    'اذكر مراحل… (رأس)',
-    'فسّر بالاعتماد على معلوماتك والشكل 3… (ورقة بعمودين/فيلم)',
-    'عرّف… (رأس)',
+    'حلل منحنى الوثيقة 1… (🚪 قفل · 📥 وثيقة · 📷)',
+    'اذكر مراحل… (🚪 لا قفل · 🧠 الدُرج)',
+    'فسّر بالاعتماد على معلوماتك والشكل 3… (🚪 قفل · 📥 مختلط · 🎬)',
+    'اقترح فرضيتين انطلاقا من الوثيقة 1 ومعلوماتك… (🚪 قفل · 📥 مختلط · 🔨)',
   ],
 } as const;
 

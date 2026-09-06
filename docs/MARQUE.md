@@ -216,4 +216,62 @@ Bilan complet : `docs/AUDIT_APPROCHE_APP.md`. Trois décisions sont actées ci-d
 | 0 | D1 — textes fiche + spec + garde-fou + code `v3Progress` | ✅ fait (textes + code) |
 | 1 | D2 — `استنتج` (code) | ✅ fait — **prérequis Phase 1 levé** |
 | 2 | D3 — test 10 élèves | ⏳ exécution par l'owner — valide les consignes avant le pool ≥ 50 |
-| 3 | Builds app (Phase 0 → 4, mode examen) | ⏳ ordre complet : `docs/AUDIT_APPROCHE_APP.md` §6 |
+| 3 | Builds app (Phase 0 → 4, mode examen) | ✅ **base §12 appliquée (3 portes + dents)** — suite : `docs/AUDIT_APPROCHE_APP.md` §6 |
+
+## 12. Update 2026-09-06 — trois portes + nouveaux noms des dents (décision owner, validée sur BAC 2025)
+
+**Contexte :** sur les deux sujets BAC SVT 2025 (2 sujets complets + corrigés officiels), chaque
+question reliée à un verbe montre **trois familles**, pas deux. La 3e famille (بناء/ابتكار :
+*اقترح، برر، ناقض، قدّم حلا*) apparaît **6 fois** sur ces deux sujets uniquement — presque toujours
+porteuse de la note la plus discriminante (pas de réponse unique attendue). Le modèle 2 portes
+l'écrasait dans « فيلم ». Le cas mixte (*«ومعلوماتك / ومكتسباتك»*) est la **norme** des questions
+ouvertes, pas l'exception — il a désormais sa propre porte.
+
+### 12.1 Les 3 portes (cascade, progressive disclosure)
+
+| # | Porte | Question | Issues |
+|---|---|---|---|
+| 1 | 🚪 **بوابة الوجود** | قفل أصلا؟ (وثيقة؟) | 🔒 قفل / 🧠 لا قفل (⇒ دُرج المعرفة, fin de cascade) |
+| 2 | 📥 **بوابة المصدر** | من أين مادة الإدخال؟ | 📄 وثيقة فقط (1 colonne) / 📄+🧠 مختلط (2 colonnes `[من الوثيقة \| من معلوماتي]`) |
+| 3 | ⚙️ **بوابة الحركة** | أي حركة يطلب هذا القفل؟ | 📷 الصورة (حلل، صِف، استخرج، قارن) / 🎬 الفيلم (اشرح، فسر، اربط، بيّن آلية) / **🔨 الحدّاد** (اقترح، برر، ناقض، قدّم حلا) |
+
+**🔨 الحدّاد** = la motion manquante : le verbe n'a pas de clé prête — **il la fabrique**.
+L'élève doit *manufacturer* une réponse logique (hypothèse / proposition / recommandation) à
+partir de données dispersées — jamais « décrire » ni « expliquer » quand on lui demande d'« inventer ».
+
+| La dent | 📷 الصورة | 🎬 الفيلم | 🔨 الحدّاد |
+|---|---|---|---|
+| 🔍 تعرّف | الفعل: وصفي | الفعل: تفسيري | الفعل: إنشائي (لا جواب واحد) |
+| 🔑 أدخل | من الوثيقة فقط | وثيقة + معلومات | **كل المعطيات المتاحة**، دون استثناء |
+| 🔄 أدر | **مُتجاوَزة** | ربط عادي (سبب موجود) | **تصنيع**: دمج معطيات متفرقة في منطق جديد |
+| 🔓 افتح | ملاحظة/استنتاج بسيط | استنتاج يفسّر «لماذا» | **المنتَج المُصنَّع**: فرضية/اقتراح/توصية، مبرَّر منطقيا |
+
+### 12.2 Les 4 dents renommées — le nom change, le geste ne change pas
+
+Chaque dent nomme désormais **le geste physique qu'on fait avec une clé** :
+
+| # | 🔒 Ancien | 🔑 Nouveau | Le geste | Ce qu'on y fait (inchangé) |
+|---|---|---|---|---|
+| 1 | اِقْرَأْ | **🔍 تعرّف** | Je reconnais la forme du verrou | Entourer le verbe, souligner les mots-clés |
+| 2 | اِجْمَعْ | **🔑 أدخل** | J'insère la clé dans la serrure | Extraire données/chiffres/unités du document |
+| 3 | اِرْبِطْ | **🔄 أدر** | Je tourne la clé | Lier la donnée à la mécanique du cours |
+| 4 | اِخْتِمْ | **🔓 افتح** | La serrure s'ouvre | La phrase de conclusion |
+
+**Phrase-mnémotechnique unique (figée, `KEY_MNEMONIC_AR`) :**
+> **تعرّف · أدخل · أدر · افتح — أربع حركات، لا أكثر، وينفتح القفل.**
+
+**Note enseignant :** le contenu pédagogique de chaque dent reste identique — un élève déjà formé
+à l'ancien vocabulaire s'adapte en une session grâce au tableau ci-dessus.
+
+### 12.3 Conséquences actées dans le build (2026-09-06)
+
+- **Moteur** : `detectExistenceGate` / `detectSourceKind` / `detectMovement` / `getGateCascade` ;
+  chaque carte verbe porte son `movement` (`verb_hypothesis_v1` = **smith** — l'angle mort corrigé).
+- **Verdict Phase 2** : 4 pastilles — الوجود / المصدر / الحركة / البنية (ICM ≥ 60 sans erreur typique).
+- **Drill** : tri à **3 issues** sur la porte 3 + détection `ومعلوماتك/ومكتسباتك` sur la porte 2 ;
+  banque 69 items (12 🔨 : 3 items réels BAC 2025 + variantes ; 🔨 ≈ 21% des قفل — cible 25-30%).
+- **Vue** : cascade 🚪→📥→⚙️ en stage 3 (progressive disclosure, neutre, jamais d'avance) ;
+  دُرج direct sur « لا قفل » ; Phase 0 = 6 démos sur les 3 issues.
+- **Fiche + carte** : dents renommées, 3 portes, mnémonique — garde-fou `check:miftah` §12 (anciens noms bannis).
+- **D3** : le protocole (10 élèves) s'applique **avec les nouveaux noms** — le test n'ayant pas encore
+  d'exécution, aucune re-test de noms n'est due. « 4 dents à T+24 h » reste valable (4 dents, 4 nouveaux noms).

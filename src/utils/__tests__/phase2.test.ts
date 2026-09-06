@@ -1,47 +1,67 @@
-// Phase 2 (audit §3.3) — le verdict auto ne couvre que la FORME (3 portes) ;
+// Phase 2 (audit §3.3 + update MARQUE §12) — le verdict auto ne couvre que la
+// FORME : TROIS portes de classification (existence / source / mouvement) + la structure.
 // et B (§3.8) — la cellule de matrice est un ratio glissant de binaires du scoreur.
 import { describe, expect, it } from 'vitest';
 import { evaluatePhase2, remediationTargets, PHASE2_FORM_THRESHOLD } from '../phase2';
 import { verbSlidingRatio, ProductionLogEntry } from '../methodologyLog';
 
-const base = { sourceGateOk: null as boolean | null, switchGateOk: null as boolean | null, icm: 100, typicalErrorViolated: false };
+const base = {
+  existenceGateOk: null as boolean | null,
+  sourceGateOk: null as boolean | null,
+  movementGateOk: null as boolean | null,
+  icm: 100,
+  typicalErrorViolated: false,
+};
+const gatesTrue = { existenceGateOk: true, sourceGateOk: true, movementGateOk: true };
 
-describe('Phase 2 — verdict « forme validée »', () => {
+describe('Phase 2 — verdict « forme validée » (3 portes + forme)', () => {
   it('tout passe → forme validée, et le message renvoie au fond (Phase 3)', () => {
-    const v = evaluatePhase2({ ...base, sourceGateOk: true, switchGateOk: true, icm: 92 });
+    const v = evaluatePhase2({ ...base, ...gatesTrue, icm: 92 });
     expect(v.formeValidee).toBe(true);
+    expect(v.gates).toHaveLength(4);
     expect(v.gates.every(g => g.passed === true)).toBe(true);
     expect(v.messageAr).toContain('المرحلة 3');
   });
 
   it('ICM sous le seuil → forme non validée (même portes correctes)', () => {
-    const v = evaluatePhase2({ ...base, sourceGateOk: true, switchGateOk: true, icm: PHASE2_FORM_THRESHOLD - 1 });
+    const v = evaluatePhase2({ ...base, ...gatesTrue, icm: PHASE2_FORM_THRESHOLD - 1 });
     expect(v.formeValidee).toBe(false);
     expect(v.gates.find(g => g.id === 'forme')!.passed).toBe(false);
   });
 
   it('ICM au seuil exact → forme validée', () => {
-    const v = evaluatePhase2({ ...base, icm: PHASE2_FORM_THRESHOLD });
+    const v = evaluatePhase2({ ...base, ...gatesTrue, icm: PHASE2_FORM_THRESHOLD });
     expect(v.gates.find(g => g.id === 'forme')!.passed).toBe(true);
   });
 
   it("l'erreur typique du verbe bloque la forme même à ICM 100", () => {
-    const v = evaluatePhase2({ ...base, icm: 100, typicalErrorViolated: true });
+    const v = evaluatePhase2({ ...base, ...gatesTrue, icm: 100, typicalErrorViolated: true });
     expect(v.formeValidee).toBe(false);
     expect(v.messageAr).toContain('الخطأ النموذجي');
   });
 
-  it('porte fausse → blocage ; porte non évaluée (null) → ne bloque pas', () => {
+  it('une porte fausse → blocage ; porte non évaluée (null) → ne bloque pas', () => {
+    expect(evaluatePhase2({ ...base, existenceGateOk: false }).formeValidee).toBe(false);
     expect(evaluatePhase2({ ...base, sourceGateOk: false }).formeValidee).toBe(false);
-    expect(evaluatePhase2({ ...base, sourceGateOk: null, switchGateOk: null }).formeValidee).toBe(true);
-    expect(evaluatePhase2({ ...base, switchGateOk: false }).formeValidee).toBe(false);
+    expect(evaluatePhase2({ ...base, movementGateOk: false }).formeValidee).toBe(false);
+    expect(evaluatePhase2({ ...base }).formeValidee).toBe(true); // tout null = stage 4 (BAC sim, pas de portes)
+    // لا قفل ⇒ les portes 2-3 ne sont pas posées (null) — seules l'existence et la forme comptent
+    expect(evaluatePhase2({ ...base, existenceGateOk: true }).formeValidee).toBe(true);
+  });
+
+  it('les 4 portes portent leurs noms (الوجود / المصدر / الحركة / البنية)', () => {
+    const v = evaluatePhase2({ ...base });
+    expect(v.gates.map(g => g.id)).toEqual(['existence', 'source', 'movement', 'forme']);
+    expect(v.gates[0].labelAr).toContain('الوجود');
+    expect(v.gates[1].labelAr).toContain('المصدر');
+    expect(v.gates[2].labelAr).toContain('الحركة');
   });
 
   it('le message d\'échec nomme les portes en défaut', () => {
-    const v = evaluatePhase2({ ...base, sourceGateOk: false, switchGateOk: false, icm: 40 });
+    const v = evaluatePhase2({ ...base, existenceGateOk: false, movementGateOk: false, icm: 40 });
     expect(v.formeValidee).toBe(false);
-    expect(v.messageAr).toContain('الباب ١');
-    expect(v.messageAr).toContain('الباب ٢');
+    expect(v.messageAr).toContain('الوجود');
+    expect(v.messageAr).toContain('الحركة');
     expect(v.messageAr).toContain('ICM');
   });
 });

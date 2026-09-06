@@ -23,7 +23,7 @@ describe('Phase 3 — file de correction', () => {
     const item = mk(1);
     expect(item.status).toBe('pending');
     expect(getPendingCorrections()).toHaveLength(1);
-    expect(correctionStats()).toEqual({ pending: 1, approved: 0, corrections: 0 });
+    expect(correctionStats()).toEqual({ pending: 1, approved: 0, corrections: 0, examCount: 0 });
   });
 
   it('plus récente d\'abord', () => {
@@ -38,7 +38,7 @@ describe('Phase 3 — file de correction', () => {
     const q = getCorrectionQueue();
     expect(q[0].status).toBe('approved');
     expect(q[0].noteAr).toBe('ممتاز');
-    expect(correctionStats()).toEqual({ pending: 0, approved: 1, corrections: 0 });
+    expect(correctionStats()).toEqual({ pending: 0, approved: 1, corrections: 0, examCount: 0 });
   });
 
   it('le correcteur renvoie à corriger (+ note)', () => {

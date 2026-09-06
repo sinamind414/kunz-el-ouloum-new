@@ -131,6 +131,37 @@ must(verso, 'تثبيت النواة على ثلاثة أنواع', 'fiche ك : 
 mustNot(html, 'ثلاث مرات متتالية', 'fiche : « متتالية » bannie');
 must(card, '12/12 على ثلاثة أيام مختلفة', 'carte React : parité fiche ك');
 
+console.log('\n§ Update 2026-09-06 (docs/MARQUE.md §12) — 3 portes + nouveaux noms des dents');
+must(spec, "s1: 'تعرّف'", 'spec : dent 1 = تعرّف');
+must(spec, "s2: 'أدخل'", 'spec : dent 2 = أدخل');
+must(spec, "s3: 'أدر'", 'spec : dent 3 = أدر');
+must(spec, "s4: 'افتح'", 'spec : dent 4 = افتح');
+must(spec, 'KEY_MNEMONIC_AR', 'spec : phrase-mnémotechnique figée');
+must(spec, 'bawaba1: \'البوابة ١ — الوجود (قفل أم لا؟)\'', 'spec : porte 1 = الوجود');
+must(spec, 'bawaba3: \'البوابة ٣ — الحركة (📷 أم 🎬 أم 🔨؟)\'', 'spec : porte 3 = الحركة (3 issues)');
+must(spec, "smith: { id: 'smith' as const, labelAr: '🔨 الحدّاد'", 'spec : mouvement 🔨 الحدّاد');
+must(recto, '🔍 تعرّف', 'fiche : dent 1 renommée');
+must(recto, '🔓 افتح', 'fiche : dent 4 renommée');
+must(recto, 'البوابة 1 — قفل أصلا؟', 'fiche : porte 1 = l\'existence');
+must(recto, 'البوابة 3 — أي حركة؟', 'fiche : porte 3 = le mouvement');
+must(recto, 'أربع حركات، لا أكثر، وينفتح القفل', 'fiche : mnémonique');
+must(recto, '🔨 الحدّاد', 'fiche : la 3e issue (angle mort corrigé)');
+mustNot(recto, 'اِقْرَأْ', 'fiche : ancien nom 1 banni');
+mustNot(recto, 'اِجْمَعْ', 'fiche : ancien nom 2 banni');
+mustNot(recto, 'اِرْبِطْ', 'fiche : ancien nom 3 banni');
+mustNot(recto, 'اِخْتِمْ', 'fiche : ancien nom 4 banni');
+must(card, '🔍 تعرّف', 'carte : parité dents avec la fiche');
+must(card, '🔨 الحدّاد', 'carte : parité 3e issue');
+mustNot(card, 'اِقْرَأْ', 'carte : anciens noms bannis');
+must(compiler, 'البوابة ١ — قفل أصلا؟', 'vue : porte 1 = l\'existence');
+must(compiler, 'البوابة ٣ — أي حركة يطلب هذا القفل؟', 'vue : porte 3 = le mouvement');
+must(compiler, 'gate3Choice', 'vue : choix ternaire 📷/🎬/🔨 tracé');
+mustNot(recto, 'البوابتان', 'fiche : titre « 2 portes » banni');
+must(recto, 'البوابات الثلاث', 'fiche : section 3 portes');
+mustNot(card, 'البوابتان', 'carte : titre « 2 portes » banni');
+must(compiler, '3 بوابات', 'vue : header 3 portes');
+mustNot(compiler, '2 بوابتان', 'vue : « 2 بوابتان » banni');
+
 if (failures > 0) {
   console.error(`\n✗ ${failures} échec(s) — réaligner fiche/spec/carte sur docs/MARQUE.md`);
   process.exit(1);

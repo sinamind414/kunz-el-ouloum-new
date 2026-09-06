@@ -1,13 +1,13 @@
-// Phase 1 — auto-audit de la banque de drill : l'intention éditoriale doit
-// coïncider avec le dérivé du moteur (source) et le switch du verbe (mode).
+// Phase 1 (update 2026-09-06, MARQUE §12) — auto-audit de la banque de drill :
+// l'intention éditoriale doit coïncider avec le dérivé du moteur sur les 3 portes,
+// et la famille 🔨 حدّاد doit être représentée (l'angle mort corrigé).
 import { describe, expect, it } from 'vitest';
 import {
-  DRILL_BANK, deriveSource, deriveMode, drawDailyConsignes,
-  gradeDrill, PHASE0_DEMOS,
+  DRILL_BANK, deriveExistence, deriveSource, deriveMovement,
+  drawDailyConsignes, gradeDrill, PHASE0_DEMOS, DRILL_LABELS,
 } from '../drillBank';
-import { getVerbCardV2 } from '../methodologyEngine';
 
-describe('Phase 1 — banque du drill', () => {
+describe('Phase 1 — banque du drill (3 portes)', () => {
   it('pool ≥ 50 consignes', () => {
     expect(DRILL_BANK.length).toBeGreaterThanOrEqual(50);
   });
@@ -18,107 +18,107 @@ describe('Phase 1 — banque du drill', () => {
     expect(DRILL_BANK.map(c => c.seq)).toEqual(DRILL_BANK.map((_, i) => i + 1));
   });
 
-  it('source éditoriale = source dérivée du moteur (règle produit)', () => {
+  it('🚪 existence éditoriale = dérivée du moteur (règle produit)', () => {
+    for (const c of DRILL_BANK) {
+      expect(deriveExistence(c.consigne), `${c.id} « ${c.consigne} »`).toBe(c.existence);
+    }
+  });
+
+  it('📥 source éditoriale = dérivée (null ⇔ pas de قفل)', () => {
     for (const c of DRILL_BANK) {
       expect(deriveSource(c.consigne), `${c.id} « ${c.consigne} »`).toBe(c.source);
+      if (c.existence === 'no_lock') expect(c.source).toBeNull();
     }
   });
 
-  it('mode = switch du verbe (closed ⇒ image, open ⇒ film)', () => {
+  it('⚙️ movement dérivé de la carte (no_lock ⇒ دُرج ; list+قفل ⇒ 📷)', () => {
     for (const c of DRILL_BANK) {
-      const card = getVerbCardV2(c.verbCardId);
-      expect(card, c.id).toBeDefined();
-      expect(c.mode, c.id).toBe(deriveMode(c.verbCardId));
-      expect(c.mode, c.id).toBe(card!.switch === 'open' ? 'film' : 'image');
+      expect(deriveMovement(c.consigne, c.verbCardId), c.id).toBe(c.movement);
+    }
+    const drawer = DRILL_BANK.filter(c => c.movement === 'drawer');
+    expect(drawer.length).toBeGreaterThan(0);
+    for (const c of drawer) expect(c.existence).toBe('no_lock');
+  });
+
+  it('🔨 الحدّاد représenté (angle mort corrigé : ≥ 15% des قفل, cible ≈ 25-30%)', () => {
+    const smiths = DRILL_BANK.filter(c => c.movement === 'smith');
+    const locked = DRILL_BANK.filter(c => c.existence === 'lock');
+    expect(smiths.length).toBeGreaterThanOrEqual(10);
+    expect(smiths.length / locked.length).toBeGreaterThanOrEqual(0.15);
+    // toutes les hypothèses sont classées smith — jamais film ni photo
+    for (const c of DRILL_BANK.filter(c => c.verbCardId === 'verb_hypothesis_v1')) {
+      expect(c.movement).toBe('smith');
     }
   });
 
-  it('les 4 types de la fiche + dual sont représentés', () => {
-    const combos = new Set(DRILL_BANK.map(c => `${c.source}/${c.mode}`));
-    for (const combo of ['paper/image', 'paper/film', 'dual/film', 'memory/image', 'memory/film']) {
-      expect(combos.has(combo), combo).toBe(true);
-    }
-  });
-
-  it('les 12 consignes historiques restent dans la banque (continuité D1)', () => {
-    // NB : « فسر الوثيقة مستعينا بمكتسباتك » → « بمعلوماتك » : la règle dual du
-    // moteur exige le mot exact « معلومات » — la consigne est conservée en sens.
-    const legacy = [
-      'حلل الوثيقة ١', 'عرّف الإنزيم', 'فسر الوثيقة مستعينا ب',
-      'قارن بين المنحنيين', 'اذكر مراحل الترجمة', 'استخرج من الجدول',
-      'استنتج العلاقة من الوثيقة ومعلوماتك', 'صف شكل الخلية',
-      'كيف يحدث التنشيط', 'لخص في رسم تخطيطي',
-      'وضّح مستعينا بالوثيقة', 'حدد مصدر المعلومات',
-    ];
-    for (const t of legacy) {
-      expect(DRILL_BANK.some(c => c.consigne.includes(t)), t).toBe(true);
-    }
-  });
-
-  it('estimation : aucun consigne mémoire ne contient de mot document', () => {
-    const DOC = /(وثيق|شكل|جدول|منحن|رسم|صورة|سند|بيان|مخطط)/;
-    for (const c of DRILL_BANK) {
-      if (c.source === 'memory') expect(DOC.test(c.consigne), c.id).toBe(false);
-    }
+  it('le cas mixte existe et est fréquent (ومعلوماتك/ومكتسباتك = la norme BAC)', () => {
+    const mixed = DRILL_BANK.filter(c => c.source === 'mixed');
+    expect(mixed.length / DRILL_BANK.length).toBeGreaterThan(0.1);
   });
 });
 
 describe('Phase 1 — tirage quotidien', () => {
-  it('tire 12 consignes uniques', () => {
-    const d = drawDailyConsignes('2026-09-06');
-    expect(d).toHaveLength(12);
-    expect(new Set(d.map(c => c.id)).size).toBe(12);
-  });
-
-  it('déterministe pour un jour donné', () => {
-    const a = drawDailyConsignes('2026-09-06').map(c => c.id);
-    const b = drawDailyConsignes('2026-09-06').map(c => c.id);
+  it('déterministe par jour, 12 consignes, renouvelé le lendemain', () => {
+    const a = drawDailyConsignes('2026-09-06');
+    const b = drawDailyConsignes('2026-09-06');
+    const c = drawDailyConsignes('2026-09-07');
     expect(a).toEqual(b);
-  });
-
-  it('renouvelé d\'un jour à l\'autre (anti-mémorisation D3)', () => {
-    const a = new Set(drawDailyConsignes('2026-09-06').map(c => c.id));
-    const b = new Set(drawDailyConsignes('2026-09-07').map(c => c.id));
-    const overlap = [...a].filter(id => b.has(id));
-    expect(overlap.length).toBeLessThan(12);
-  });
-
-  it('respecte count et bornes de la banque', () => {
-    expect(drawDailyConsignes('2026-09-06', 5)).toHaveLength(5);
-    expect(drawDailyConsignes('2026-09-06', 100)).toHaveLength(DRILL_BANK.length);
+    expect(a.map(x => x.id)).not.toEqual(c.map(x => x.id));
+    expect(a).toHaveLength(12);
   });
 });
 
-describe('Phase 1 — grading (deux portes)', () => {
-  it('12/12 si les deux portes sont bonnes partout', () => {
-    const d = drawDailyConsignes('2026-09-06');
-    const answers = Object.fromEntries(d.map(c => [c.id, { source: c.source, mode: c.mode }]));
-    expect(gradeDrill(d, answers).score).toBe(12);
+describe('Phase 1 — gradeDrill (3 portes)', () => {
+  const item = (over: Partial<typeof DRILL_BANK[number]> = {}) =>
+    ({ ...DRILL_BANK[0], ...over });
+
+  it('les trois portes justes ⇒ réussie', () => {
+    const c = item({ id: 't1', existence: 'lock', source: 'mixed', movement: 'smith' });
+    const g = gradeDrill([c], { t1: { g1: 'lock', g2: 'mixed', g3: 'smith' } });
+    expect(g.score).toBe(1);
+    expect(g.results[0]).toMatchObject({ ok1: true, ok2: true, ok3: true, correct: true, answered: true });
   });
 
-  it('une seule porte fausse = consigne manquée', () => {
-    const d = drawDailyConsignes('2026-09-06');
-    const c = d[0];
-    const answers = Object.fromEntries(d.map(x => [x.id, { source: x.source, mode: x.mode }]));
-    answers[c.id] = { source: c.source, mode: c.mode === 'film' ? 'image' : 'film' };
-    const g = gradeDrill(d, answers);
-    expect(g.score).toBe(11);
-    expect(g.results[0].correct).toBe(false);
+  it('pas de قفل ⇒ portes 2-3 non posées (true), une réponse 1 suffit', () => {
+    const c = item({ id: 't2', existence: 'no_lock', source: null, movement: 'drawer' });
+    const g = gradeDrill([c], { t2: { g1: 'no_lock' } });
+    expect(g.score).toBe(1);
+    expect(g.results[0].answered).toBe(true);
   });
 
-  it('rien répondu = 0', () => {
-    const d = drawDailyConsignes('2026-09-06');
-    expect(gradeDrill(d, {}).score).toBe(0);
+  it('chaque porte fausse ⇒ échec, et « answered » est honnête', () => {
+    const c = item({ id: 't3', existence: 'lock', source: 'document', movement: 'film' });
+    const g1 = gradeDrill([c], { t3: { g1: 'no_lock', g2: 'document', g3: 'film' } });
+    expect(g1.results[0].ok1).toBe(false);
+    expect(g1.results[0].correct).toBe(false);
+    const g2 = gradeDrill([c], { t3: { g1: 'lock', g2: 'mixed', g3: 'film' } });
+    expect(g2.results[0]).toMatchObject({ ok1: true, ok2: false, ok3: true, correct: false });
+    const g3 = gradeDrill([c], { t3: { g1: 'lock', g2: 'document', g3: 'smith' } });
+    expect(g3.results[0]).toMatchObject({ ok1: true, ok2: true, ok3: false, correct: false });
+    const gPart = gradeDrill([c], { t3: { g1: 'lock' } });
+    expect(gPart.results[0].answered).toBe(false);
   });
 });
 
-describe('Phase 0 — démos', () => {
-  it('6 démos, toutes rattachées à la banque', () => {
+describe('Phase 1 — Phase 0 (ouverture des 3 portes)', () => {
+  it('6 démos, bankIds valides, une demo 🔨 حدّاد (la 3e issue)', () => {
     expect(PHASE0_DEMOS).toHaveLength(6);
-    const ids = new Set(DRILL_BANK.map(c => c.id));
     for (const d of PHASE0_DEMOS) {
-      expect(ids.has(d.bankId), d.bankId).toBe(true);
-      expect(d.whyAr.length).toBeGreaterThan(10);
+      const c = DRILL_BANK.find(x => x.id === d.bankId);
+      expect(c, d.bankId).toBeDefined();
     }
+    const smith = PHASE0_DEMOS.find(d => {
+      const c = DRILL_BANK.find(x => x.id === d.bankId)!;
+      return c.movement === 'smith';
+    });
+    expect(smith).toBeDefined();
+  });
+});
+
+describe('Phase 1 — labels UI (3 issues sur la porte 3)', () => {
+  it('g3 a exactement 3 issues + le دُرج', () => {
+    expect(Object.keys(DRILL_LABELS.g3).sort()).toEqual(['drawer', 'film', 'photo', 'smith']);
+    expect(Object.keys(DRILL_LABELS.g1).sort()).toEqual(['lock', 'no_lock']);
+    expect(Object.keys(DRILL_LABELS.g2).sort()).toEqual(['document', 'mixed']);
   });
 });

@@ -240,23 +240,67 @@ import { STEP0 as MIFTAH_STEP0 } from './miftahSpec';
 
 export type StepId = 1 | 2 | 3 | 4;
 export type MiftahStepId = 0 | 1 | 2 | 3 | 4;
-export const STEP_NAMES_AR: Record<StepId, string> = { 1: 'اِقْرَأْ', 2: 'اِجْمَعْ', 3: 'اِرْبِطْ', 4: 'اِخْتِمْ' };
-export const MIFTAH_STEP_NAMES_AR: Record<MiftahStepId, string> = { 0: MIFTAH_STEP0.nameAr, 1: 'اِقْرَأْ', 2: 'اِجْمَعْ', 3: 'اِرْبِطْ', 4: 'اِخْتِمْ' };
+// Update 2026-09-06 (docs/MARQUE.md §12) — les 4 dents nomment le GESTE PHYSIQUE d'une clé :
+// 🔍 تعرّف (reconnaître le verrou) · 🔑 أدخل (insérer) · 🔄 أدر (tourner) · 🔓 افتح (la serrure s'ouvre).
+// Contenu pédagogique inchangé — seul le nom change (tableau de migration MARQUE §12).
+export const STEP_NAMES_AR: Record<StepId, string> = { 1: 'تعرّف', 2: 'أدخل', 3: 'أدر', 4: 'افتح' };
+export const MIFTAH_STEP_NAMES_AR: Record<MiftahStepId, string> = { 0: MIFTAH_STEP0.nameAr, 1: 'تعرّف', 2: 'أدخل', 3: 'أدر', 4: 'افتح' };
 export type Switch = 'open' | 'closed';
 export type Step3Mode = 'none' | 'confront' | 'explain' | 'hypothesis' | 'dual';
 export type SpecialFormat = 'compare' | 'diagram' | 'hypothesis' | 'text' | null;
-export type SourceGate = 'paper' | 'memory'; // ورقة (وثيقة موجودة) vs رأس (حفظ)
+export type SourceGate = 'paper' | 'memory'; // compat — = l'existence : lock (قفل) / no_lock (لا قفل)
 
-// V3.1 — Gate 1 : ورقة vs رأس (هل سطّرت وثيقة/شكل/جدول/منحنى/رسم؟)
+// ═══════════════════════════════════════════════════════════════════════════
+// Update 2026-09-06 (docs/MARQUE.md §12) — TROIS PORTES, cascade :
+//   🚪 البوابة ١ — الوجود : قفل أصلا؟ (وثيقة؟) → لا قفل ⇒ 🧠 دُرج المعرفة (fin)
+//   📥 البوابة ٢ — المصدر : من أين مادة الإدخال؟ وثيقة فقط / مختلط (+معلوماتك/مكتسباتك)
+//   ⚙️ البوابة ٣ — الحركة : أي حركة يطلب القفل؟ 📷 صورة / 🎬 فيلم / 🔨 حدّاد (NOUVEAU)
+// Le 🔨 حدّاد (اقترح/برر/ناقض/قدّم حلا) était l'angle mort du modèle 2 portes :
+// prouvé 6× sur les sujets BAC 2025 (MARQUE §12).
+// ═══════════════════════════════════════════════════════════════════════════
+export type ExistenceGate = 'lock' | 'no_lock';   // 🚪 قفل؟
+export type SourceKind = 'document' | 'mixed';    // 📥 من الوثيقة / من الوثيقة + معلوماتي
+export type Movement = 'photo' | 'film' | 'smith';// ⚙️ 📷 / 🎬 / 🔨
+
 const DOC_KEYWORDS_RE = /(وثيق|شكل|جدول|منحن|رسم|صورة|سند|بيان|مخطط)/;
-const DUAL_KW_RE = /معلومات/;
-export function detectSourceGate(instruction: string): SourceGate {
+const MIXED_KW_RE = /(معلومات|مكتسبات)/; // «ومعلوماتك / ومكتسباتك» — la norme, pas l'exception (BAC 2025)
+
+// 🚪 البوابة ١ — الوجود : une consigne qui s'appuie sur une وثيقة porte un mot-document.
+export function detectExistenceGate(instruction: string): ExistenceGate {
+  return DOC_KEYWORDS_RE.test((instruction || '').normalize('NFC')) ? 'lock' : 'no_lock';
+}
+// 📥 البوابة ٢ — المصدر : null si pas de قفل (لا قفل ⇒ دُرج، pas de source).
+export function detectSourceKind(instruction: string): SourceKind | null {
+  if (detectExistenceGate(instruction) === 'no_lock') return null;
+  return MIXED_KW_RE.test((instruction || '').normalize('NFC')) ? 'mixed' : 'document';
+}
+// ⚙️ البوابة ٣ — la mouvement par le verbe de la consigne (texte) :
+// smith d'abord (le plus discriminant), puis film, photo par défaut si قفل.
+const SMITH_KW_RE = /(اقترَح|اقترح|بَرِّر|برر|ناقِض|ناقض|قدّم حلا|قدم حلا|توصية)/;
+const FILM_KW_RE = /(فسِّر|فسر|اُشرَح|اشرح|علِّل|علل|استَنتَج|استنتج|وضَّح|وضح|بيِّن|بين|صَادِق|صادق|أرجِع|ارجع|سَبَّب|لماذا)/;
+export function detectMovement(instruction: string): Movement {
   const t = (instruction || '').normalize('NFC');
-  return DOC_KEYWORDS_RE.test(t) ? 'paper' : 'memory';
+  if (SMITH_KW_RE.test(t)) return 'smith';
+  if (FILM_KW_RE.test(t)) return 'film';
+  return 'photo';
+}
+export interface GateCascade {
+  existence: ExistenceGate;
+  source: SourceKind | null;        // null ⇔ pas de قفل
+  movement: Movement | 'drawer';    // 'drawer' ⇔ pas de قفل (🧠 دُرج المعرفة)
+}
+export function getGateCascade(instruction: string): GateCascade {
+  const e = detectExistenceGate(instruction);
+  if (e === 'no_lock') return { existence: e, source: null, movement: 'drawer' };
+  return { existence: e, source: detectSourceKind(instruction), movement: detectMovement(instruction) };
+}
+
+// ── Compat V3.1 (scorer, harnais, vues existantes) — les anciens exports restent valables.
+export function detectSourceGate(instruction: string): SourceGate {
+  return detectExistenceGate(instruction) === 'lock' ? 'paper' : 'memory';
 }
 export function isDualSource(instruction: string): boolean {
-  const t = (instruction || '').normalize('NFC');
-  return DUAL_KW_RE.test(t) && DOC_KEYWORDS_RE.test(t);
+  return detectSourceKind(instruction) === 'mixed';
 }
 export function getSourceGateInfo(instruction: string): { source: SourceGate; isDual: boolean } {
   return { source: detectSourceGate(instruction), isDual: isDualSource(instruction) };
@@ -294,22 +338,25 @@ export interface VerbV2Meta {
   formatCheckAr?: string;
   typicalErrorTag: 'premature_interpretation' | 'unsupported_claim';
   step3Evidence?: RegExp;
+  /** ⚙️ Update 2026-09-06 — mouvement de la carte SI le قفل existe.
+   *  'drawer' ⇔ verbe du دُرج (pas de قفل possible : عرّف). */
+  movement: Movement | 'drawer';
 }
 export const switchOf = (c: Pick<VerbCard, 'category'>): Switch =>
   c.category === 'reasoned' ? 'open' : 'closed';
 export const VERB_V2_META: Record<string, VerbV2Meta> = {
-  verb_define_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
-  verb_list_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
-  verb_analyse_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'premature_interpretation' },
-  verb_deduce_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[1,2,3,4], format:null, typicalErrorTag:'unsupported_claim' },
-  verb_compare_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:'compare', formatCheckAr:'هل قلتُ عن الطرفين نفس عدد الأشياء ؟', typicalErrorTag:'premature_interpretation' },
-  verb_schema_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,3,2,4], format:'diagram', formatCheckAr:'عنوان ✓ مفتاح ✓ أسهم مرقّمة ✓', typicalErrorTag:'premature_interpretation' },
-  verb_explain_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,3,4], format:null, typicalErrorTag:'unsupported_claim' },
-  verb_explain_multi_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'unsupported_claim', step3Evidence:/(بالربط|تتكامل|الربط والتركيب|يتبين أن|بربط)/ },
-  verb_validate_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,4], format:null, typicalErrorTag:'unsupported_claim', step3Evidence:/(يتوافق مع|يؤكد صحة|يفند|ينفي|يلغي|يدحض)/ },
-  verb_hypothesis_v1: { step3Mode:'hypothesis', path:[1,3], stepMap:[1,3,3,3], format:'hypothesis', formatCheckAr:'هل خلَت من «ربما / لعل / يمكن أن» ؟', typicalErrorTag:'unsupported_claim' },
-  verb_calcul_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,4], format:null, typicalErrorTag:'unsupported_claim' },
-  verb_pedigree_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,3,4], format:null, typicalErrorTag:'unsupported_claim' },
+  verb_define_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation', movement: 'drawer', },
+  verb_list_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation', movement: 'photo', },
+  verb_analyse_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'premature_interpretation', movement: 'photo', },
+  verb_deduce_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[1,2,3,4], format:null, typicalErrorTag:'unsupported_claim', movement: 'film', },
+  verb_compare_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:'compare', formatCheckAr:'هل قلتُ عن الطرفين نفس عدد الأشياء ؟', typicalErrorTag:'premature_interpretation', movement: 'photo', },
+  verb_schema_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,3,2,4], format:'diagram', formatCheckAr:'عنوان ✓ مفتاح ✓ أسهم مرقّمة ✓', typicalErrorTag:'premature_interpretation', movement: 'photo', },
+  verb_explain_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,3,4], format:null, typicalErrorTag:'unsupported_claim', movement: 'film', },
+  verb_explain_multi_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'unsupported_claim', step3Evidence:/(بالربط|تتكامل|الربط والتركيب|يتبين أن|بربط)/, movement: 'film', },
+  verb_validate_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,4], format:null, typicalErrorTag:'unsupported_claim', step3Evidence:/(يتوافق مع|يؤكد صحة|يفند|ينفي|يلغي|يدحض)/, movement: 'film', },
+  verb_hypothesis_v1: { step3Mode:'hypothesis', path:[1,3], stepMap:[1,3,3,3], format:'hypothesis', formatCheckAr:'هل خلَت من «ربما / لعل / يمكن أن» ؟', typicalErrorTag:'unsupported_claim', movement: 'smith', },
+  verb_calcul_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,4], format:null, typicalErrorTag:'unsupported_claim', movement: 'film', },
+  verb_pedigree_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,3,4], format:null, typicalErrorTag:'unsupported_claim', movement: 'film', },
 };
 export const STEP_TEMPLATES = {
   2: ['انطلاقًا من الوثيقة (…) نلاحظ أنّ …', 'تمثل الوثيقة (…) … حيث نلاحظ …'],

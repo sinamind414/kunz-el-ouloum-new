@@ -24,6 +24,7 @@ export interface CorrectionItem {
   noteAr?: string;      // note du correcteur
   selfScore?: number;   // auto-évaluation /20 (élève, à la soumission stage 4)
   realScore?: number;   // note réelle /20 (enseignant, via la file)
+  mode?: 'examen';      // production issue d'un mode examen (ligne 7)
 }
 
 const KEY = 'kunz_correction_queue_v1';
@@ -85,12 +86,13 @@ export function getPendingCorrections(): CorrectionItem[] {
   return safeRead().filter(e => e.status === 'pending');
 }
 
-export function correctionStats(): { pending: number; approved: number; corrections: number } {
+export function correctionStats(): { pending: number; approved: number; corrections: number; examCount: number } {
   const list = safeRead();
   return {
     pending: list.filter(e => e.status === 'pending').length,
     approved: list.filter(e => e.status === 'approved').length,
     corrections: list.filter(e => e.status === 'corrections').length,
+    examCount: list.filter(e => e.mode === 'examen').length,
   };
 }
 

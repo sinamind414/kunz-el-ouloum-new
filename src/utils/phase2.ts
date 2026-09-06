@@ -13,10 +13,12 @@
 export const PHASE2_FORM_THRESHOLD = 60;
 
 export interface Phase2GateInput {
-  /** Porte 1 — la réponse source de l'élève est-elle juste ? null = non évaluée dans ce flux. */
+  /** 🚪 البوابة ١ — الوجود : l'élève a-t-il bien classé قفل/لا قفل ? null = non évaluée. */
+  existenceGateOk: boolean | null;
+  /** 📥 البوابة ٢ — المصدر : وثيقة/مختلط bien classée ? null = non évaluée. */
   sourceGateOk: boolean | null;
-  /** Porte 2 — l'interrupteur (switch) choisi est-il juste ? null = non évalué. */
-  switchGateOk: boolean | null;
+  /** ⚙️ البوابة ٣ — الحركة : 📷/🎬/🔨 bien classée ? null = non évaluée. */
+  movementGateOk: boolean | null;
   /** Scoreur — ICM 0-100. */
   icm: number;
   /** Scoreur — l'erreur typique du verbe a-t-elle été commise ? */
@@ -24,7 +26,8 @@ export interface Phase2GateInput {
 }
 
 export interface Phase2GateResult {
-  id: 'source' | 'switch' | 'forme';
+  /** Update 2026-09-06 (MARQUE §12) : 4 pastilles — 3 portes de classification + la forme. */
+  id: 'existence' | 'source' | 'movement' | 'forme';
   labelAr: string;
   /** null = non évaluée (la porte n'est pas exigée dans ce flux). */
   passed: boolean | null;
@@ -55,9 +58,11 @@ export function remediationTargets(stepReport: StepLine[]): RemediationTarget[] 
 }
 
 export function evaluatePhase2(inp: Phase2GateInput): Phase2Verdict {
+  // Update 2026-09-06 (MARQUE §12) : TROIS portes de classification + la forme.
   const gates: Phase2GateResult[] = [
-    { id: 'source', labelAr: 'الباب ١ — المصدر', passed: inp.sourceGateOk },
-    { id: 'switch', labelAr: 'الباب ٢ — صورة/فيلم', passed: inp.switchGateOk },
+    { id: 'existence', labelAr: 'البوابة ١ — الوجود (قفل؟)', passed: inp.existenceGateOk },
+    { id: 'source', labelAr: 'البوابة ٢ — المصدر (وثيقة/مختلط)', passed: inp.sourceGateOk },
+    { id: 'movement', labelAr: 'البوابة ٣ — الحركة (📷/🎬/🔨)', passed: inp.movementGateOk },
     {
       id: 'forme',
       labelAr: `البنية (ICM ≥ ${PHASE2_FORM_THRESHOLD} بلا الخطأ النموذجي)`,

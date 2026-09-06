@@ -9,11 +9,11 @@ import {
 import {
   VERB_CARDS, UNIVERSAL_GRAMMAR_RULES, TRAINING_EXERCISES,
   ERROR_TAXONOMY, TrainingExercise, Switch, StepId, STEP_NAMES_AR, STEP_TEMPLATES, VERB_CARDS_V2, getVerbCardV2,
-  detectSourceGate, isDualSource, SourceGate, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion,
+  detectSourceGate, isDualSource, detectExistenceGate, detectSourceKind, SourceGate, ExistenceGate, SourceKind, Movement, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion,
   MIFTAH_VERSION, MIFTAH_NAME_OFFICIAL_AR, MIFTAH_NOMENCLATURE, READY_SENTENCES, SYNTHESIS, SPECIAL_FORMS
 } from '../data/methodologyEngine';
 import { isExtensionUnlocked, recordDrillResult, getDrillStatus, getMasteryStatus, recordTypeMastery, todayISO } from '../data/v3Progress';
-import { DRILL_BANK, drawDailyConsignes, gradeDrill, PHASE0_DEMOS, isPhase0Done, completePhase0, resetPhase0, DrillAnswer, DrillConsigne, DrillGrade } from '../data/drillBank';
+import { DRILL_BANK, drawDailyConsignes, gradeDrill, PHASE0_DEMOS, isPhase0Done, completePhase0, resetPhase0, DrillAnswer, DrillConsigne, DrillGrade, DRILL_LABELS } from '../data/drillBank';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, verbSlidingRatio } from '../utils/methodologyLog';
 import { evaluatePhase2, remediationTargets } from '../utils/phase2';
@@ -58,6 +58,14 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   // Phase 4 — auto-évaluation /20 (calibration) + brouillons des notes réelles
   const [selfScore, setSelfScore] = useState<string>('');
   const [realScoreDrafts, setRealScoreDrafts] = useState<Record<string, string>>({});
+  // Ligne 7 — mode examen (auto-scoring + note réelle humaine de référence) / révision libre (dernier mois)
+  const [examMode, setExamMode] = useState(false);
+  const [freeReview, setFreeReview] = useState(false);
+  // Update 2026-09-06 (MARQUE §12) — TROIS PORTES en cascade :
+  //   🚪 existence = sourceGate ('paper'⇔قفل / 'memory'⇔لا قفل) · 📥 gate2 · ⚙️ gate3
+  const [gate2Choice, setGate2Choice] = useState<SourceKind | null>(null);
+  const [gate3Choice, setGate3Choice] = useState<Movement | null>(null);
+  const [showGate2, setShowGate2] = useState(false);
 
   // Selected Verb & Exercise for Training
   const [selectedVerbId, setSelectedVerbId] = useState<string>('verb_analyse_v1');
@@ -132,7 +140,7 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
 
   // B2 · écran interrupteur : tant que le gate est ouvert, seuls contexte + gate sont rendus
   // V3.1 : double gate — Gate1 ورقة/رأس puis Gate2 صورة/فيلم
-  const gateOpen = currentStage === 3 && (showSwitchGate || showSourceGate);
+  const gateOpen = currentStage === 3 && (showSourceGate || showGate2 || showSwitchGate);
 
   // m3 · bouton de dev réservé au développement
   const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
@@ -233,32 +241,36 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
      setScoreReport(null);
      setSwitchChoice(null);
      if (stage === 3) {
+      if (freeReview) {
+        // Révision libre (dernier mois) : la méthode est un outil, pas un mur — pas de portes
+        setSourceGate(null);
+        setIsDual(false);
+        setSwitchChoice(null);
+        setGate2Choice(null);
+        setGate3Choice(null);
+        setShowSourceGate(false);
+        setShowGate2(false);
+        setShowSwitchGate(false);
+        return;
+      }
        // V3.1 double gate : Gate1 ورقة/رأس auto-skip pour paper pour préserver test harness
-       const sg = detectSourceGate(currentExercise.question);
-       const dual = isDualSource(currentExercise.question);
-       setSourceGate(sg);
-       setIsDual(dual);
-       // Si la consigne est papier (ex existants) → skip Gate1 directement à Gate2 pour garder le test gateIsolation vert
-       const verbCard = getVerbCardV2(selectedVerbId);
-       const isMemoryVerb = verbCard?.id === 'verb_define_v1' || verbCard?.id === 'verb_list_v1';
-       if (isMemoryVerb || sg === 'memory') {
-         setShowSourceGate(true);
-         setShowSwitchGate(false);
-       } else if (sg === 'paper') {
-         setShowSourceGate(false);
-         setShowSwitchGate(true);
-       } else {
-         // fallback : show Gate1 first
-         setShowSourceGate(true);
-         setShowSwitchGate(false);
-       }
+      // TROIS PORTES en cascade (MARQUE §12) — l'élève répond TOUJOURS la porte 1 d'abord.
+      setSourceGate(null);
+      setIsDual(false);
+      setSwitchChoice(null);
+      setGate2Choice(null);
+      setGate3Choice(null);
+      setShowSourceGate(true);
+      setShowGate2(false);
+      setShowSwitchGate(false);
      } else if (stage === 4) {
        setSourceGate(null);
        setShowSourceGate(false);
        setShowSwitchGate(false);
-       setTimerSeconds(currentExercise.stage4.timeLimitSec);
+       setTimerSeconds(examMode ? 3600 : currentExercise.stage4.timeLimitSec);
        setIsTimerRunning(true);
        setIsDraftCompleted(false);
+       if (freeReview) setRefCardOpen(true); // la carte reste un outil permanent
      } else {
        setShowSourceGate(false);
        setShowSwitchGate(false);
@@ -335,12 +347,20 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
     // Phase 3 (audit §3.5) : la production passe au correcteur UNIQUEMENT si la
     // FORME est validée — sinon renvoi ciblé (micro-2a), pas de file.
     if (currentStage >= 3) {
+      // Update 2026-09-06 (MARQUE §12) — verdict sur les 3 portes + la forme
       const q = currentExercise.question;
-      const expectedSource = isDualSource(q) ? 'paper' : detectSourceGate(q);
-      const sourceOk = (currentStage === 3 && sourceGate) ? sourceGate === expectedSource : null;
+      const cardV2 = getVerbCardV2(selectedVerbId);
+      const expExistence = detectExistenceGate(q);
+      const expSource = expExistence === 'lock' ? (detectSourceKind(q) ?? 'document') : null;
+      const expMovement: Movement | null = expExistence === 'lock' ? (cardV2 && cardV2.movement !== 'drawer' ? cardV2.movement : 'photo') : null;
+      const gatesActive = currentStage === 3 && !freeReview;
+      const existenceOk = gatesActive && sourceGate ? ((sourceGate === 'paper' ? 'lock' : 'no_lock') === expExistence) : null;
+      const sourceOk = gatesActive && sourceGate === 'paper' ? (gate2Choice && expSource ? gate2Choice === expSource : null) : null;
+      const movementOk = gatesActive && sourceGate === 'paper' ? (gate3Choice && expMovement ? gate3Choice === expMovement : null) : null;
       const verdict = evaluatePhase2({
+        existenceGateOk: existenceOk,
         sourceGateOk: sourceOk,
-        switchGateOk: rep.switchLine.choiceCorrect,
+        movementGateOk: movementOk,
         icm: rep.icm,
         typicalErrorViolated: rep.switchLine.violated,
       });
@@ -352,9 +372,10 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           dateISO: new Date().toISOString(),
           text: fullDraft, icm: rep.icm, errorTags: rep.detectedErrors.map(e => e.tag),
           selfScore: self != null && isFinite(self) && self >= 0 && self <= 20 ? self : undefined,
+          mode: examMode ? 'examen' : undefined,
         });
         setCorrectionVersion(v => v + 1);
-        setSelfScore('');
+        if (!examMode) setSelfScore(''); // en examen: la prévision reste visible sur la carte de résultat
       }
     }
     setEvolutionVersion(v => v + 1);
@@ -458,7 +479,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             </div>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight">🔑 {MIFTAH_NAME_OFFICIAL_AR} v{MIFTAH_VERSION}</h1>
             <p className="text-white/90 text-sm md:text-base mt-1 max-w-2xl font-medium">
-              4 أسنان · 2 بوابتان · إجابة تفتح النقطة — منهجية الإجابة في علوم الحياة والأرض · بكالوريا
+              4 أسنان · 3 بوابات · إجابة تفتح النقطة — منهجية الإجابة في علوم الحياة والأرض · بكالوريا
             </p>
           </div>
 
@@ -626,6 +647,37 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               </div>
             )}
 
+{/* Ligne 7 — mode examen / mode révision libre (dernier mois) */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                onClick={() => {
+                  const next = !examMode;
+                  setExamMode(next);
+                  if (next && currentExercise) {
+                    handleSelectStage(4);
+                    setTimerSeconds(3600);
+                    setIsTimerRunning(true);
+                  } else if (!next && currentStage === 4 && currentExercise) {
+                    setTimerSeconds(currentExercise.stage4.timeLimitSec);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-black border transition-all ${examMode ? 'bg-slate-800 text-white border-slate-700 ring-2 ring-slate-500/30' : 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}
+              >
+                🎓 وضع الامتحان — 60د · بلا إعادة · النتيجة هي الحكم
+              </button>
+              <button
+                onClick={() => setFreeReview(f => !f)}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-black border transition-all ${freeReview ? 'bg-violet-600 text-white border-violet-500 ring-2 ring-violet-500/30' : 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}
+              >
+                📖 المراجعة الحرة (الشهر الأخير) — بلا جدران
+              </button>
+            </div>
+            {freeReview && (
+              <div className="mt-2 p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900/50 text-[11px] font-bold text-violet-900 dark:text-violet-300 leading-relaxed">
+                📖 المراجعة الحرة: أي محطة مطلوبة، البطاقة مرجع دائم، بلا جدران — المنهجية أداة، لا سياج.
+              </div>
+            )}
+
 {/* 4 Stages Pills */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
 {[
@@ -664,11 +716,18 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
 
 
           {/* Phase 0 — افتح الباب : 6 éléments auto-pace avec feedback (audit §6) */}
+          {/* Phase 0 — افتح الباب : 6 éléments auto-pace, cascade des 3 portes (MARQUE §12) */}
           {!phase0Done && (() => {
             const demo = PHASE0_DEMOS[p0Index];
             const item = DRILL_BANK.find(c => c.id === demo.bankId)!;
-            const okSrc = p0Pick.source === item.source;
-            const okMode = p0Pick.mode === item.mode;
+            const ok1 = p0Pick.g1 === item.existence;
+            const ok2 = item.source === null ? true : p0Pick.g2 === item.source;
+            const ok3 = item.movement === 'drawer' ? true : p0Pick.g3 === item.movement;
+            const allOk = ok1 && ok2 && ok3;
+            const answered = !!p0Pick.g1 && (item.source === null || !!p0Pick.g2) && (item.movement === 'drawer' || !!p0Pick.g3);
+            const btnCls = (active: boolean, correct: boolean, tone: string) =>
+              p0Shown ? `${correct ? 'bg-emerald-600 text-white border-emerald-600' : `bg-white dark:bg-[#1b221e] border-gray-300 opacity-60`}`
+                      : (active ? `bg-${tone}-600 text-white border-${tone}-600` : 'bg-white dark:bg-[#1b221e] border-gray-300');
             return (
               <div className="bg-gradient-to-r from-emerald-50 to-amber-50 dark:from-emerald-950/30 dark:to-amber-950/20 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 space-y-3">
                 <div className="flex items-center justify-between">
@@ -676,32 +735,44 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                   <button onClick={()=>{resetPhase0(); setP0Index(0); setP0Pick({}); setP0Shown(false);}} className="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline">إعادة</button>
                 </div>
                 <div className="bg-white dark:bg-[#161c18] p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold">{item.consigne}</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <div className="text-[11px] font-bold text-gray-500 mb-1">الباب ١ — المصدر؟</div>
+                    <div className="text-[11px] font-bold text-gray-500 mb-1">🚪 البوابة ١ — قفل؟</div>
                     <div className="flex gap-1">
-                      {([['paper','ورقة'],['memory','رأس'],['dual','عمودان']] as const).map(([v,l])=>(
-                        <button key={v} disabled={p0Shown} onClick={()=> setP0Pick(pk=>({...pk, source: v}))} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${p0Shown ? (v===item.source ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300 opacity-50') : (p0Pick.source===v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300')}`}>{l}</button>
+                      {([['lock','🔒 قفل'],['no_lock','🧠 لا قفل']] as const).map(([v,l])=>(
+                        <button key={v} disabled={p0Shown} onClick={()=> setP0Pick(pk=>({...pk, g1: v}))} className={`px-2 py-1.5 rounded-lg text-xs font-bold border ${btnCls(p0Pick.g1===v, p0Shown && v===item.existence, 'emerald')}`}>{l}</button>
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-[11px] font-bold text-gray-500 mb-1">الباب ٢ — الوضعية؟</div>
-                    <div className="flex gap-1">
-                      {([['image','صورة'],['film','فيلم']] as const).map(([v,l])=>(
-                        <button key={v} disabled={p0Shown} onClick={()=> setP0Pick(pk=>({...pk, mode: v}))} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${p0Shown ? (v===item.mode ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-[#1b221e] border-gray-300 opacity-50') : (p0Pick.mode===v ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-[#1b221e] border-gray-300')}`}>{l}</button>
-                      ))}
+                  {p0Pick.g1 === 'lock' && (
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 mb-1">📥 البوابة ٢ — المصدر؟</div>
+                      <div className="flex gap-1">
+                        {([['document','📄 وثيقة'],['mixed','📄+🧠 مختلط']] as const).map(([v,l])=>(
+                          <button key={v} disabled={p0Shown} onClick={()=> setP0Pick(pk=>({...pk, g2: v}))} className={`px-2 py-1.5 rounded-lg text-xs font-bold border ${btnCls(p0Pick.g2===v, p0Shown && v===item.source, 'sky')}`}>{l}</button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {p0Pick.g1 === 'lock' && p0Pick.g2 && (
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 mb-1">⚙️ البوابة ٣ — الحركة؟</div>
+                      <div className="flex gap-1">
+                        {([['photo','📷'],['film','🎬'],['smith','🔨']] as const).map(([v,l])=>(
+                          <button key={v} disabled={p0Shown} onClick={()=> setP0Pick(pk=>({...pk, g3: v}))} className={`px-2 py-1.5 rounded-lg text-xs font-bold border ${btnCls(p0Pick.g3===v, p0Shown && v===item.movement, 'violet')}`}>{l}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {p0Shown ? (
                   <div className="space-y-1.5">
-                    <div className={`text-xs font-bold ${okSrc && okMode ? 'text-emerald-600' : 'text-amber-600'}`}>{okSrc && okMode ? '✅ صحيح — البابان مفتوحان' : '✗ الإجابة الصحيحة مظللة أعلاه'}</div>
+                    <div className={`text-xs font-bold ${allOk ? 'text-emerald-600' : 'text-amber-600'}`}>{allOk ? '✅ صحيح — القفل فُتح' : '✗ الإجابة الصحيحة مظللة أعلاه'}</div>
                     <div className="text-[11px] text-gray-600 dark:text-gray-400">{demo.whyAr}</div>
                     <button onClick={()=>{ if (p0Index + 1 >= PHASE0_DEMOS.length) { completePhase0(); setPhase0Done(true); } else { setP0Index(i=>i+1); setP0Pick({}); setP0Shown(false); } }} className="px-4 py-1.5 bg-[#006d37] text-white rounded-xl font-bold text-xs">{p0Index + 1 >= PHASE0_DEMOS.length ? '✅ إنهاء Phase 0 — المصفاة مفتوحة' : 'التالي'}</button>
                   </div>
                 ) : (
-                  <button disabled={!p0Pick.source || !p0Pick.mode} onClick={()=> setP0Shown(true)} className={`px-4 py-1.5 rounded-xl font-bold text-xs ${p0Pick.source && p0Pick.mode ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed'}`}>تأكيد</button>
+                  <button disabled={!answered} onClick={()=> setP0Shown(true)} className={`px-4 py-1.5 rounded-xl font-bold text-xs ${answered ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed'}`}>تأكيد</button>
                 )}
               </div>
             );
@@ -711,8 +782,8 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           <div className="bg-gradient-to-r from-amber-50 to-sky-50 dark:from-amber-950/20 dark:to-sky-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <div>
               <div className="font-black text-sm flex items-center gap-2">🧠 مصفاة التعليمات — ٦٠ ث <span className="text-xs bg-white dark:bg-black/20 px-2 py-0.5 rounded-full border">٣ أيام × ١٢/١٢ → شارة «حامل المفتاح» + المرحلة ٢</span></div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">ورقة أم رأس؟ {drillStatus.met ? '✅ ' + drillStatus.badgeAr : `أيام ناجحة: ${drillStatus.perfectDays} / ${drillStatus.goal}`} — الإخفاق لا يصفّر: يؤجل اليوم التالي فقط · الورقة الخلفية: {masteryStatus.met ? '✅ ' + masteryStatus.badgeAr : `إتقان ${masteryStatus.types.length} / ${masteryStatus.goal} أنواع`}</div>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">تتبدل التعليمات كل يوم (بنك ٦٠) — القاعدة واحدة: احفظ القاعدة لا العناصر</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">ورقة أم رأس؟ 🚪 قفل؟ 📥 من أين؟ ⚙️ أي حركة؟ {drillStatus.met ? '✅ ' + drillStatus.badgeAr : `أيام ناجحة: ${drillStatus.perfectDays} / ${drillStatus.goal}`} — الإخفاق لا يصفّر: يؤجل اليوم التالي فقط · الورقة الخلفية: {masteryStatus.met ? '✅ ' + masteryStatus.badgeAr : `إتقان ${masteryStatus.types.length} / ${masteryStatus.goal} أنواع`}</div>
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">تتبدل التعليمات كل يوم (بنك ٦٩) — القاعدة واحدة: احفظ القاعدة لا العناصر</div>
             </div>
             {!drillActive ? (
               <button disabled={!phase0Done} onClick={()=>{setDrillAnswers({}); setDrillGrade(null); setDrillSec(60); setDrillActive(true);}} className={`px-4 py-2 rounded-xl font-bold text-xs shadow ${phase0Done ? 'bg-[#006d37] text-white' : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}>{phase0Done ? (drillStatus.met ? 'إعادة المصفاة' : 'ابدأ المصفاة') : '🔒 أكمل Phase 0 أولا'}</button>
@@ -726,14 +797,26 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 {DRILL_TODAY.map((c, i)=> (
                   <div key={c.id} className="p-2 rounded-xl border bg-gray-50 dark:bg-black/20 space-y-1">
                     <span className="text-xs font-bold leading-tight">{i + 1}. {c.consigne}</span>
-                    <div className="flex flex-wrap gap-1">
-                      {([['paper','ورقة'],['memory','رأس'],['dual','عمودان']] as const).map(([v,l])=> (
-                        <button key={v} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: {...a[c.id], source: v}}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]?.source===v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>{l}</button>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {([['lock','🔒 قفل'],['no_lock','🧠 لا قفل']] as const).map(([v,l])=> (
+                        <button key={v} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: {...a[c.id], g1: v}}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]?.g1===v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>{l}</button>
                       ))}
-                      <span className="w-1 shrink-0" />
-                      {([['image','صورة'],['film','فيلم']] as const).map(([v,l])=> (
-                        <button key={v} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: {...a[c.id], mode: v}}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]?.mode===v ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>{l}</button>
-                      ))}
+                      {drillAnswers[c.id]?.g1 === 'lock' && (
+                        <>
+                          <span className="w-1 shrink-0" />
+                          {([['document','📄 وثيقة'],['mixed','📄+🧠 مختلط']] as const).map(([v,l])=> (
+                            <button key={v} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: {...a[c.id], g2: v}}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]?.g2===v ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>{l}</button>
+                          ))}
+                        </>
+                      )}
+                      {drillAnswers[c.id]?.g1 === 'lock' && drillAnswers[c.id]?.g2 && (
+                        <>
+                          <span className="w-1 shrink-0" />
+                          {([['photo','📷'],['film','🎬'],['smith','🔨']] as const).map(([v,l])=> (
+                            <button key={v} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: {...a[c.id], g3: v}}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]?.g3===v ? 'bg-violet-600 text-white border-violet-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>{l}</button>
+                          ))}
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -746,7 +829,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 setExtensionUnlocked(isExtensionUnlocked());
                 setDrillActive(false);
 
-              }} className="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm">صحّح — {Object.keys(drillAnswers).filter(id=>{const a=drillAnswers[id];return a&&a.source&&a.mode;}).length}/12</button>
+              }} className="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm">صحّح — {gradeDrill(DRILL_TODAY, drillAnswers).results.filter(r=>r.answered).length}/12</button>
             </div>
           )}
           {/* Phase 1 — résultats de la tentative du jour */}
@@ -760,7 +843,11 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 {drillGrade.results.map(r=> (
                   <div key={r.c.id} className={`p-1.5 rounded-lg text-[11px] border ${r.correct ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/40' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/40'}`}>
                     <span className="font-bold">{r.correct ? '✓' : '✗'} {r.c.consigne}</span>
-                    {!r.correct && <span className="block text-gray-500 dark:text-gray-400">الصحيح: {r.c.source==='paper'?'ورقة': r.c.source==='memory'?'رأس':'عمودان'} · {r.c.mode==='image'?'صورة':'فيلم'} — الخطأ: {!r.okSource && !r.okMode ? 'البابان' : !r.okSource ? 'الباب ١' : 'الباب ٢'}</span>}
+                    {!r.correct && (() => {
+                      const fail = [!r.ok1 ? 'البوابة ١' : null, !r.ok2 ? 'البوابة ٢' : null, !r.ok3 ? 'البوابة ٣' : null].filter(Boolean).join(' + ');
+                      const ok = `${DRILL_LABELS.g1[r.c.existence]} · ${r.c.source ? DRILL_LABELS.g2[r.c.source] : '—'} · ${DRILL_LABELS.g3[r.c.movement]}`;
+                      return <span className="block text-gray-500 dark:text-gray-400">الصحيح: {ok} — الخطأ: {fail}</span>;
+                    })()}
                   </div>
                 ))}
               </div>
@@ -823,29 +910,56 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           })()}
 
           {/* V3.1 Gate1 — ورقة أم رأس؟ (double gate) */}
+          {/* 🚪 Update 2026-09-06 (MARQUE §12) — TROIS PORTES, cascade progressive */}
           {showSourceGate && currentStage === 3 && currentExercise && (() => {
             return (
               <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border-2 border-amber-300 dark:border-amber-800 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 font-bold text-sm">
                   <Key className="w-5 h-5 text-amber-500" />
-                  <span>المفتاح ١ — ورقة أم رأس؟</span>
-                  {isDual && <span className="text-[11px] bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">معلوماتك + الوثيقة ← عمودان</span>}
+                  <span>🚪 البوابة ١ — قفل أصلا؟</span>
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">هل سطّرتَ وثيقة/شكل/جدول/منحنى/رسم؟ لا → 🧠 رأس (حفظ) · نعم → 📄 ورقة</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">هل تستند المعطيات إلى وثيقة / شكل / جدول / منحنى / رسم؟ لا ⇒ 🧠 الدُرج مباشرة · نعم ⇒ البوابة ٢</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => { setSourceGate('memory'); setShowSourceGate(false); setSwitchChoice(null); }}
-                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-amber-500 dark:hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all font-bold text-center"
+                    onClick={() => { setSourceGate('paper'); setShowSourceGate(false); setShowGate2(true); setSwitchChoice(null); }}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
-                    <div>🧠 رأس</div>
-                    <div className="text-[11px] font-normal">عرّف / اذكر — حفظ</div>
+                    <div>🔒 قفل</div>
+                    <div className="text-[11px] font-normal">وثيقة / شكل — هناك ما يُفتَح</div>
                   </button>
                   <button
-                    onClick={() => { setSourceGate('paper'); setIsDual(isDualSource(currentExercise.question)); setShowSourceGate(false); setShowSwitchGate(true); }}
-                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-emerald-500 dark:hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all font-bold text-center"
+                    onClick={() => { setSourceGate('memory'); setShowSourceGate(false); setShowGate2(false); setShowSwitchGate(false); setIsDual(false); setSwitchChoice(null); setGate2Choice(null); setGate3Choice(null); }}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
-                    <div>📄 ورقة</div>
-                    <div className="text-[11px] font-normal">وثيقة / شكل — تحليل</div>
+                    <div>🧠 لا قفل</div>
+                    <div className="text-[11px] font-normal">دُرج المعرفة — من تعرّف إلى افتح</div>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+          {showGate2 && currentStage === 3 && currentExercise && (() => {
+            return (
+              <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border-2 border-sky-300 dark:border-sky-800 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <Key className="w-5 h-5 text-sky-500" />
+                  <span>📥 البوابة ٢ — من أين آتي بمادة الإدخال؟</span>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">«ومعلوماتك / ومكتسباتك» مذكورة في السؤال ⇒ مختلط (عمودان) · غير ذلك ⇒ وثيقة فقط</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => { setIsDual(false); setGate2Choice('document'); setShowGate2(false); setShowSwitchGate(true); }}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
+                  >
+                    <div>📄 وثيقة فقط</div>
+                    <div className="text-[11px] font-normal">عمود واحد في المسودة</div>
+                  </button>
+                  <button
+                    onClick={() => { setIsDual(true); setGate2Choice('mixed'); setShowGate2(false); setShowSwitchGate(true); }}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
+                  >
+                    <div>📄+🧠 مختلط</div>
+                    <div className="text-[11px] font-normal">عمودان: [من الوثيقة | من معلوماتي]</div>
                   </button>
                 </div>
               </div>
@@ -853,34 +967,38 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           })()}
           {/* Switch Gate — stage 3 only, Gate2 صورة/فيلم (renommage de مغلق/مفتوح) — B2 : boutons neutres */}
           {showSwitchGate && currentStage === 3 && currentExercise && !showSourceGate && (() => {
-            const card = getVerbCardV2(selectedVerbId);
-            if (!card) return null;
             return (
-              <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
+              <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border-2 border-violet-300 dark:border-violet-800 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 font-bold text-sm">
-                  <Key className="w-5 h-5 text-amber-500" />
-                  <span>المفتاح — هل الفعل يسمح بـ«لأنّ»؟</span>
-                  <span className="text-[11px] text-gray-400">المفتاح ٢ — صورة أم فيلم؟</span>
-                  {isDual && <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full">ورقة بعمودين</span>}
+                  <Key className="w-5 h-5 text-violet-500" />
+                  <span>⚙️ البوابة ٣ — أي حركة يطلب هذا القفل؟</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400">📷 وصف واستخراج · 🎬 تفسير ورابط «لأنّ» · 🔨 تصنيع: فرضية / اقتراح / توصية (لا جواب واحد صحيح)</p>
+                <div className="grid grid-cols-3 gap-3">
                   <button
-                    onClick={() => { setSwitchChoice('closed'); setShowSwitchGate(false); }}
+                    onClick={() => { setGate3Choice('photo'); setSwitchChoice('closed'); setShowSwitchGate(false); }}
                     className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
-                    <div>لا — مغلق</div>
-                    <div className="text-[11px] font-normal">📷 صورة</div>
+                    <div className="text-2xl">📷</div>
+                    <div className="text-sm">الصورة</div>
+                    <div className="text-[10px] font-normal text-gray-400">حلل · قارن · استخرج</div>
                   </button>
                   <button
-                    onClick={() => { setSwitchChoice('open'); setShowSwitchGate(false); }}
+                    onClick={() => { setGate3Choice('film'); setSwitchChoice('open'); setShowSwitchGate(false); }}
                     className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
                   >
-                    <div>نعم — مفتوح</div>
-                    <div className="text-[11px] font-normal">🎬 فيلم</div>
+                    <div className="text-2xl">🎬</div>
+                    <div className="text-sm">الفيلم</div>
+                    <div className="text-[10px] font-normal text-gray-400">اشرح · فسر · استنتج</div>
                   </button>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-400">
-                  <span>الخطوة 3 ({STEP_NAMES_AR[3]}) — المفتاح يحدّد هل تكتب «لأنّ»</span>
+                  <button
+                    onClick={() => { setGate3Choice('smith'); setSwitchChoice('open'); setShowSwitchGate(false); }}
+                    className="p-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all font-bold text-center"
+                  >
+                    <div className="text-2xl">🔨</div>
+                    <div className="text-sm">الحدّاد</div>
+                    <div className="text-[10px] font-normal text-gray-400">اقترح · برر · ناقض</div>
+                  </button>
                 </div>
               </div>
             );
@@ -1384,13 +1502,42 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               </div>
 
               {/* Phase 2 — verdict « forme validée » (audit §3.3) : les 3 portes, jamais le fond */}
+              {/* Ligne 7 — mode examen : le score auto par tags, la note réelle humaine est la référence */}
+              {examMode && (() => {
+                const steps = scoreReport.stepReport.filter(l => l.applicable);
+                const passed = steps.filter(l => l.passed).length;
+                return (
+                  <div className="p-4 rounded-2xl bg-slate-900 dark:bg-black/70 border border-slate-700 text-white space-y-1.5">
+                    <div className="flex items-center gap-2 font-black text-sm">📝 ورقة الامتحان — النتيجة الآلية</div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold">
+                      <span>ICM الشكل: {scoreReport.icm}/100</span>
+                      <span>الخطوات: {passed}/{steps.length}</span>
+                      {scoreReport.detectedErrors.length > 0 && (
+                        <span className="text-red-300">الأخطاء: {scoreReport.detectedErrors.map(e => e.tag).join(' · ')}</span>
+                      )}
+                      {selfScore !== '' && <span className="text-sky-300">توقعك: {selfScore}/20</span>}
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      في الامتحان لا إعادة: النتيجة هي الحكم، والدرس في المعايرة — النقطة الفعلية /20 يضيفها الأستاذ في «المصححة»، وسيظهر لك العبر.
+                    </p>
+                  </div>
+                );
+              })()}
+
               {(() => {
                 const q = currentExercise?.question ?? '';
-                const expectedSource = isDualSource(q) ? 'paper' : detectSourceGate(q);
-                const sourceOk = (currentStage >= 3 && sourceGate) ? sourceGate === expectedSource : null;
+                const cardV2 = getVerbCardV2(selectedVerbId);
+                const expExistence = detectExistenceGate(q);
+                const expSource = expExistence === 'lock' ? (detectSourceKind(q) ?? 'document') : null;
+                const expMovement: Movement | null = expExistence === 'lock' ? (cardV2 && cardV2.movement !== 'drawer' ? cardV2.movement : 'photo') : null;
+                const gatesActive = currentStage === 3 && !freeReview;
+                const existenceOk = gatesActive && sourceGate ? ((sourceGate === 'paper' ? 'lock' : 'no_lock') === expExistence) : null;
+                const sourceOk = gatesActive && sourceGate === 'paper' ? (gate2Choice && expSource ? gate2Choice === expSource : null) : null;
+                const movementOk = gatesActive && sourceGate === 'paper' ? (gate3Choice && expMovement ? gate3Choice === expMovement : null) : null;
                 const v = evaluatePhase2({
+                  existenceGateOk: existenceOk,
                   sourceGateOk: sourceOk,
-                  switchGateOk: scoreReport.switchLine.choiceCorrect,
+                  movementGateOk: movementOk,
                   icm: scoreReport.icm,
                   typicalErrorViolated: scoreReport.switchLine.violated,
                 });
@@ -1429,6 +1576,9 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                             </div>
                           ))}
                         </div>
+                        {examMode ? (
+                          <p className="text-[11px] font-bold text-red-900 dark:text-red-300 bg-white dark:bg-black/30 rounded-lg p-2">في الامتحان لا إعادة: النتيجة هي الحكم، والدرس في المعايرة — أضف نقطتك الفعلية في «المصححة».</p>
+                        ) : (
                         <div className="flex flex-wrap gap-2 mt-2">
                           <button onClick={()=>{
                             setCurrentStage(1);
@@ -1438,6 +1588,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                           }} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs">🔁 إعادة الخطوات الناقصة (النموذج)</button>
                           <button onClick={()=> setCurrentStage(3)} className="px-3 py-1.5 bg-white dark:bg-black/30 text-red-700 dark:text-red-300 rounded-xl font-bold text-xs border border-red-200 dark:border-red-800/60">العودة للإنتاج</button>
                         </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2025,12 +2176,13 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             <div className="bg-white dark:bg-[#161c18] p-5 md:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
               <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">المصححة — قائمة التصحيح</h2>
               <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                القاعدة: الآلة تحقّق من الشكل (٣ أبواب) — الأستاذ يضمن المضمون. كل إنتاج «صحيح الشكل» يصل هنا.
+                القاعدة: الآلة تحقّق من الشكل (٣ بوابات) — الأستاذ يضمن المضمون. كل إنتاج «صحيح الشكل» يصل هنا.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">بانتظار: {stats.pending}</span>
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">مضمونها سليم: {stats.approved}</span>
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300">تحتاج تصحيحا: {stats.corrections}</span>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 dark:bg-slate-800/70 text-slate-800 dark:text-slate-300">📝 امتحانات: {stats.examCount}</span>
               </div>
               {(() => {
                 const cs = calibrationStats(queue);
@@ -2070,6 +2222,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                       <div className="flex items-center gap-2 text-[11px] font-bold">
                         <span className="text-gray-400">{new Date(item.dateISO).toLocaleDateString('fr-DZ')}</span>
                         <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800/60 text-gray-600 dark:text-gray-300">ICM {item.icm}%</span>
+                        {item.mode === 'examen' && <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800/70 text-slate-800 dark:text-slate-300">📝 امتحان — 60د</span>}
                         <span className={`px-2 py-0.5 rounded-full ${item.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300' : item.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300'}`}>
                           {item.status === 'pending' ? 'بانتظار المصحح' : item.status === 'approved' ? 'المضمون سليم' : 'تحتاج تصحيحاً'}
                         </span>
