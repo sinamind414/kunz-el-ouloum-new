@@ -80,7 +80,8 @@ repo doit être jetée, pas resynchronisée.
 | 0 | ✅ D1 — textes fiche + spec + garde-fou + code `v3Progress.ts` (fait 2026-09-06) | — |
 | 1 | ✅ D2 — `استنتج` : le moteur suit la fiche — implémenté (carte + meta + scoreur + verbMapping, spec MARQUE §11) | — |
 | 2 | D3 — test 10 élèves (protocole MARQUE §11) | fiche corrigée (0) |
-| 3 | Phase 0 (1 item animé) + Phase 1 (drill, pool ≥ 50) + matrice enseignant | 1, 2 |
+| 3a | ✅ **Phase 0** (6 démos auto-pace avec feedback) + **Phase 1** (drill : banque 60 consignes, tirage quotidien déterministe, 2 portes/consigne, résultats par porte) — fait 2026-09-06 | 1 |
+| 3b | ⏳ Matrice enseignant (B) — ratios glissants côté serveur, à câbler sur les logs élèves | 3a |
 | 4 | Phase 2a→2b→2c branchée sur le scoreur existant, verdict « forme validée » | 3 |
 | 5 | Phase 3 + renvoi ciblé 2d/2a + **file de correction dans le dashboard enseignant** | 4 |
 | 6 | Phase 4 (écart = métrique) — seulement quand la note de référence est fiable | 5 |

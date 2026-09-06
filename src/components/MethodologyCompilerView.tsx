@@ -12,7 +12,8 @@ import {
   detectSourceGate, isDualSource, SourceGate, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion,
   MIFTAH_VERSION, MIFTAH_NAME_OFFICIAL_AR, MIFTAH_NOMENCLATURE, READY_SENTENCES, SYNTHESIS, SPECIAL_FORMS
 } from '../data/methodologyEngine';
-import { isExtensionUnlocked, recordDrillResult, getDrillStatus, getMasteryStatus, recordTypeMastery } from '../data/v3Progress';
+import { isExtensionUnlocked, recordDrillResult, getDrillStatus, getMasteryStatus, recordTypeMastery, todayISO } from '../data/v3Progress';
+import { DRILL_BANK, drawDailyConsignes, gradeDrill, PHASE0_DEMOS, isPhase0Done, completePhase0, resetPhase0, DrillAnswer, DrillConsigne, DrillGrade } from '../data/drillBank';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry } from '../utils/methodologyLog';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
@@ -64,24 +65,18 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   // D1 (MARQUE §11) : drill = 3 jours distincts à 12/12 ; verso = 3 types maîtrisés (stage 4).
   const [drillStatus, setDrillStatus] = useState(() => getDrillStatus());
   const [masteryStatus, setMasteryStatus] = useState(() => getMasteryStatus());
-  // V3.1 drill مصفاة التعليمات 60s 12 consignes
+  // Phase 1 (audit §6) : مصفاة التعليمات — 12 consignes tirées du jour sur une banque ≥ 50,
+  // deux portes par consigne (source + mode), 60 s. Phase 0 ouvre le d'abord.
+  const DRILL_TODAY: DrillConsigne[] = React.useMemo(() => drawDailyConsignes(todayISO()), []);
   const [drillActive, setDrillActive] = useState(false);
   const [drillSec, setDrillSec] = useState(60);
-  const [drillAnswers, setDrillAnswers] = useState<Record<number, SourceGate | 'dual'>>({});
-  const DRILL_CONSIGNES: {id:number, consigne:string, expected: SourceGate|'dual'}[] = [
-    {id:1, consigne:'حلل الوثيقة ١', expected:'paper'},
-    {id:2, consigne:'عرّف الإنزيم', expected:'memory'},
-    {id:3, consigne:'فسر الوثيقة مستعينا بمكتسباتك', expected:'dual'},
-    {id:4, consigne:'قارن بين المنحنيين', expected:'paper'},
-    {id:5, consigne:'اذكر مراحل الترجمة', expected:'memory'},
-    {id:6, consigne:'استخرج من الجدول', expected:'paper'},
-    {id:7, consigne:'استنتج العلاقة من الوثيقة ومعلوماتك', expected:'dual'},
-    {id:8, consigne:'صف شكل الخلية', expected:'paper'},
-    {id:9, consigne:'حدد مصدر المعلومات', expected:'paper'},
-    {id:10, consigne:'بين كيف يحدث التنشيط', expected:'paper'},
-    {id:11, consigne:'لخص في رسم تخطيطي', expected:'paper'},
-    {id:12, consigne:'وضح مستعينا بالوثيقة ومعارفك', expected:'dual'},
-  ];
+  const [drillAnswers, setDrillAnswers] = useState<Record<string, DrillAnswer>>({});
+  const [drillGrade, setDrillGrade] = useState<DrillGrade | null>(null);
+  // Phase 0 — auto-pace, avec feedback
+  const [phase0Done, setPhase0Done] = useState(() => isPhase0Done());
+  const [p0Index, setP0Index] = useState(0);
+  const [p0Pick, setP0Pick] = useState<DrillAnswer>({});
+  const [p0Shown, setP0Shown] = useState(false);
 
   // Stage 1: Modelage State
   const [highlightedSteps, setHighlightedSteps] = useState<Record<number, boolean>>({});
@@ -211,8 +206,9 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     if (!drillActive) return;
     if (drillSec <= 0) {
       setDrillActive(false);
-      const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
-      recordDrillResult(score);
+      const g = gradeDrill(DRILL_TODAY, drillAnswers);
+      setDrillGrade(g);
+      recordDrillResult(g.score);
       setDrillStatus(getDrillStatus());
       setExtensionUnlocked(isExtensionUnlocked());
       return;
@@ -619,43 +615,112 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             </div>
           </div>
 
+
+          {/* Phase 0 — افتح الباب : 6 éléments auto-pace avec feedback (audit §6) */}
+          {!phase0Done && (() => {
+            const demo = PHASE0_DEMOS[p0Index];
+            const item = DRILL_BANK.find(c => c.id === demo.bankId)!;
+            const okSrc = p0Pick.source === item.source;
+            const okMode = p0Pick.mode === item.mode;
+            return (
+              <div className="bg-gradient-to-r from-emerald-50 to-amber-50 dark:from-emerald-950/30 dark:to-amber-950/20 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-black text-sm">🚪 Phase 0 — افتح الباب <span className="text-xs font-bold text-gray-500">({p0Index + 1}/6)</span></div>
+                  <button onClick={()=>{resetPhase0(); setP0Index(0); setP0Pick({}); setP0Shown(false);}} className="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline">إعادة</button>
+                </div>
+                <div className="bg-white dark:bg-[#161c18] p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold">{item.consigne}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-[11px] font-bold text-gray-500 mb-1">الباب ١ — المصدر؟</div>
+                    <div className="flex gap-1">
+                      {([['paper','ورقة'],['memory','رأس'],['dual','عمودان']] as const).map(([v,l])=>(
+                        <button key={v} disabled={p0Shown} onClick={()=> setP0Pick(pk=>({...pk, source: v}))} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${p0Shown ? (v===item.source ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300 opacity-50') : (p0Pick.source===v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300')}`}>{l}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-gray-500 mb-1">الباب ٢ — الوضعية؟</div>
+                    <div className="flex gap-1">
+                      {([['image','صورة'],['film','فيلم']] as const).map(([v,l])=>(
+                        <button key={v} disabled={p0Shown} onClick={()=> setP0Pick(pk=>({...pk, mode: v}))} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${p0Shown ? (v===item.mode ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-[#1b221e] border-gray-300 opacity-50') : (p0Pick.mode===v ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-[#1b221e] border-gray-300')}`}>{l}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {p0Shown ? (
+                  <div className="space-y-1.5">
+                    <div className={`text-xs font-bold ${okSrc && okMode ? 'text-emerald-600' : 'text-amber-600'}`}>{okSrc && okMode ? '✅ صحيح — البابان مفتوحان' : '✗ الإجابة الصحيحة مظللة أعلاه'}</div>
+                    <div className="text-[11px] text-gray-600 dark:text-gray-400">{demo.whyAr}</div>
+                    <button onClick={()=>{ if (p0Index + 1 >= PHASE0_DEMOS.length) { completePhase0(); setPhase0Done(true); } else { setP0Index(i=>i+1); setP0Pick({}); setP0Shown(false); } }} className="px-4 py-1.5 bg-[#006d37] text-white rounded-xl font-bold text-xs">{p0Index + 1 >= PHASE0_DEMOS.length ? '✅ إنهاء Phase 0 — المصفاة مفتوحة' : 'التالي'}</button>
+                  </div>
+                ) : (
+                  <button disabled={!p0Pick.source || !p0Pick.mode} onClick={()=> setP0Shown(true)} className={`px-4 py-1.5 rounded-xl font-bold text-xs ${p0Pick.source && p0Pick.mode ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed'}`}>تأكيد</button>
+                )}
+              </div>
+            );
+          })()}
+
           {/* V3.1 مصفاة التعليمات — 60s 12 consignes (débloque verso) */}
           <div className="bg-gradient-to-r from-amber-50 to-sky-50 dark:from-amber-950/20 dark:to-sky-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <div>
               <div className="font-black text-sm flex items-center gap-2">🧠 مصفاة التعليمات — ٦٠ ث <span className="text-xs bg-white dark:bg-black/20 px-2 py-0.5 rounded-full border">٣ أيام × ١٢/١٢ → شارة «حامل المفتاح» + المرحلة ٢</span></div>
               <div className="text-xs text-gray-600 dark:text-gray-400">ورقة أم رأس؟ {drillStatus.met ? '✅ ' + drillStatus.badgeAr : `أيام ناجحة: ${drillStatus.perfectDays} / ${drillStatus.goal}`} — الإخفاق لا يصفّر: يؤجل اليوم التالي فقط · الورقة الخلفية: {masteryStatus.met ? '✅ ' + masteryStatus.badgeAr : `إتقان ${masteryStatus.types.length} / ${masteryStatus.goal} أنواع`}</div>
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">تتبدل التعليمات كل يوم (بنك ٦٠) — القاعدة واحدة: احفظ القاعدة لا العناصر</div>
             </div>
             {!drillActive ? (
-              <button onClick={()=>{setDrillAnswers({}); setDrillSec(60); setDrillActive(true);}} className="px-4 py-2 bg-[#006d37] text-white rounded-xl font-bold text-xs shadow">{drillStatus.met ? 'إعادة المصفاة' : 'ابدأ المصفاة'}</button>
+              <button disabled={!phase0Done} onClick={()=>{setDrillAnswers({}); setDrillGrade(null); setDrillSec(60); setDrillActive(true);}} className={`px-4 py-2 rounded-xl font-bold text-xs shadow ${phase0Done ? 'bg-[#006d37] text-white' : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}>{phase0Done ? (drillStatus.met ? 'إعادة المصفاة' : 'ابدأ المصفاة') : '🔒 أكمل Phase 0 أولا'}</button>
             ) : (
               <div className="font-mono font-black text-lg bg-black/10 px-3 py-1 rounded-xl">{drillSec} ث</div>
             )}
           </div>
-          {drillActive && (
+{drillActive && (
             <div className="bg-white dark:bg-[#161c18] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {DRILL_CONSIGNES.map(c=> (
-                  <div key={c.id} className="p-2 rounded-xl border flex items-center justify-between gap-2 bg-gray-50 dark:bg-black/20">
-                    <span className="text-xs font-bold">{c.id}. {c.consigne}</span>
-                    <div className="flex gap-1">
-                      {(['paper','memory','dual'] as const).map(opt=> (
-                        <button key={opt} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: opt}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]===opt ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>
-                          {opt==='paper'?'ورقة': opt==='memory'?'رأس':'عمودان'}
-                        </button>
+                {DRILL_TODAY.map((c, i)=> (
+                  <div key={c.id} className="p-2 rounded-xl border bg-gray-50 dark:bg-black/20 space-y-1">
+                    <span className="text-xs font-bold leading-tight">{i + 1}. {c.consigne}</span>
+                    <div className="flex flex-wrap gap-1">
+                      {([['paper','ورقة'],['memory','رأس'],['dual','عمودان']] as const).map(([v,l])=> (
+                        <button key={v} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: {...a[c.id], source: v}}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]?.source===v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>{l}</button>
+                      ))}
+                      <span className="w-1 shrink-0" />
+                      {([['image','صورة'],['film','فيلم']] as const).map(([v,l])=> (
+                        <button key={v} onClick={()=> setDrillAnswers(a=> ({...a, [c.id]: {...a[c.id], mode: v}}))} className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${drillAnswers[c.id]?.mode===v ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-[#1b221e] border-gray-300'}`}>{l}</button>
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
               <button onClick={()=>{
-                const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
-                recordDrillResult(score);
+                const g = gradeDrill(DRILL_TODAY, drillAnswers);
+                setDrillGrade(g);
+                recordDrillResult(g.score);
                 setDrillStatus(getDrillStatus());
                 setExtensionUnlocked(isExtensionUnlocked());
                 setDrillActive(false);
-              }} className="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm">صحّح — {Object.keys(drillAnswers).length}/12</button>
+
+              }} className="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm">صحّح — {Object.keys(drillAnswers).filter(id=>{const a=drillAnswers[id];return a&&a.source&&a.mode;}).length}/12</button>
             </div>
           )}
+          {/* Phase 1 — résultats de la tentative du jour */}
+          {drillGrade && !drillActive && (
+            <div className="bg-white dark:bg-[#161c18] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-2">
+              <div className="font-black text-sm flex items-center justify-between">
+                <span>نتيجة اليوم — {drillGrade.score}/12</span>
+                <span className="text-xs text-gray-500">{drillStatus.met ? '✅ ' + drillStatus.badgeAr : `أيام ناجحة: ${drillStatus.perfectDays} / ${drillStatus.goal}`}</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                {drillGrade.results.map(r=> (
+                  <div key={r.c.id} className={`p-1.5 rounded-lg text-[11px] border ${r.correct ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/40' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/40'}`}>
+                    <span className="font-bold">{r.correct ? '✓' : '✗'} {r.c.consigne}</span>
+                    {!r.correct && <span className="block text-gray-500 dark:text-gray-400">الصحيح: {r.c.source==='paper'?'ورقة': r.c.source==='memory'?'رأس':'عمودان'} · {r.c.mode==='image'?'صورة':'فيلم'} — الخطأ: {!r.okSource && !r.okMode ? 'البابان' : !r.okSource ? 'الباب ١' : 'الباب ٢'}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+
 
 {/* StepBar — stages 1-3, masquée tant que le gate est ouvert (B2) */}
           {currentStage >= 1 && currentStage <= 3 && currentExercise && !gateOpen && (() => {
