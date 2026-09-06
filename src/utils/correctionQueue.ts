@@ -22,6 +22,8 @@ export interface CorrectionItem {
   errorTags: string[];
   status: CorrectionStatus;
   noteAr?: string;      // note du correcteur
+  selfScore?: number;   // auto-évaluation /20 (élève, à la soumission stage 4)
+  realScore?: number;   // note réelle /20 (enseignant, via la file)
 }
 
 const KEY = 'kunz_correction_queue_v1';
@@ -56,6 +58,14 @@ export function addCorrectionItem(item: Omit<CorrectionItem, 'id' | 'status'>): 
   const list = [full, ...safeRead()].slice(0, MAX_ITEMS);
   save(list);
   return full;
+}
+
+/** Note réelle /20 posée par l'enseignant — alimente l'écart de calibration (Phase 4). */
+export function setRealScore(id: string, score: number | undefined): void {
+  const list = safeRead().map(e =>
+    e.id === id ? { ...e, realScore: score != null && isFinite(score) && score >= 0 && score <= 20 ? score : undefined } : e
+  );
+  save(list);
 }
 
 /** Verdict du correcteur : approuvée (fond OK) ou à corriger (+ note). */

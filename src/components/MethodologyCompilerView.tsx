@@ -17,7 +17,8 @@ import { DRILL_BANK, drawDailyConsignes, gradeDrill, PHASE0_DEMOS, isPhase0Done,
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, verbSlidingRatio } from '../utils/methodologyLog';
 import { evaluatePhase2, remediationTargets } from '../utils/phase2';
-import { addCorrectionItem, getCorrectionQueue, markCorrection, correctionStats } from '../utils/correctionQueue';
+import { addCorrectionItem, getCorrectionQueue, markCorrection, correctionStats, setRealScore } from '../utils/correctionQueue';
+import { calibrationStats, calibrationMessageAr, gapOf } from '../utils/calibration';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
 import BoussoleCard from './BoussoleCard';
 import MiftahCard from './MiftahCard';
@@ -54,6 +55,9 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   // File de correction (Phase 3) — bump pour rafraîchir l'onglet + le badge
   const [correctionVersion, setCorrectionVersion] = useState(0);
   const [refCardOpen, setRefCardOpen] = useState(false); // carte-référence en stage 4
+  // Phase 4 — auto-évaluation /20 (calibration) + brouillons des notes réelles
+  const [selfScore, setSelfScore] = useState<string>('');
+  const [realScoreDrafts, setRealScoreDrafts] = useState<Record<string, string>>({});
 
   // Selected Verb & Exercise for Training
   const [selectedVerbId, setSelectedVerbId] = useState<string>('verb_analyse_v1');
@@ -341,13 +345,16 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
         typicalErrorViolated: rep.switchLine.violated,
       });
       if (verdict.formeValidee) {
+        const self = currentStage === 4 ? Number(selfScore) : undefined;
         addCorrectionItem({
           verbId: selectedVerbId, verbAr: currentVerb.verbAr, theme: currentExercise.theme,
           stage: currentStage === 4 ? 4 : 3,
           dateISO: new Date().toISOString(),
           text: fullDraft, icm: rep.icm, errorTags: rep.detectedErrors.map(e => e.tag),
+          selfScore: self != null && isFinite(self) && self >= 0 && self <= 20 ? self : undefined,
         });
         setCorrectionVersion(v => v + 1);
+        setSelfScore('');
       }
     }
     setEvolutionVersion(v => v + 1);
@@ -1222,6 +1229,20 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     className="w-full bg-gray-50 dark:bg-[#121614] border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm md:text-base text-gray-900 dark:text-white font-medium leading-relaxed focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
 
+                   {/* Phase 4 — auto-évaluation /20 AVANT le verdict (calibration) */}
+                   {currentStage === 4 && (
+                    <div className="flex flex-wrap items-center gap-3 bg-sky-50 dark:bg-sky-950/30 p-3 rounded-xl border border-sky-200 dark:border-sky-800/60">
+                      <span className="text-xs font-black text-sky-900 dark:text-sky-300">🪞 قبل التصحيح: ما النقطة التي تتوقعها على 20؟</span>
+                      <input
+                        type="number" min={0} max={20} step={0.25}
+                        value={selfScore}
+                        onChange={(e) => setSelfScore(e.target.value)}
+                        className="w-24 px-2.5 py-1.5 rounded-lg border border-sky-200 dark:border-sky-800/60 bg-white dark:bg-black/30 text-sky-900 dark:text-sky-200 text-sm font-black focus:ring-2 focus:ring-sky-500 outline-none"
+                      />
+                      <span className="text-[11px] text-sky-700 dark:text-sky-400 font-medium">تتنبأ ثم تُصحَّح: الفارق بين توقعك ونقطة الأستاذ هو مرآة المرحلة 4.</span>
+                    </div>
+                   )}
+
                    {/* Actions & Submit */}
                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                       {isDev && (
@@ -1243,7 +1264,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                       </button>
                       <button
                         onClick={handleSubmitProduction}
-                        disabled={studentText.trim().length === 0 || (currentStage === 4 && !isDraftCompleted)}
+                        disabled={studentText.trim().length === 0 || (currentStage === 4 && !isDraftCompleted) || (currentStage === 4 && !(Number(selfScore) >= 0 && Number(selfScore) <= 20 && selfScore !== ''))}
                         className="px-6 py-2.5 bg-[#006d37] hover:bg-[#00562b] disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-md flex items-center gap-2"
                       >
                         <Sparkles className="w-4 h-4 text-[#fed65b]" />
@@ -2009,8 +2030,32 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               <div className="flex flex-wrap gap-2 mt-3">
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">بانتظار: {stats.pending}</span>
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">مضمونها سليم: {stats.approved}</span>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300">تحتاج تصحيحاً: {stats.corrections}</span>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300">تحتاج تصحيحا: {stats.corrections}</span>
               </div>
+              {(() => {
+                const cs = calibrationStats(queue);
+                if (cs.n === 0) return null;
+                const msg = calibrationMessageAr(cs);
+                return (
+                  <div className="mt-3 p-3 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold">
+                      <span className="text-sky-900 dark:text-sky-300">🪞 المعايرة — توقع مقابل حقيقي (n={cs.n}):</span>
+                      <span className="text-gray-700 dark:text-gray-300">متوسط العبر {cs.meanGap! >= 0 ? '+' : ''}{cs.meanGap!.toFixed(1)} · |المتوسط| {cs.meanAbsGap!.toFixed(1)}</span>
+                      <span className="text-amber-700 dark:text-amber-300">مبالغة {cs.overconfident}</span>
+                      <span className="text-emerald-700 dark:text-emerald-300">تواضع {cs.underconfident}</span>
+                      <span className="text-sky-700 dark:text-sky-300">مضبوط {cs.calibrated}/{cs.n}</span>
+                    </div>
+                    {cs.spark.length >= 2 && (
+                      <div className="flex items-end gap-0.5 h-6" title="|العبر| — آخر 5">
+                        {cs.spark.map((v, i) => (
+                          <div key={i} className="w-2.5 bg-sky-400/80 rounded-t" style={{ height: `${Math.max(8, Math.min(100, (v / 10) * 100))}%` }} />
+                        ))}
+                      </div>
+                    )}
+                    {msg && <p className="text-[11px] leading-relaxed text-sky-800 dark:text-sky-400 font-medium">{msg}</p>}
+                  </div>
+                );
+              })()}
             </div>
             {queue.length === 0 ? (
               <div className="bg-white dark:bg-[#161c18] p-8 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-sm text-gray-400">
@@ -2032,6 +2077,43 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                     </div>
                     {item.errorTags.length > 0 && (
                       <div className="mt-1 text-[11px] text-gray-400 font-bold">أخطاء الشكل المرصودة: {item.errorTags.join(' · ')}</div>
+                    )}
+                    {(item.selfScore != null || item.realScore != null || item.status === 'pending') && (
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {item.selfScore != null && (
+                          <span className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 text-[11px] font-bold">التوقع: {item.selfScore}/20</span>
+                        )}
+                        {item.realScore != null && (
+                          <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 text-[11px] font-bold">الحقيقي: {item.realScore}/20</span>
+                        )}
+                        {(() => {
+                          const g = gapOf(item);
+                          if (g === null) return null;
+                          const tone = Math.abs(g) <= 1 ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300' : Math.abs(g) <= 3 ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300' : 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300';
+                          return <span className={`px-2 py-0.5 rounded-full ${tone} text-[11px] font-black`}>العبر {g > 0 ? '+' : ''}{g} — {g > 0 ? 'مبالغة' : g < 0 ? 'تواضع' : 'معايرة مثالية'}</span>;
+                        })()}
+                        {item.status === 'pending' && (
+                          <span className="flex items-center gap-1.5 mr-auto">
+                            <input
+                              type="number" min={0} max={20} step={0.25}
+                              placeholder="النقطة الفعلية /20"
+                              value={realScoreDrafts[item.id] ?? ''}
+                              onChange={(e) => setRealScoreDrafts(d => ({ ...d, [item.id]: e.target.value }))}
+                              className="w-28 px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-black/30 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-sky-500"
+                            />
+                            <button
+                              disabled={realScoreDrafts[item.id] === ''}
+                              onClick={() => {
+                                const v = Number(realScoreDrafts[item.id]);
+                                setRealScore(item.id, v);
+                                setRealScoreDrafts(d => ({ ...d, [item.id]: '' }));
+                                setCorrectionVersion(x => x + 1);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${realScoreDrafts[item.id] !== '' ? 'bg-sky-600 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed'}`}
+                            >حفظ النقطة الفعلية</button>
+                          </span>
+                        )}
+                      </div>
                     )}
                     <p className="mt-2 text-xs leading-relaxed text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-black/20 p-3 rounded-xl whitespace-pre-line max-h-40 overflow-y-auto">{item.text}</p>
                     {item.status === 'pending' ? (

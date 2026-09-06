@@ -84,7 +84,7 @@ repo doit être jetée, pas resynchronisée.
 | 3b | ✅ **Cellules B = ratios glissants** du scoreur (fenêtre 10, part sans l'erreur typique du verbe — `verbSlidingRatio`, panneau « الاستقرار على النواة ») — fait 2026-09-06 · ⏳ matrice multi-élèves (côté serveur/dashboard) reste à câbler sur les logs | 3a |
 | 4 | ✅ **Verdict Phase 2 « forme validée »** : 3 portes (source + interrupteur + structure ICM ≥ 60 sans erreur typique) — verdict auto = « forme », jamais « correct » ; le fond est renvoyé à la Phase 3 (`evaluatePhase2`, 11 tests) — fait 2026-09-06 | 3 |
 | 5 | ✅ **Phase 3 : renvoi ciblé** (micro-2a sur les étapes en défaut, pas la re-Phase-2 — `remediationTargets`) + **file de correction** (production « forme validée » → onglet المصححة : approuver / à corriger + note ; l'enseignant du produit est le correcteur — `correctionQueue`, 9 tests) + **carte-référence** en rédaction libre — fait 2026-09-06 · ⏳ multi-élèves : la file suit les logs côté serveur | 4 |
-| 6 | Phase 4 (écart = métrique) — seulement quand la note de référence est fiable | 5 |
+| 6 | ✅ **Phase 4 — calibration** : auto-évaluation /20 requise à la soumission stage 4, note réelle posée par l'enseignant dans la file, **écart = métrique reine** (moyenne signée, |moyenne|, sur/sous-estimation, sparkline, nudge pédagogique — `calibration`, 12 tests). XP/ICM conservés en couche d'engagement **sous** la calibration (décision audit §3.4 actée) — fait 2026-09-06 | 5 |
 | 7 | Mode examen + dernier mois (mode révision libre inclus) | 6 |
 | 8 | Pool correcteurs + auto-calibration auto/humain (G, K) | **phase échelle, pas MVP** |
 
