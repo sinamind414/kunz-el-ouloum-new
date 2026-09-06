@@ -81,8 +81,8 @@ repo doit être jetée, pas resynchronisée.
 | 1 | ✅ D2 — `استنتج` : le moteur suit la fiche — implémenté (carte + meta + scoreur + verbMapping, spec MARQUE §11) | — |
 | 2 | D3 — test 10 élèves (protocole MARQUE §11) | fiche corrigée (0) |
 | 3a | ✅ **Phase 0** (6 démos auto-pace avec feedback) + **Phase 1** (drill : banque 60 consignes, tirage quotidien déterministe, 2 portes/consigne, résultats par porte) — fait 2026-09-06 | 1 |
-| 3b | ⏳ Matrice enseignant (B) — ratios glissants côté serveur, à câbler sur les logs élèves | 3a |
-| 4 | Phase 2a→2b→2c branchée sur le scoreur existant, verdict « forme validée » | 3 |
+| 3b | ✅ **Cellules B = ratios glissants** du scoreur (fenêtre 10, part sans l'erreur typique du verbe — `verbSlidingRatio`, panneau « الاستقرار على النواة ») — fait 2026-09-06 · ⏳ matrice multi-élèves (côté serveur/dashboard) reste à câbler sur les logs | 3a |
+| 4 | ✅ **Verdict Phase 2 « forme validée »** : 3 portes (source + interrupteur + structure ICM ≥ 60 sans erreur typique) — verdict auto = « forme », jamais « correct » ; le fond est renvoyé à la Phase 3 (`evaluatePhase2`, 11 tests) — fait 2026-09-06 | 3 |
 | 5 | Phase 3 + renvoi ciblé 2d/2a + **file de correction dans le dashboard enseignant** | 4 |
 | 6 | Phase 4 (écart = métrique) — seulement quand la note de référence est fiable | 5 |
 | 7 | Mode examen + dernier mois (mode révision libre inclus) | 6 |

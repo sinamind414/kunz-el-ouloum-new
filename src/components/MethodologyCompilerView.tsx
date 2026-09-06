@@ -15,7 +15,8 @@ import {
 import { isExtensionUnlocked, recordDrillResult, getDrillStatus, getMasteryStatus, recordTypeMastery, todayISO } from '../data/v3Progress';
 import { DRILL_BANK, drawDailyConsignes, gradeDrill, PHASE0_DEMOS, isPhase0Done, completePhase0, resetPhase0, DrillAnswer, DrillConsigne, DrillGrade } from '../data/drillBank';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
-import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry } from '../utils/methodologyLog';
+import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry, verbSlidingRatio } from '../utils/methodologyLog';
+import { evaluatePhase2 } from '../utils/phase2';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
 import BoussoleCard from './BoussoleCard';
 import MiftahCard from './MiftahCard';
@@ -1301,6 +1302,33 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 </div>
               </div>
 
+              {/* Phase 2 — verdict « forme validée » (audit §3.3) : les 3 portes, jamais le fond */}
+              {(() => {
+                const q = currentExercise?.question ?? '';
+                const expectedSource = isDualSource(q) ? 'paper' : detectSourceGate(q);
+                const sourceOk = (currentStage >= 3 && sourceGate) ? sourceGate === expectedSource : null;
+                const v = evaluatePhase2({
+                  sourceGateOk: sourceOk,
+                  switchGateOk: scoreReport.switchLine.choiceCorrect,
+                  icm: scoreReport.icm,
+                  typicalErrorViolated: scoreReport.switchLine.violated,
+                });
+                return (
+                  <div className={`p-4 rounded-2xl border flex items-start gap-3 ${v.formeValidee ? 'bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800/60' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60'}`}>
+                    <ShieldAlert className={`w-5 h-5 shrink-0 mt-0.5 ${v.formeValidee ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400'}`} />
+                    <div className="flex-1">
+                      <h4 className={`font-black text-sm ${v.formeValidee ? 'text-sky-900 dark:text-sky-300' : 'text-amber-900 dark:text-amber-300'}`}>حكم المرحلة ٢ — {v.formeValidee ? 'الشكل مُتحقَّق منه' : 'الشكل ناقص'}</h4>
+                      <p className={`text-xs md:text-sm font-medium mt-0.5 ${v.formeValidee ? 'text-sky-800 dark:text-sky-400' : 'text-amber-800 dark:text-amber-400'}`}>{v.messageAr}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {v.gates.map(g => (
+                          <span key={g.id} className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${g.passed === null ? 'bg-gray-100 dark:bg-gray-800/50 text-gray-400 border-gray-200 dark:border-gray-700' : g.passed ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' : 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60'}`}>{g.passed === null ? '—' : g.passed ? '✓' : '✗'} {g.labelAr}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Pedagogical Decision Engine Result */}
               <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 flex items-start gap-3">
                 <Cpu className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -1640,6 +1668,31 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                 القاعدة: لا يُعتبر الفعل مؤتمتاً ومكتسباً حتى يحقق التلميذ ICM ≥ 90% في 3 وحدات مختلفة على الأقل.
               </p>
             </div>
+
+            {/* B (audit §3.8) — stabilité sur le noyau : ratio glissant (fenêtre 10) */}
+            {(() => {
+              const logs = getProductionLogs();
+              const rows = VERB_CARDS_V2.map(v => ({ v, r: verbSlidingRatio(v.id, 10, logs) })).filter(x => x.r.total > 0);
+              if (rows.length === 0) return null;
+              return (
+                <div className="space-y-2">
+                  <h4 className="font-black text-sm text-gray-700 dark:text-gray-300">الاستقرار على النواة — الإنتاجات الأخيرة (١٠) الخالية من الخطأ النموذجي للفعل</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {rows.map(({ v, r }) => (
+                      <div key={v.id} className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/20">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-gray-800 dark:text-gray-200">{v.verbAr}</span>
+                          <span className={r.ratio === null ? 'text-gray-400' : r.ratio >= 80 ? 'text-emerald-600' : r.ratio >= 50 ? 'text-amber-600' : 'text-red-600'}>{r.ratio === null ? '—' : r.ratio + '%'} <span className="text-[10px] text-gray-400 font-normal">({r.clean}/{r.total})</span></span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+                          <div className={`h-full rounded-full ${r.ratio === null ? '' : r.ratio >= 80 ? 'bg-emerald-500' : r.ratio >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: (r.ratio ?? 0) + '%' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Matrix Table */}
             <div className="overflow-x-auto">

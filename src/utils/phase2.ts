@@ -1,0 +1,56 @@
+// phase2.ts — Verdict de la Phase 2 (docs/AUDIT_APPROCHE_APP.md §3.3, ordre §6 ligne 4)
+//
+// En Phase 2 (stades 2-3 du simulateur : complétion + production guidée), le verdict
+// AUTOMATIQUE ne couvre que la FORME de la réponse :
+//   porte 1 (source) + porte 2 (interrupteur) + structure (scoreur, ICM ≥ seuil,
+//   sans erreur typique du verbe).
+// Il ne valide PAS le fond scientifique — celui-ci est garanti en Phase 3 (correction
+// par l'enseignant). D'où le titre imposé : « forme validée », jamais « correct ».
+//
+// Pas de second moteur de checks : le scoreur existant (methodologyScorer +
+// ValidationEngine, 8 tags, 138 invariants) est la seule source de binaires.
+
+export const PHASE2_FORM_THRESHOLD = 60;
+
+export interface Phase2GateInput {
+  /** Porte 1 — la réponse source de l'élève est-elle juste ? null = non évaluée dans ce flux. */
+  sourceGateOk: boolean | null;
+  /** Porte 2 — l'interrupteur (switch) choisi est-il juste ? null = non évalué. */
+  switchGateOk: boolean | null;
+  /** Scoreur — ICM 0-100. */
+  icm: number;
+  /** Scoreur — l'erreur typique du verbe a-t-elle été commise ? */
+  typicalErrorViolated: boolean;
+}
+
+export interface Phase2GateResult {
+  id: 'source' | 'switch' | 'forme';
+  labelAr: string;
+  /** null = non évaluée (la porte n'est pas exigée dans ce flux). */
+  passed: boolean | null;
+}
+
+export interface Phase2Verdict {
+  /** « Forme validée » — la structure seulement ; le fond est garanti en Phase 3. */
+  formeValidee: boolean;
+  gates: Phase2GateResult[];
+  messageAr: string;
+}
+
+export function evaluatePhase2(inp: Phase2GateInput): Phase2Verdict {
+  const gates: Phase2GateResult[] = [
+    { id: 'source', labelAr: 'الباب ١ — المصدر', passed: inp.sourceGateOk },
+    { id: 'switch', labelAr: 'الباب ٢ — صورة/فيلم', passed: inp.switchGateOk },
+    {
+      id: 'forme',
+      labelAr: `البنية (ICM ≥ ${PHASE2_FORM_THRESHOLD} بلا الخطأ النموذجي)`,
+      passed: !inp.typicalErrorViolated && inp.icm >= PHASE2_FORM_THRESHOLD,
+    },
+  ];
+  const failed = gates.filter(g => g.passed === false);
+  const formeValidee = failed.length === 0;
+  const messageAr = formeValidee
+    ? `✅ شكل الإجابة مُتحقَّق منه (ICM ${inp.icm}%). هذا يضمن البنية المنهجية فقط — ضمان المضمون العلمي في المرحلة 3 مع الأستاذ.`
+    : `❌ الشكل لم يكتمل بعد: ${failed.map(g => g.labelAr).join(' · ')}. المضمون خارج هذا الحكم (المرحلة 3).`;
+  return { formeValidee, gates, messageAr };
+}
