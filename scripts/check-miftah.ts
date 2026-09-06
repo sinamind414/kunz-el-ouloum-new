@@ -121,6 +121,16 @@ if (m) {
   fail('MIFTAH_VERSION introuvable dans la spec');
 }
 
+console.log('\n§ Décisions d\'audit (docs/MARQUE.md §11 — fiche ك, sémantique 12/12)');
+must(spec, "goal: '12/12 على ثلاثة أيام مختلفة'", 'spec : DRILL.goal = 3 jours distincts');
+must(spec, 'UNLOCK_RULE', 'spec : constante UNLOCK_RULE');
+mustNot(spec, 'ثلاث مرات متتالية', 'spec : « متتالية » bannie');
+must(verso, '12/12 على ثلاثة أيام مختلفة', 'fiche ك : 3 jours distincts');
+must(verso, 'حامل المفتاح', 'fiche ك : badge liée au drill');
+must(verso, 'تثبيت النواة على ثلاثة أنواع', 'fiche ك : verso débloqué à 3 types');
+mustNot(html, 'ثلاث مرات متتالية', 'fiche : « متتالية » bannie');
+must(card, '12/12 على ثلاثة أيام مختلفة', 'carte React : parité fiche ك');
+
 if (failures > 0) {
   console.error(`\n✗ ${failures} échec(s) — réaligner fiche/spec/carte sur docs/MARQUE.md`);
   process.exit(1);

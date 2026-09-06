@@ -114,13 +114,26 @@ export const DRILL = {
   count: 12,
   secondsPer: 2,
   totalSec: 60,
-  goal: '12/12 ثلاث مرات متتالية',
+  goal: '12/12 على ثلاثة أيام مختلفة',
   examples: [
     'اذكر من الوثيقة 2 العناصر… (ورقة/صورة)',
     'اذكر مراحل… (رأس)',
     'فسّر بالاعتماد على معلوماتك والشكل 3… (ورقة بعمودين/فيلم)',
     'عرّف… (رأس)',
   ],
+} as const;
+
+// Décision de déverrouillage — actée 2026-09-06 (docs/MARQUE.md §11 · D1)
+// Drill 12/12 sur 3 JOURS DISTINCTS (un échec allonge l'intervalle, ne remet PAS le compteur à zéro)
+//  → débloque : la Phase 2 (écriture guidée) + la badge « حامل المفتاح ».
+// Le verso (المفتاح+) n'est publié qu'après : noyau stable sur 3 types de questions différents
+//  (c'est le badge « أمين الكنز »).
+// ⚠️ Implémentation PENDING dans v3Progress.ts (streak consécutive + flag binaire actuel) —
+//    spec d'implémentation : docs/MARQUE.md §11 D1. Ne pas « corriger » la fiche en attendant.
+export const UNLOCK_RULE = {
+  drillGoalAr: '12/12 على ثلاثة أيام مختلفة',
+  drillUnlocksAr: 'التدريب الموجَّه (المرحلة 2) + شارة «حامل المفتاح»',
+  versoUnlocksAr: 'تثبيت النواة على ثلاثة أنواع مختلفة من الأسئلة',
 } as const;
 
 // 📊 ما أحمله حسب مستواي

@@ -113,10 +113,10 @@ lequel la marque se présente *à travers* l'action.
 |---|---|---|
 | a | **Deuil de Boussole** | Date de retrait du « legacy en repli » de l'UI (outil unique, nom unique). |
 | b | **L'or** | Règle écrite : l'or est réservé au « + » (base en teal) — OU or décoratif assumé et « clé dorée » retiré du nom du tier. Les deux ensemble = incohérent. |
-| c | **Le badge** | 12/12 × 3 récompense la récitation. Critère de **transfert** à définir (ex. : 2 questions inédites bien structurées, sans la fiche). |
-| d | **Test utilisateurs** | 10 élèves de bac SVT, phrase-récit + nom, 24 h, rappel. La seule chose qui transforme les 9,5/10 en fait. |
+| c | **Le badge** | ✅ **Décidé (D1, 2026-09-06)** — حامل المفتاح = drill 12/12 sur 3 jours distincts · أمين الكنز = noyau stable sur 3 types de questions différents (= déblocage du verso). |
+| d | **Test utilisateurs** | ✅ **Protocole prêt (D3, 2026-09-06)** — §11 D3 ; à exécuter par l'owner (étape 4 de l'ordre §7). |
 | e | **Emojis imprimables** | Supprimer les emojis des titres imprimables (tofu A4) — avec la prochaine refonte de fiche. |
-| f | **`استنتج` (scoreur)** | La fiche porte `استنتج` côté « 🎬 فيلم » (1→2→3→4) ; le moteur (`methodologyEngine.ts`) le classe `descriptive` (interrupteur fermé, 1→2→4). Une des deux doit changer + invariant de test. |
+| f | **`استنتج` (scoreur)** | ✅ **Décidé (D2, 2026-09-06)** — le moteur suit la fiche (استنتج = 🎬 فيلم, 1→2→3→4). Implémentation code PENDING (spec §11 D2) — **prérequis de la Phase 1**. |
 
 ## 9. Sources de vérité dans le code
 
@@ -139,3 +139,80 @@ lequel la marque se présente *à travers* l'action.
 3. **Erreurs 1-2-3 remontées au recto** — les trois erreurs de base (numéro, unité,
    xatima) accompagnent tout le monde dès le jour 1 ; 4-5 (formes avancées) restent
    sur le verso. Numérotation continue (`<ol start="4">`).
+
+## 11. Décisions actées — bilan de l'audit « apprendre le مفتاح dans l'app » (2026-09-06)
+
+Bilan complet : `docs/AUDIT_APPROCHE_APP.md`. Trois décisions sont actées ci-dessous.
+**Rien de ces décisions n'est implémenté en code** (GO code en attente).
+
+### D1 — Sémantique du 12/12 ×3 + cibles de déblocage (audit §3.1 + §3.2)
+
+- **Sémantique** : 12/12 sur **3 jours distincts** (pas « consécutifs »). Un échec **allonge
+  l'intervalle** (J+1) **sans remettre le compteur à zéro** — le streak-reset actuel est le plus
+  punitif et va à l'encontre de la logique d'espacement du plan pédagogique.
+- **Cibles** : le 12/12 × 3 jours débloque **la Phase 2 (écriture guidée) + la badge
+  « حامل المفتاح »**. Le **verso (المفتاح+)** n'est publié qu'après **noyau stable sur 3 types de
+  questions différents** (= la badge « أمين الكنز »).
+- **Fait (texte)** : fiche ك (`public/miftah.html` + `MiftahCard.tsx`) + `miftahSpec.ts`
+  (`DRILL.goal`, `UNLOCK_RULE`) — verrouillé par `check:miftah`.
+- **PENDING (code)** : `src/data/v3Progress.ts` — remplacer le streak consécutif (reset à 0) par
+  un compteur de jours distincts (échec → intervalle +1 j, pas de reset) ; le flag binaire
+  `extensionUnlocked` (débloqué par le drill) passe à un déblocage du verso à 3 types maîtrisés.
+
+### D2 — `استنتج` : le moteur suit la fiche (prérequis Phase 1)
+
+- **Décision** : استنتج = 🎬 **فيلم** (parcours 1→2→3→4, la dent 3 = lien causal est requise).
+- **Justification** : le contenu de l'app l'exige — les 20+ prompts « استنتج لماذا / معنى / دور »
+  d'`activeLessons.ts` demandent une réponse raisonnée, et le propre `goodExample` de la carte
+  moteur (« عن طريق تخريب بنيته الفراغية ») contient déjà un mécanisme causal. Le moteur (carte
+  `verb_deduce_v1` classée `descriptive`, parcours 1→4) est l'outlier : tel quel, il sanctionnerait
+  (`premature_interpretation`) exactement ce que le bac récompense. **La fiche ne change pas ;
+  le moteur change.**
+- **PENDING (code), spec d'implémentation** :
+  1. `src/data/methodologyEngine.ts` — carte `verb_deduce_v1` : `category` descriptive →
+     reasoned ; `VERB_V2_META.verb_deduce_v1` : `step3Mode:'explain'`, `path:[1,2,3,4]`,
+     `typicalErrorTag:'unsupported_claim'`, `stepMap` à 4 entrées (longueur = `structureSteps`,
+     qui devient 4 — ajouter la step du lien) ; `goodExample` ré-annoté sur 4 étapes si la
+     suite de tests l'exige (connecteur causal explicite).
+  2. `src/lib/validation/verbMapping.ts` — entrée `استنتج` : `synthesize`/loiFocus 5/
+     `['TEXT_STRUCTURE']` → `interpret`/loiFocus 3/`['CAUSAL','LEVELS']` (aligné sur فسر).
+  3. **Vérification** : invariants v2 (mode DEV) + `tests/boussole.test.ts` (boucle 12 verbes)
+     + `npm run test:vitest` (verbMapping / practiceContextMapping).
+- **État jusqu'au GO code** : la fiche est la référence ; la divergence moteur est connue et
+  tracée ici — ne pas « corriger » la fiche dans l'autre sens.
+
+### D3 — Protocole du test utilisateurs (10 élèves) — prêt à exécuter
+
+- **But** : (1) rappel du nom d'usage + phrase-récit ; (2) valider les 12 consignes du drill
+  **avant** production du pool ≥ 50 ; (3) vérifier que le drill mesure la règle, pas la
+  mémorisation des 12 items.
+- **Échantillon** : 10 élèves de bac SVT (3 en difficulté / 4 moyens / 3 « excellence »),
+  20 min avec un enseignant. Données **agrégées** uniquement (pas de classement individuel).
+- **T0 (20 min)** : (a) fiche montrée 1 min · (b) l'enseignant lit 1× le bloc ك + les 2 portes ·
+  (c) drill des 12 consignes (4 exemples de la fiche + 8 tirées de la banque) — noter score/temps
+  · (d) prononcer 1× la phrase-récit + le nom d'usage.
+- **T+24 h (5 min, sans la fiche)** : ① « ما اسم المنهجية؟ » (attendu : المفتاح) ·
+  ② reformuler la phrase-récit · ③ les 4 dents dans l'ordre · ④ classifier 3 consignes
+  nouvelles (ورقة/رأس + صورة/فيلم) · ⑤ question libre : « ما أول ما تفعله قبل كتابة الإجابة؟ »
+- **Seuils de décision** :
+
+| Mesure | Seuil | Sinon |
+|---|---|---|
+| Nom d'usage rappelé | ≥ 8/10 | renommer ou re-tester le nom |
+| Phrase-récit (± 1 mot) | ≥ 7/10 | alléger la phrase |
+| 4 dents à T+24 h | 10/10 | renforcer l'animation Phase 0 |
+| Drill T0 (moyenne) | ≥ 9/12 | réécrire les consignes |
+| Classification T+24 h | ≥ 2/3 chez ≥ 8/10 | le drill n'automatise pas encore |
+| T+24 h ≥ T0 sur les mêmes items | — | **mémorisation d'items → produire le pool ≥ 50 avant la Phase 1** |
+
+- **Lien avec D1** : le test utilise la sémantique « 3 jours distincts » — les consignes du
+  drill tournent d'un jour à l'autre (pas les mêmes 12 deux jours de suite).
+
+### Ordre de dépendances (avant tout code moteur)
+
+| # | Action | Statut 2026-09-06 |
+|---|---|---|
+| 0 | D1 — textes fiche + spec + garde-fou | ✅ fait |
+| 1 | D2 — `استنتج` (code) | ⏳ GO en attente — **prérequis Phase 1** |
+| 2 | D3 — test 10 élèves | ⏳ exécution par l'owner — valide les consignes avant le pool ≥ 50 |
+| 3 | Builds app (Phase 0 → 4, mode examen) | ⏳ ordre complet : `docs/AUDIT_APPROCHE_APP.md` §6 |
