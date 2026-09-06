@@ -1,13 +1,25 @@
 // src/data/miftahSpec.ts
 // Spécification MIFTAH v3.1 — source unique du HTML, du moteur et des cartes React
 // Pro : centralise la nomenclature, les couleurs, les gabarits et les erreurs coûteuses
+// Marque : docs/MARQUE.md est le document de décision (noms, phrase-récit, placement).
+//         Le garde-fou `npm run check:miftah` prouve la cohérence fiche ↔ spec ↔ carte.
 
 export const MIFTAH_VERSION = '3.1' as const;
-export const MIFTAH_NAME_AR = 'المِفْتَاح';
+// Nom d'usage (UI, bouche de l'élève) — jamais autre chose
+export const MIFTAH_NAME_AR = 'المفتاح';
+// Nom officiel (documents légaux/CGU, argumentaire) — jamais abrégé
+export const MIFTAH_NAME_OFFICIAL_AR = 'مفتاح المنهجية';
+// Nom latin « MIFTAH » : réservé aux commentaires internes — interdit dans l'UI (docs/MARQUE.md §3)
 export const MIFTAH_NAME_LATIN = 'MIFTAH';
-export const MIFTAH_PLUS_AR = 'المِفْتَاح+';
-export const MIFTAH_TAGLINE_AR = 'مفتاح الكنز — منهجية الإجابة في علوم الحياة والأرض · بكالوريا';
+export const MIFTAH_PLUS_AR = 'المفتاح+';
+// Tagline descriptive (pas un nom)
+export const MIFTAH_TAGLINE_AR = 'منهجية الإجابة في علوم الحياة والأرض · بكالوريا';
 export const MIFTAH_BRAND_AR = 'كنز العلوم';
+
+// Phrase-récit — UNE seule version, partout où la marque se présente (docs/MARQUE.md §2)
+export const NARRATIVE_AR = 'كنز العلوم يُفتح بمفتاح المنهجية';
+// Positionnement — la cible : l'élève qui connaît le cours mais perd les points
+export const POSITIONING_AR = 'المقرر موجود عندك. المفتاح يحوّله إلى نقاط.';
 
 export const MIFTAH_COLORS = {
   gold: '#c8962e', goldL: '#fbf3e2', goldD: '#8a6116',
@@ -18,10 +30,12 @@ export const MIFTAH_COLORS = {
 
 // Nomenclature — à utiliser partout (moteur, scorer, vues)
 export const MIFTAH_NOMENCLATURE = {
-  miftah: 'المِفْتَاح',
-  miftahPlus: 'المِفْتَاح+',
+  miftah: 'المفتاح',
+  miftahPlus: 'المفتاح+',
+  official: 'مفتاح المنهجية',
   sinn: 'السنّ',
   asnan: 'الأسنان',
+  qafal: 'القفل',
   bawaba: 'البوابة',
   bawaba1: 'البوابة 1 — ورقة أم رأس؟',
   bawaba2: 'البوابة 2 — صورة أم فيلم؟',
@@ -35,6 +49,7 @@ export const MIFTAH_NOMENCLATURE = {
 export const STEP0 = {
   id: 0 as const,
   nameAr: 'اِفهم',
+  lockAr: 'القفل', // la « dent 0 » n'est pas une dent : c'est le قفل que la clé (les 4 dents) ouvre
   templateAr: 'الهدف العام: …… (≤ 5 كلمات) — يُكتب أعلى المسودة بعد قراءة سياق التمرين',
   exampleAr: 'بغرض معرفة آلية عمل الأنسولين → الهدف العام: آلية عمل الأنسولين',
   checkAr: 'هل كتبت الهدف العام في سطر واحد قبل القراءة التفصيلية؟',
@@ -57,7 +72,7 @@ export const READY_SENTENCES = {
 
 // Verso : chaîne et synthèse (ز)
 export const SYNTHESIS = {
-  chain: ['اِفهم 0', 'جزء I · 1 2 3 4', 'جزء II · 1 2 3 4', 'جزء III · 1 2 3 4', 'التركيب = يُجيب «اِفهم»'],
+  chain: ['القفل · اِفهم', 'جزء I · 1 2 3 4', 'جزء II · 1 2 3 4', 'جزء III · 1 2 3 4', 'التركيب = يُجيب «اِفهم»'],
   templateAr: 'من الجزء I نعلم أنّ … ، ومن الجزء II أنّ … ، ومن الجزء III أنّ … ؛ ومنه [الإجابة على سطر «الهدف العام»].',
   correctorAr: 'تركيب بلا «ومنه» = نصف النقطة. معلومة من الدرس لم تظهر في الأجزاء = لا يُحتسب.',
 } as const;
@@ -123,3 +138,13 @@ export const FIVE_COSTLY_ERRORS = [
   'شجرة نسب بحكم واحد — نصف النقطة مضمون الضياع.',
   'تركيب يعيد الأجزاء دون «ومنه» — الجملة الأغلى في الورقة.',
 ] as const;
+
+// Fiche — partition recto/verso : les erreurs 1-3 (base) voyagent sur le recto avec
+// tout le monde, 4-5 (formes avancées) restent sur le verso. Chaque chaîne doit
+// contenir « — » (titre — explication) : c'est ce que fait le rendu en <b>.
+export const RECTO_ERRORS = FIVE_COSTLY_ERRORS.slice(0, 3) as string[];
+export const VERSO_ERRORS = FIVE_COSTLY_ERRORS.slice(3) as string[];
+
+// Footer des deux faces — la même chaîne dans /miftah.html et MiftahCard (garde-fou check:miftah)
+export const FOOTER_RECTO_AR = 'مفتاح المنهجية · كنز العلوم · الوجه الأول — المفتاح (10 عناصر) · يكفي وحده للأغلبية';
+export const FOOTER_VERSO_AR = 'مفتاح المنهجية · كنز العلوم · الوجه الثاني — المفتاح+ · لا يحتاجه أحد في اليوم الأول';

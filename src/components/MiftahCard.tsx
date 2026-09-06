@@ -1,7 +1,12 @@
-// src/components/MiftahCard.tsx — Carte MIFTAH v3.1 recto/verso fidèle au HTML autonome
+// src/components/MiftahCard.tsx — Carte « المفتاح » (مفتاح المنهجية) v3.1 recto/verso,
+// fidèle à l'HTML autonome /miftah.html. Noms, erreurs et footers viennent de miftahSpec
+// (source unique) ; le garde-fou `npm run check:miftah` vérifie la parité (docs/MARQUE.md).
 // Pro : styles isolés (préfixe miftah-) pour ne pas fuir, print natif, aucune logique
 import React from 'react';
-import { MIFTAH_VERSION } from '../data/miftahSpec';
+import {
+  MIFTAH_VERSION, MIFTAH_NAME_AR, MIFTAH_NAME_OFFICIAL_AR,
+  FOOTER_RECTO_AR, FOOTER_VERSO_AR, RECTO_ERRORS, VERSO_ERRORS,
+} from '../data/miftahSpec';
 
 export default function MiftahCard() {
   return (
@@ -17,6 +22,7 @@ export default function MiftahCard() {
         .miftah-brand{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:3px solid var(--gold); padding-bottom:14px}
         .miftah-brand .app{font-size:12.5px; color:var(--mute); line-height:1.6}
         .miftah-tag{color:var(--mute); font-size:13.8px; margin-top:3px}
+        .miftah-official{color:var(--gold-d); font-family:"Cairo","Noto Naskh Arabic",sans-serif; font-size:13.5px; font-weight:800; margin-top:2px; letter-spacing:.01em}
         .miftah-teacher{background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:11px 14px; font-size:12.3px; color:var(--mute); margin:14px 0; line-height:1.6}
         .miftah-root table{width:100%; border-collapse:separate; border-spacing:0; margin:10px 0 16px; font-size:14px; border:1px solid var(--line); border-radius:10px; overflow:hidden}
         .miftah-root th,.miftah-root td{border-bottom:1px solid var(--line); border-left:1px solid var(--line); padding:9px 11px; vertical-align:top; text-align:right}
@@ -51,22 +57,24 @@ export default function MiftahCard() {
         .miftah-card-label{display:inline-block; background:var(--teal); color:#fff; border-radius:999px; padding:3px 14px; font-family:"Cairo",sans-serif; font-weight:800; font-size:12.5px; margin-bottom:7px}
         .miftah-card-label.plus{background:linear-gradient(135deg,var(--gold) 0%,var(--gold-d) 100%)}
         .miftah-root footer{color:var(--mute); font-size:11.5px; text-align:center; margin:22px 0 6px}
-        @media print{ .miftah-page{box-shadow:none; margin:0; border-radius:0; max-width:none; padding:10mm 11mm; border:none} .miftah-teacher{display:none} .miftah-break{page-break-before:always; break-before:page} .miftah-root{font-size:10.7px; line-height:1.62} .miftah-root h1{font-size:22.5px} .miftah-root h2{font-size:14.8px; margin:13px 0 8px} .miftah-root h3{font-size:12.8px} }
+        /* Garde-fou A4 (parité /miftah.html) : le recto doit tenir sur UNE page */
+        @media print{ .miftah-page{box-shadow:none; margin:0; border-radius:0; max-width:none; padding:8mm 10mm; border:none} .miftah-teacher{display:none} .miftah-break{page-break-before:always; break-before:page} .miftah-root{font-size:10.4px; line-height:1.58} .miftah-root h1{font-size:20px} .miftah-official{font-size:10.5px; margin-top:1px} .miftah-tag{font-size:12.5px; margin-top:2px} .miftah-brand{padding-bottom:10px} .miftah-root h2{font-size:14.8px; margin:10px 0 7px; padding-bottom:4px} .miftah-root h3{font-size:12.8px; margin:8px 0 5px} .miftah-root table{margin:5px 0 8px} .miftah-root th,.miftah-root td{padding:4px 6px} .miftah-box,.miftah-gate{padding:10px 13px; margin:7px 0} .miftah-corr-note{padding:6px 11px; margin:6px 0} .miftah-sent{padding:6px 11px; margin:5px 0} .miftah-check{gap:6px} .miftah-check div{padding:6px 10px} .miftah-key-wrap{margin:8px 0} .miftah-teeth span{padding:4px 10px} .miftah-root ul{margin:2px 0} .miftah-root li{margin:3px 0} .miftah-root footer{margin:8px 0 0} }
       `}</style>
 
       {/* RECTO */}
       <div className="miftah-page">
         <div className="miftah-brand">
           <div>
-            <h1>🔑 المِفْتَاح · <span className="latin">MIFTAH</span></h1>
-            <div className="miftah-tag">مفتاح الكنز — منهجية الإجابة في علوم الحياة والأرض · بكالوريا</div>
+            <h1>🔑 {MIFTAH_NAME_AR}</h1>
+            <div className="miftah-official">{MIFTAH_NAME_OFFICIAL_AR}</div>
+            <div className="miftah-tag">منهجية الإجابة في علوم الحياة والأرض · بكالوريا</div>
             <div className="miftah-tag latin" style={{textAlign:'left', direction:'ltr'}}>4 dents · 2 portes · une réponse qui ouvre le point</div>
           </div>
           <div className="app latin" style={{textAlign:'right'}}>
             <b>كنز العلوم</b> · Kunz El Ouloum<br/>v{MIFTAH_VERSION} · fiche élève · recto = المفتاح · verso = المفتاح+
           </div>
         </div>
-        <div className="miftah-teacher"><b>Note enseignant :</b> le noyau compte 10 éléments (la <b>بوابة 1</b> et le <b>وضع الحفظ</b> y sont : ce sont les points les moins chers de l&apos;exercice 1). Les cases « 📝 المصحح » décrivent la logique réelle du barème. Ne distribuer le verso (المفتاح+) qu&apos;après maîtrise du recto. Cette note n&apos;est pas imprimée.</div>
+        <div className="miftah-teacher"><b>Note enseignant :</b> le noyau compte 10 éléments (la <b>بوابة 1</b> et le <b>وضع الحفظ</b> y sont : ce sont les points les moins chers de l&apos;exercice 1). Les cases « 📝 المصحح » décrivent la logique réelle du barème. Ne distribuer le verso (المفتاح+) qu&apos;après maîtrise du recto. Les erreurs 1-3 (base) sont sur le recto, 4-5 (formes avancées) sur le verso. Cette note n&apos;est pas imprimée.</div>
         <span className="miftah-card-label">البطاقة الأولى · للجميع، من اليوم الأول</span>
         <h2>🧬 المفتاح — 4 أسنان تفتح كل إجابة</h2>
         <div className="miftah-key-wrap">
@@ -105,18 +113,20 @@ export default function MiftahCard() {
         <div className="miftah-sent"><b>للخاتمة:</b> «ومنه نستنتج أنّ [كلمات السؤال المسطّرة] …»</div>
         <h3><span className="num">هـ</span> الفحص الرباعي المعكوس — 10 ثوانٍ قبل السؤال التالي</h3>
         <div className="miftah-check"><div><b>4</b> ← هل تحوي خاتمتي كلمات السؤال؟</div><div><b>3</b> ← هل كل «لأنّ» مسبوقة بمعطى؟</div><div><b>2</b> ← هل كل رقم معه وحدته؟</div><div><b>1</b> ← هل الفعل الذي طوّقتُه هو الذي نفّذتُه؟</div></div>
-        <footer>كنز العلوم · MIFTAH v{MIFTAH_VERSION} · الوجه الأول — المفتاح (10 عناصر) · يكفي وحده للأغلبية</footer>
+        <h3><span className="num">📝</span> ثلاثة أخطاء تكلّف أكثر من الجهل — خلاصة مصحح</h3>
+        <div className="miftah-box miftah-red"><ol style={{margin:0, paddingRight:22}}>{RECTO_ERRORS.map(e => { const i = e.indexOf(' — '); return <li key={e}><b>{e.slice(0, i)}</b> — {e.slice(i + 3)}</li>; })}</ol></div>
+        <footer>{FOOTER_RECTO_AR}</footer>
       </div>
       {/* VERSO */}
       <div className="miftah-page miftah-break">
-        <div className="miftah-brand"><div><h1>🔑 المِفْتَاح<span style={{color:'var(--gold)'}}>+</span> · <span className="latin">MIFTAH+</span></h1><div className="miftah-tag">نفس المفتاح، أسنان إضافية — لمن أتقن الوجه الأول</div></div><div className="app latin" style={{textAlign:'right'}}><b>كنز العلوم</b> · Kunz El Ouloum<br/>v{MIFTAH_VERSION} · verso</div></div>
+        <div className="miftah-brand"><div><h1>🔑 المفتاح<span style={{color:'var(--gold)'}}>+</span></h1><div className="miftah-tag">نفس المفتاح — القفل والأسنان الإضافية — لمن أتقن الوجه الأول</div></div><div className="app latin" style={{textAlign:'right'}}><b>كنز العلوم</b> · Kunz El Ouloum<br/>v{MIFTAH_VERSION} · verso</div></div>
         <span className="miftah-card-label plus">البطاقة الثانية · عند الحاجة فقط</span>
-        <h2>🧫🧱 المفتاح+ — الأسنان الإضافية</h2>
-        <h3><span className="num">و</span> السنّ 0 — اِفهم (مرة واحدة لكل تمرين)</h3>
+        <h2>🧫🧱 المفتاح+ — القفل والأسنان الإضافية</h2>
+        <h3><span className="num">و</span> القفل — اِفهم (مرة واحدة لكل تمرين)</h3>
         <div className="miftah-box miftah-teal">بعد قراءة <b>سياق التمرين</b> مباشرة، أكتب في أعلى المسودة: <b>«الهدف العام: ……»</b> (≤ 5 كلمات).<br/>مثال: «بغرض معرفة آلية عمل الأنسولين…» ← «<b>الهدف العام: آلية عمل الأنسولين</b>».</div>
         <div className="miftah-corr-note"><b>📝 المصحح:</b> التركيب النهائي (أثقل نقطة في التمرين 3) يُنقَّط على <b>إجابته لهذا السطر بالذات</b>، لا على كمّ ما كُتب.</div>
         <h3><span className="num">ز</span> البنية المتسلسلة + قالب التركيب</h3>
-        <div className="miftah-chain"><div className="node z">اِفهم 0</div><span className="ar">←</span><div className="node">جزء I · 1 2 3 4</div><span className="ar">←</span><div className="node">جزء II · 1 2 3 4</div><span className="ar">←</span><div className="node">جزء III · 1 2 3 4</div><span className="ar">←</span><div className="node s">التركيب = يُجيب «اِفهم»</div></div>
+        <div className="miftah-chain"><div className="node z">القفل · اِفهم</div><span className="ar">←</span><div className="node">جزء I · 1 2 3 4</div><span className="ar">←</span><div className="node">جزء II · 1 2 3 4</div><span className="ar">←</span><div className="node">جزء III · 1 2 3 4</div><span className="ar">←</span><div className="node s">التركيب = يُجيب «اِفهم»</div></div>
         <div className="miftah-sent"><b>قالب التركيب (جملة واحدة مركّبة):</b> «من الجزء I نعلم أنّ … ، ومن الجزء II أنّ … ، ومن الجزء III أنّ … ؛ <b>ومنه</b> [الإجابة على سطر «الهدف العام»].»</div>
         <div className="miftah-corr-note"><b>📝 المصحح:</b> تركيب يعيد النتائج بلا «ومنه» = نصف النقطة. تركيب يُدخل معلومة من الدرس لم تظهر في الأجزاء = لا يُحتسب.</div>
         <h3><span className="num">ح</span> صيغتان خاصتان</h3>
@@ -131,9 +141,9 @@ export default function MiftahCard() {
         <div className="miftah-box miftah-teal">تمرّ أمامي <b>12 تعليمة قصيرة كاملة</b> (لا أفعال معزولة)، لكل واحدة ثانيتان: <b>ورقة / رأس</b> ثم <b>صورة / فيلم</b>.<br/>أمثلة: «اذكر من الوثيقة 2 العناصر…» (ورقة/صورة) · «اذكر مراحل…» (رأس) · «فسّر بالاعتماد على معلوماتك والشكل 3…» (ورقة بعمودين/فيلم) · «عرّف…» (رأس).<br/><b>الهدف: 12/12 ثلاث مرات متتالية</b> قبل أي تحرير كامل. في التطبيق: يُفتح المفتاح+ تلقائيا بعد هذا الشرط.</div>
         <h3><span className="num">📊</span> ما أحمله حسب مستواي</h3>
         <table className="lvl"><thead><tr><th>الملف</th><th>البطاقة</th><th style={{width:110}}>العناصر</th></tr></thead><tbody><tr><td>متعثّر</td><td>المفتاح كاملا (أ → هـ)</td><td className="c">10</td></tr><tr><td>متوسط</td><td>المفتاح + و، ز، ط</td><td className="c">≈ 13</td></tr><tr><td>يستهدف الامتياز</td><td>المفتاح+ كاملا — لكن لا شيء يُستدعى في آن واحد</td><td className="c">≈ 17</td></tr></tbody></table>
-        <h3><span className="num">📝</span> خمسة أخطاء تكلّف أكثر من الجهل — خلاصة مصحح</h3>
-        <div className="miftah-box miftah-red"><ol style={{margin:0, paddingRight:22}}><li><b>إجابة بلا رقم سؤال</b> — أكثر النقاط ضياعا عبثا.</li><li><b>رقم بلا وحدة</b> — يُعدّ خطأ لا نسيانا.</li><li><b>خاتمة غائبة</b> — الاستنتاج له نقطته المستقلة في كل سؤال «فيلم».</li><li><b>شجرة نسب بحكم واحد</b> — نصف النقطة مضمون الضياع.</li><li><b>تركيب يعيد الأجزاء دون «ومنه»</b> — الجملة الأغلى في الورقة، تُكتب في 30 ثانية.</li></ol></div>
-        <footer>كنز العلوم · MIFTAH+ v{MIFTAH_VERSION} · الوجه الثاني — لا يحتاجه أحد في اليوم الأول · <span className="latin">4 dents · 2 portes · une réponse qui ouvre le point</span></footer>
+        <h3><span className="num">📝</span> الخطآن المتبقيان — خلاصة مصحح (1-3 على الوجه الأول)</h3>
+        <div className="miftah-box miftah-red"><ol start={4} style={{margin:0, paddingRight:22}}>{VERSO_ERRORS.map(e => { const i = e.indexOf(' — '); return <li key={e}><b>{e.slice(0, i)}</b> — {e.slice(i + 3)}</li>; })}</ol></div>
+        <footer>{FOOTER_VERSO_AR} · <span className="latin">4 dents · 2 portes · une réponse qui ouvre le point</span></footer>
       </div>
     </div>
   );

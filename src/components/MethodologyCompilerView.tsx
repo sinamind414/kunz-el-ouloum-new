@@ -10,7 +10,7 @@ import {
   VERB_CARDS, UNIVERSAL_GRAMMAR_RULES, TRAINING_EXERCISES,
   ERROR_TAXONOMY, TrainingExercise, Switch, StepId, STEP_NAMES_AR, STEP_TEMPLATES, VERB_CARDS_V2, getVerbCardV2,
   detectSourceGate, isDualSource, SourceGate, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion,
-  MIFTAH_VERSION, MIFTAH_NOMENCLATURE, READY_SENTENCES, SYNTHESIS, SPECIAL_FORMS
+  MIFTAH_VERSION, MIFTAH_NAME_OFFICIAL_AR, MIFTAH_NOMENCLATURE, READY_SENTENCES, SYNTHESIS, SPECIAL_FORMS
 } from '../data/methodologyEngine';
 import { isExtensionUnlocked, recordDrillResult, getDrillStreak } from '../data/v3Progress';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
@@ -413,7 +413,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               <Cpu className="w-3.5 h-3.5" />
               <span>نظام التجميع البيداغوجي الموحد (Compilateur SVT)</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight">🔑 {MIFTAH_NOMENCLATURE.miftah} · MIFTAH — مفتاح الكنز v{MIFTAH_VERSION}</h1>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight">🔑 {MIFTAH_NAME_OFFICIAL_AR} v{MIFTAH_VERSION}</h1>
             <p className="text-white/90 text-sm md:text-base mt-1 max-w-2xl font-medium">
               4 أسنان · 2 بوابتان · إجابة تفتح النقطة — منهجية الإجابة في علوم الحياة والأرض · بكالوريا
             </p>
@@ -492,7 +492,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>🔑 {MIFTAH_NOMENCLATURE.miftah} (MIFTAH) — للطباعة</span>
+            <span>🔑 {MIFTAH_NOMENCLATURE.miftah} — للطباعة</span>
           </button>
         </div>
       </header>
