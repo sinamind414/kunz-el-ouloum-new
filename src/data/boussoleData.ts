@@ -209,9 +209,9 @@ export const SPECIAL_FORMATS: SpecialFormat[] = [
   {
     verbId: 'verb_deduce_v1',
     name: 'استنتاج',
-    step2Template: 'حقيقة عامة فقط',
-    step3Template: 'بدون أرقام متكررة',
-    step4Template: 'جملة واحدة مختصرة',
+    step2Template: 'تجريد النتائج (بلا أرقام معادة)',
+    step3Template: 'الربط السببي: الآلية (لأنّ / يعود ذلك إلى)',
+    step4Template: 'جملة جامعة واحدة',
   },
 ];
 

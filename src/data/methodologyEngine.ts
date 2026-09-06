@@ -107,17 +107,17 @@ export const VERB_CARDS: VerbCard[] = [
       { id:'hyp_c3', order:3, wording:{compass:'أصوغ الفرضية بصيغة إخبارية جازمة خالية من صيغ التردد (ربما، لعل).',check:'صياغة جازمة دون تردد.',probe:'هل تخلو جملتي تماماً من كلمات مثل "ربما" أو "قد"؟',ar_label:'الصياغة الجازمة'}, selfProofPrompt:'تأكد من عدم وجود كلمات الشك والتردد', errorTag:'conditional_hypothesis', weight:1 }
     ]
   },
-  { id:'verb_deduce_v1', verbAr:'اسْتَنْتِجْ', verbFr:'Déduire', category:'descriptive',
-    goal:'استخلاص معلومة علمية عامة جديدة ومجردة انطلاقاً من المعطيات السابقة دون تكرار الوصف.',
-    structureSteps:['1. استحضار الهدف العلمي من التجربة أو الوثيقة','2. تجريد النتائج والتخلي عن التفاصيل الرقمية والأرقام الجزئية','3. صياغة خلاصة مباشرة ومركزة في جملة واحدة جامعة'],
-    requiredConnectors:['نستنتج أن...','الاستنتاج: يتبين أن...'],
+  { id:'verb_deduce_v1', verbAr:'اسْتَنْتِجْ', verbFr:'Déduire', category:'reasoned', // D2 (MARQUE §11) : استنتج = 🎬 فيلم
+    goal:'استخلاص حقيقة علمية عامة جديدة ومجردة، مرتبطة بآليتها السببية، انطلاقا من المعطيات السابقة دون تكرار الوصف.',
+    structureSteps:['1. استحضار الهدف العلمي من التجربة أو الوثيقة (المعطيات الملاحظة)','2. تجريد النتائج والتخلي عن التفاصيل الرقمية والأرقام الجزئية','3. الربط السببي: ما الآلية التي تفسر هذه النتيجة؟ (لأنّ / يعود ذلك إلى / عن طريق)','4. صياغة خلاصة مباشرة ومركزة في جملة واحدة جامعة'],
+    requiredConnectors:['نستنتج أن...','الاستنتاج: يتبين أن...','يعود ذلك إلى ... / لأنّ ...'],
     forbiddenPatterns:['إعادة أرقام المنحنى أو سرد التفاصيل التجريبية من جديد'],
     stopCriteria:['جملة وحيدة واضحة تعبر عن قاعدة علمية عامة قابلة للتعميم'],
-    goodExample:{ context:'إضافة إنزيم مع مادة تفاعله في وسطين: الأول بدرجة حرارة 37° (نشاط أعظمي) والثاني 70° (انعدام النشاط الدائم).', question:'ماذا تستنتج حول تأثير درجة الحرارة المرتفعة على الإنزيم؟', answer:'الاستنتاج: تؤثر درجات الحرارة المرتفعة سلباً وغير عكوس على النشاط الإنزيمي عن طريق تخريب بنيته الفراغية.', annotatedSteps:[{step:1,text:'تأثير درجات الحرارة المرتفعة',color:'#3b82f6'},{step:2,text:'سلباً وغير عكوس على النشاط الإنزيمي',color:'#10b981'},{step:3,text:'عن طريق تخريب بنيته الفراغية',color:'#8b5cf6'}] },
-    badExample:{ answer:'نستنتج أنه عندما نضع الإنزيم عند 70 درجة تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة.', flawDescription:'إعادة وصف النتائج التجريبية والأرقام بدلاً من استخلاص الحقيقة العلمية المكتسبة.', circledError:'تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة', errorTag:'verb_confusion', scorePercent:30 },
+    goodExample:{ context:'إضافة إنزيم مع مادة تفاعله في وسطين: الأول بدرجة حرارة 37° (نشاط أعظمي) والثاني 70° (انعدام النشاط الدائم).', question:'ماذا تستنتج حول تأثير درجة الحرارة المرتفعة على الإنزيم؟', answer:'الملاحظة: انطلاقا من المعطيات، ينعدم النشاط الإنزيمي نهائيا في الوسط الساخن.\nالتجريد: هذا الانعدام دائم ولا يعود عند تبريد الوسط.\nالآلية: يعود ذلك إلى أن الحرارة المرتفعة تخرّب البنية الفراغية للإنزيم فيفقد الموقع الفعال شكله.\nالاستنتاج: تؤثر درجة الحرارة المرتفعة سلبا وغير عكوس على النشاط الإنزيمي، لأنّها تخرّب بنيته الفراغية.', annotatedSteps:[{step:1,text:'الملاحظة: ينعدم النشاط الإنزيمي نهائيا في الوسط الساخن',color:'#3b82f6'},{step:2,text:'هذا الانعدام دائم ولا يعود عند تبريد الوسط',color:'#10b981'},{step:3,text:'يعود ذلك إلى أن الحرارة المرتفعة تخرّب البنية الفراغية للإنزيم',color:'#8b5cf6'},{step:4,text:'الاستنتاج: تؤثر درجة الحرارة المرتفعة سلبا وغير عكوس، لأنّها تخرّب بنيته الفراغية',color:'#f43f5e'}] },
+    badExample:{ answer:'نستنتج أنه عندما نضع الإنزيم عند 70 درجة تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة.', flawDescription:'إعادة وصف النتائج التجريبية والأرقام دون أي آلية سببية — خلاصة غير مرتبطة بعلتها (D2 : استنتج = فيلم، الربط إلزامي).', circledError:'تتوقف سرعة التفاعل وتصبح 0 ميكرومول/دقيقة', errorTag:'unsupported_claim', scorePercent:30 },
     criteria:[
       { id:'ded_c1', order:1, wording:{compass:'أصوغ حقيقة علمية عامة تمثل إجابة مباشرة للهدف من التجربة.',check:'صياغة قاعدة علمية مجردة.',probe:'هل استنتجت حقيقة عامة أم أعدت قراءة المنحنى؟',ar_label:'تجريد النتيجة'}, selfProofPrompt:'حدد الحقيقة العلمية المستخلصة', errorTag:'missing_conclusion', weight:1 },
-      { id:'ded_c2', order:2, wording:{compass:'أتجنب تكرار الأرقام والتفاصيل التجريبية السطحية.',check:'خلو الاستنتاج من الأرقام المعادة.',probe:'هل يخلو استنتاجي من الأرقام والوصف؟',ar_label:'تجنب تكرار الوصف'}, selfProofPrompt:'تأكد من عدم وجود أرقام مكررة', errorTag:'verb_confusion', weight:1 }
+      { id:'ded_c2', order:2, wording:{compass:'أربط النتيجة بآليتها السببية برابط صريح (لأنّ / يعود ذلك إلى / عن طريق).',check:'رابط سببي صريح يربط النتيجة بآليتها.',probe:'هل أدرجت الآلية التي تفسر النتيجة؟',ar_label:'الربط السببي'}, selfProofPrompt:'حدد الرابط الذي يربط النتيجة بسببها', errorTag:'unsupported_claim', weight:1 }
     ]
   },
   { id:'verb_validate_v1', verbAr:'صَادِقْ عَلَى الصِّحَّة', verbFr:'Valider l\'hypothèse', category:'reasoned',
@@ -301,7 +301,7 @@ export const VERB_V2_META: Record<string, VerbV2Meta> = {
   verb_define_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
   verb_list_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
   verb_analyse_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:null, typicalErrorTag:'premature_interpretation' },
-  verb_deduce_v1: { step3Mode:'none', path:[1,4], stepMap:[1,1,4], format:null, typicalErrorTag:'premature_interpretation' },
+  verb_deduce_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[1,2,3,4], format:null, typicalErrorTag:'unsupported_claim' },
   verb_compare_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,2,3,4], format:'compare', formatCheckAr:'هل قلتُ عن الطرفين نفس عدد الأشياء ؟', typicalErrorTag:'premature_interpretation' },
   verb_schema_v1: { step3Mode:'confront', path:[1,2,3,4], stepMap:[2,3,2,4], format:'diagram', formatCheckAr:'عنوان ✓ مفتاح ✓ أسهم مرقّمة ✓', typicalErrorTag:'premature_interpretation' },
   verb_explain_v1: { step3Mode:'explain', path:[1,2,3,4], stepMap:[2,3,3,4], format:null, typicalErrorTag:'unsupported_claim' },

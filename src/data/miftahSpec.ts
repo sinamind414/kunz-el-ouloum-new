@@ -128,8 +128,8 @@ export const DRILL = {
 //  → débloque : la Phase 2 (écriture guidée) + la badge « حامل المفتاح ».
 // Le verso (المفتاح+) n'est publié qu'après : noyau stable sur 3 types de questions différents
 //  (c'est le badge « أمين الكنز »).
-// ⚠️ Implémentation PENDING dans v3Progress.ts (streak consécutive + flag binaire actuel) —
-//    spec d'implémentation : docs/MARQUE.md §11 D1. Ne pas « corriger » la fiche en attendant.
+// ✅ Implémenté dans v3Progress.ts : jours distincts (applyDrillResult), verso à 3 types
+//    (recordTypeMastery), flag legacy grandfatheré — docs/MARQUE.md §11 D1.
 export const UNLOCK_RULE = {
   drillGoalAr: '12/12 على ثلاثة أيام مختلفة',
   drillUnlocksAr: 'التدريب الموجَّه (المرحلة 2) + شارة «حامل المفتاح»',

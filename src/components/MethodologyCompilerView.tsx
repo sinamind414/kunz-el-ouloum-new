@@ -12,7 +12,7 @@ import {
   detectSourceGate, isDualSource, SourceGate, MEMORY_TEMPLATES, STEP0_TEMPLATE_AR, classifyConclusion,
   MIFTAH_VERSION, MIFTAH_NAME_OFFICIAL_AR, MIFTAH_NOMENCLATURE, READY_SENTENCES, SYNTHESIS, SPECIAL_FORMS
 } from '../data/methodologyEngine';
-import { isExtensionUnlocked, recordDrillResult, getDrillStreak } from '../data/v3Progress';
+import { isExtensionUnlocked, recordDrillResult, getDrillStatus, getMasteryStatus, recordTypeMastery } from '../data/v3Progress';
 import { evaluateStudentProduction, ScoreReport, SwitchLine, StepLine } from '../utils/methodologyScorer';
 import { logProduction, getProductionLogs, getVerbEvolution, VerbEvolutionStats, ProductionLogEntry } from '../utils/methodologyLog';
 import ProductionEvolutionPanel from './ProductionEvolutionPanel';
@@ -61,6 +61,9 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   const [isDual, setIsDual] = useState(false);
   const [step0Text, setStep0Text] = useState<string>('');
   const [extensionUnlocked, setExtensionUnlocked] = useState<boolean>(false);
+  // D1 (MARQUE §11) : drill = 3 jours distincts à 12/12 ; verso = 3 types maîtrisés (stage 4).
+  const [drillStatus, setDrillStatus] = useState(() => getDrillStatus());
+  const [masteryStatus, setMasteryStatus] = useState(() => getMasteryStatus());
   // V3.1 drill مصفاة التعليمات 60s 12 consignes
   const [drillActive, setDrillActive] = useState(false);
   const [drillSec, setDrillSec] = useState(60);
@@ -133,6 +136,8 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
   // V3.1 : extension unlocked check
   useEffect(() => {
     setExtensionUnlocked(isExtensionUnlocked());
+    setDrillStatus(getDrillStatus());
+    setMasteryStatus(getMasteryStatus());
   }, [evolutionVersion]);
 
   // m1 · header = dernier ICM du carnet, ou « — » si aucune production
@@ -207,8 +212,9 @@ export default function MethodologyCompilerView({ onBackToHome }: MethodologyPro
     if (drillSec <= 0) {
       setDrillActive(false);
       const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
-      const unlocked = recordDrillResult(score);
-      setExtensionUnlocked(unlocked || isExtensionUnlocked());
+      recordDrillResult(score);
+      setDrillStatus(getDrillStatus());
+      setExtensionUnlocked(isExtensionUnlocked());
       return;
     }
     const id = setInterval(()=> setDrillSec(s=> s-1), 1000);
@@ -314,6 +320,12 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
       errorTags: rep.detectedErrors.map(e => e.tag),
       durationSec: currentStage === 4 && currentExercise ? Math.max(0, currentExercise.stage4.timeLimitSec - timerSeconds) : undefined,
     });
+    // D1 (MARQUE §11) : stage 4 au seuil = type de question maîtrisé → verso débloqué à 3 types.
+    if (currentStage === 4 && rep.icm >= currentExercise.stage4.passIcmThreshold) {
+      recordTypeMastery(selectedVerbId);
+      setMasteryStatus(getMasteryStatus());
+      setExtensionUnlocked(isExtensionUnlocked());
+    }
     setEvolutionVersion(v => v + 1);
 
     // Update matrix score & error counters
@@ -519,7 +531,7 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
                      const isMemory = v.id === 'verb_define_v1' || v.id === 'verb_list_v1';
                      const locked = isMemory && !extensionUnlocked;
                      return (
-                     <option key={v.id} value={v.id} disabled={locked}>{v.verbAr}{locked ? ' — 🔒 بعد مصفاة ٣×١٢/١٢' : ''}</option>
+                     <option key={v.id} value={v.id} disabled={locked}>{v.verbAr}{locked ? ' — 🔒 بعد إتقان ٣ أنواع أسئلة' : ''}</option>
                      );
                   })}
                 </select>
@@ -610,11 +622,11 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
           {/* V3.1 مصفاة التعليمات — 60s 12 consignes (débloque verso) */}
           <div className="bg-gradient-to-r from-amber-50 to-sky-50 dark:from-amber-950/20 dark:to-sky-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <div>
-              <div className="font-black text-sm flex items-center gap-2">🧠 مصفاة التعليمات — ٦٠ ث <span className="text-xs bg-white dark:bg-black/20 px-2 py-0.5 rounded-full border">٣ × ١٢/١٢ → يفتح الورقة الخلفية</span></div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">ورقة أم رأس؟ {extensionUnlocked ? '✅ مفتوحة' : `سلسلة: ${getDrillStreak()} / ٣`} — بلا خسارة إلى أن تفوز ثلاث مرات</div>
+              <div className="font-black text-sm flex items-center gap-2">🧠 مصفاة التعليمات — ٦٠ ث <span className="text-xs bg-white dark:bg-black/20 px-2 py-0.5 rounded-full border">٣ أيام × ١٢/١٢ → شارة «حامل المفتاح» + المرحلة ٢</span></div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">ورقة أم رأس؟ {drillStatus.met ? '✅ ' + drillStatus.badgeAr : `أيام ناجحة: ${drillStatus.perfectDays} / ${drillStatus.goal}`} — الإخفاق لا يصفّر: يؤجل اليوم التالي فقط · الورقة الخلفية: {masteryStatus.met ? '✅ ' + masteryStatus.badgeAr : `إتقان ${masteryStatus.types.length} / ${masteryStatus.goal} أنواع`}</div>
             </div>
             {!drillActive ? (
-              <button onClick={()=>{setDrillAnswers({}); setDrillSec(60); setDrillActive(true);}} className="px-4 py-2 bg-[#006d37] text-white rounded-xl font-bold text-xs shadow">{extensionUnlocked ? 'إعادة المصفاة' : 'ابدأ المصفاة'}</button>
+              <button onClick={()=>{setDrillAnswers({}); setDrillSec(60); setDrillActive(true);}} className="px-4 py-2 bg-[#006d37] text-white rounded-xl font-bold text-xs shadow">{drillStatus.met ? 'إعادة المصفاة' : 'ابدأ المصفاة'}</button>
             ) : (
               <div className="font-mono font-black text-lg bg-black/10 px-3 py-1 rounded-xl">{drillSec} ث</div>
             )}
@@ -637,8 +649,9 @@ const handleSelectStage = (stage: 1 | 2 | 3 | 4) => {
               </div>
               <button onClick={()=>{
                 const score = DRILL_CONSIGNES.reduce((acc,c)=> acc + (drillAnswers[c.id]===c.expected ? 1:0),0);
-                const unlocked = recordDrillResult(score);
-                setExtensionUnlocked(unlocked || isExtensionUnlocked());
+                recordDrillResult(score);
+                setDrillStatus(getDrillStatus());
+                setExtensionUnlocked(isExtensionUnlocked());
                 setDrillActive(false);
               }} className="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm">صحّح — {Object.keys(drillAnswers).length}/12</button>
             </div>

@@ -143,7 +143,7 @@ lequel la marque se présente *à travers* l'action.
 ## 11. Décisions actées — bilan de l'audit « apprendre le مفتاح dans l'app » (2026-09-06)
 
 Bilan complet : `docs/AUDIT_APPROCHE_APP.md`. Trois décisions sont actées ci-dessous.
-**Rien de ces décisions n'est implémenté en code** (GO code en attente).
+**D1 et D2 sont implémentées en code (2026-09-06)** ; D3 est prêt à exécuter par l'owner.
 
 ### D1 — Sémantique du 12/12 ×3 + cibles de déblocage (audit §3.1 + §3.2)
 
@@ -155,9 +155,10 @@ Bilan complet : `docs/AUDIT_APPROCHE_APP.md`. Trois décisions sont actées ci-d
   questions différents** (= la badge « أمين الكنز »).
 - **Fait (texte)** : fiche ك (`public/miftah.html` + `MiftahCard.tsx`) + `miftahSpec.ts`
   (`DRILL.goal`, `UNLOCK_RULE`) — verrouillé par `check:miftah`.
-- **PENDING (code)** : `src/data/v3Progress.ts` — remplacer le streak consécutif (reset à 0) par
-  un compteur de jours distincts (échec → intervalle +1 j, pas de reset) ; le flag binaire
-  `extensionUnlocked` (débloqué par le drill) passe à un déblocage du verso à 3 types maîtrisés.
+- **✅ Implémenté (code, 2026-09-06)** : `src/data/v3Progress.ts` — jours distincts
+  (`applyDrillResult`, échec → intervalle +1 j, pas de reset) ; verso débloqué à 3 types
+  maîtrisés (`recordTypeMastery` = stage 4 au seuil `passIcmThreshold`) ; flag legacy
+  grandfatheré ; badges. Tests : `src/utils/__tests__/v3ProgressD1.test.ts` (16 tests).
 
 ### D2 — `استنتج` : le moteur suit la fiche (prérequis Phase 1)
 
@@ -168,7 +169,7 @@ Bilan complet : `docs/AUDIT_APPROCHE_APP.md`. Trois décisions sont actées ci-d
   `verb_deduce_v1` classée `descriptive`, parcours 1→4) est l'outlier : tel quel, il sanctionnerait
   (`premature_interpretation`) exactement ce que le bac récompense. **La fiche ne change pas ;
   le moteur change.**
-- **PENDING (code), spec d'implémentation** :
+- **✅ Implémenté (code, 2026-09-06), spec d'implémentation** :
   1. `src/data/methodologyEngine.ts` — carte `verb_deduce_v1` : `category` descriptive →
      reasoned ; `VERB_V2_META.verb_deduce_v1` : `step3Mode:'explain'`, `path:[1,2,3,4]`,
      `typicalErrorTag:'unsupported_claim'`, `stepMap` à 4 entrées (longueur = `structureSteps`,
@@ -178,8 +179,8 @@ Bilan complet : `docs/AUDIT_APPROCHE_APP.md`. Trois décisions sont actées ci-d
      `['TEXT_STRUCTURE']` → `interpret`/loiFocus 3/`['CAUSAL','LEVELS']` (aligné sur فسر).
   3. **Vérification** : invariants v2 (mode DEV) + `tests/boussole.test.ts` (boucle 12 verbes)
      + `npm run test:vitest` (verbMapping / practiceContextMapping).
-- **État jusqu'au GO code** : la fiche est la référence ; la divergence moteur est connue et
-  tracée ici — ne pas « corriger » la fiche dans l'autre sens.
+- **État** : fiche, moteur (`verb_deduce_v1` + `VERB_V2_META` + scoreur + `verbMapping` +
+  gabarits Boussole) alignés sur le film 1→2→3→4 — la fiche reste la référence.
 
 ### D3 — Protocole du test utilisateurs (10 élèves) — prêt à exécuter
 
@@ -212,7 +213,7 @@ Bilan complet : `docs/AUDIT_APPROCHE_APP.md`. Trois décisions sont actées ci-d
 
 | # | Action | Statut 2026-09-06 |
 |---|---|---|
-| 0 | D1 — textes fiche + spec + garde-fou | ✅ fait |
-| 1 | D2 — `استنتج` (code) | ⏳ GO en attente — **prérequis Phase 1** |
+| 0 | D1 — textes fiche + spec + garde-fou + code `v3Progress` | ✅ fait (textes + code) |
+| 1 | D2 — `استنتج` (code) | ✅ fait — **prérequis Phase 1 levé** |
 | 2 | D3 — test 10 élèves | ⏳ exécution par l'owner — valide les consignes avant le pool ≥ 50 |
 | 3 | Builds app (Phase 0 → 4, mode examen) | ⏳ ordre complet : `docs/AUDIT_APPROCHE_APP.md` §6 |

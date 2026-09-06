@@ -77,8 +77,8 @@ repo doit être jetée, pas resynchronisée.
 
 | # | Action | Dépend de |
 |---|---|---|
-| 0 | ✅ D1 — textes fiche + spec + garde-fou (fait 2026-09-06) | — |
-| 1 | D2 — `استنتج` : le moteur suit la fiche (spec MARQUE §11) | GO code |
+| 0 | ✅ D1 — textes fiche + spec + garde-fou + code `v3Progress.ts` (fait 2026-09-06) | — |
+| 1 | ✅ D2 — `استنتج` : le moteur suit la fiche — implémenté (carte + meta + scoreur + verbMapping, spec MARQUE §11) | — |
 | 2 | D3 — test 10 élèves (protocole MARQUE §11) | fiche corrigée (0) |
 | 3 | Phase 0 (1 item animé) + Phase 1 (drill, pool ≥ 50) + matrice enseignant | 1, 2 |
 | 4 | Phase 2a→2b→2c branchée sur le scoreur existant, verdict « forme validée » | 3 |
@@ -99,5 +99,5 @@ repo doit être jetée, pas resynchronisée.
 4. **Définir les cellules de la matrice** comme ratios de binaire, et trancher le sort de
    l'XP/ICM plutôt que de les déprécier en silence.
 
-**Prérequis dur de la Phase 1** : D2 (`استنتج`). **Étape suivante de l'owner** : D3 (test
+**Prérequis dur de la Phase 1** : D2 (`استنتج`) — ✅ fait 2026-09-06. **Étape suivante de l'owner** : D3 (test
 10 élèves). **Fiche de référence** : celle du repo, verrouillée par `check:miftah`.
