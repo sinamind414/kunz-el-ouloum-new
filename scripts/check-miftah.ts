@@ -170,6 +170,26 @@ must(verso, 'الحدّاد', 'fiche ك : حدّاد = 3e forme spéciale (verso
 must(card, 'الحدّاد', 'carte : حدّad = 3e forme spéciale (parité verso)');
 mustNot(recto, 'تعرّف', 'fiche : nom dent 1 (09-06) banni — collision عَرِّفْ');
 mustNot(card, 'تعرّف', 'carte : nom dent 1 (09-06) banni — collision عَرِّفْ');
+console.log('\n§ Addendum 2026-09-07 (docs/MARQUE.md §12ter) — annexe PRO (page 3, amritat, sur demande)');
+must(spec, 'MIFTAH_ANNEXE_AR', 'spec : constante nom annexe');
+must(spec, 'ANNEXE = {', 'spec : contenu annexe centralisé');
+must(spec, 'FOOTER_ANNEXE_AR', 'spec : footer annexe');
+must(spec, "ruleAr: 'لا أبحث عن جواب فقط", 'spec : règle d’or annexe');
+must(verso, 'المفتاح PRO', 'fiche : annexe présente (page 3)');
+must(verso, 'لا أبحث عن جواب فقط', 'fiche : règle d’or (parité spec)');
+must(verso, 'قاعدة حمراء', 'fiche : règle rouge causalité (ذ)');
+must(verso, 'المتغيّر المُختبَر', 'fiche : 4 questions expérience (ر)');
+must(verso, 'نقترح أن', 'fiche : template hypothèse (س)');
+must(verso, 'عند الطلب', 'fiche : distribution sur demande');
+must(recto, 'الوجه الأول — المفتاح (11 عنصرًا)', 'fiche : footer recto réparé 10→11');
+must(verso, '≈ 21', 'fiche : niveau amritat ≈ 21 (annexe)');
+must(card, '{ANNEXE.ruleAr}', 'carte : règle d’or rendue depuis la spec');
+must(card, '{ANNEXE.causalAr}', 'carte : règle rouge rendue depuis la spec');
+must(card, 'FOOTER_ANNEXE_AR', 'carte : footer annexe depuis la spec');
+mustNot(verso, 'علوم الطبيعة والحياة', 'fiche : nom de série ≠ matière banni (régression doc PRO)');
+mustNot(card, 'علوم الطبيعة والحياة', 'carte : nom de série ≠ matière banni');
+must(spec, "hamad: {", 'spec : SPECIAL_FORMS + الحدّاد (parité verso)');
+must(spec, "countAr: '≈ 21'", 'spec : LEVELS amritat ≈ 21 (parité fiche)');
 
 if (failures > 0) {
   console.error(`\n✗ ${failures} échec(s) — réaligner fiche/spec/carte sur docs/MARQUE.md`);

@@ -4,7 +4,7 @@
 // Marque : docs/MARQUE.md est le document de décision (noms, phrase-récit, placement).
 //         Le garde-fou `npm run check:miftah` prouve la cohérence fiche ↔ spec ↔ carte.
 
-export const MIFTAH_VERSION = '3.1' as const;
+export const MIFTAH_VERSION = '3.2' as const;
 // Nom d'usage (UI, bouche de l'élève) — jamais autre chose
 export const MIFTAH_NAME_AR = 'المفتاح';
 // Nom officiel (documents légaux/CGU, argumentaire) — jamais abrégé
@@ -105,6 +105,13 @@ export const SPECIAL_FORMS = {
     teethAr: '2 = حدثان حاسمان: ① أبوان سليمان ← طفل مصاب (السيادة) ② بنت مصابة من أب سليم / ابن سليم من أم مصابة (الموقع) · 3 = لماذا يستبعد · 4 = الحكمان (متنحٍّ/سائد + جسمي/مرتبط بـ X) ثم الأنماط',
     correctorAr: 'نمط بلا الحكم الثاني = نصف النقطة دائما. بلا حدث حاسم للموقع: «على الأرجح جسمي لأنّ …» + مبرر = كاملة.',
   },
+  // حدّاد — 3e forme spéciale (09-07, MARQUE §12bis) : parité avec la ligne verso de la fiche
+  hamad: {
+    labelAr: 'الحدّاد',
+    cueAr: 'اقترح / برّر / ناقض / قدّم حلا',
+    teethAr: '2 = كل المعطيات المتاحة (الوثيقة + معلوماتي) · 3 = التصنيع: دمج المعطيات المتفرقة في منطق جديد · 4 = المنتج المُبرَّر (فرضية / علاج / توصية)',
+    correctorAr: 'إعادة الملاحظة بدل التصنيع = صفر. فرضية بلا آلية = نصف النقطة.',
+  },
 } as const;
 
 // ط : عام vs خاص
@@ -149,11 +156,11 @@ export const UNLOCK_RULE = {
   versoUnlocksAr: 'تثبيت النواة على ثلاثة أنواع مختلفة من الأسئلة',
 } as const;
 
-// 📊 ما أحمله حسب مستواي
+// 📊 ما أحمله حسب مستواي — noyau 11 (décongélation 09-07) ; amritat ≈ 21 avec l'annexe PRO (09-07, §12ter)
 export const LEVELS = [
-  { labelAr: 'متعثّر', cardAr: 'المفتاح كاملا (أ → هـ)', countAr: '10' },
-  { labelAr: 'متوسط', cardAr: 'المفتاح + و، ز، ط', countAr: '≈ 13' },
-  { labelAr: 'يستهدف الامتياز', cardAr: 'المفتاح+ كاملا — لكن لا شيء يُستدعى في آن واحد', countAr: '≈ 17' },
+  { labelAr: 'متعثّر', cardAr: 'المفتاح كاملا (أ → هـ)', countAr: '11' },
+  { labelAr: 'متوسط', cardAr: 'المفتاح + و، ز، ط', countAr: '≈ 14' },
+  { labelAr: 'يستهدف الامتياز', cardAr: 'المفتاح+ + الملحق (ذ، ر، س) — لا شيء يُستدعى في آن واحد', countAr: '≈ 21' },
 ] as const;
 
 // 📝 خمسة أخطاء تكلّف أكثر من الجهل
@@ -172,5 +179,42 @@ export const RECTO_ERRORS = FIVE_COSTLY_ERRORS.slice(0, 3) as string[];
 export const VERSO_ERRORS = FIVE_COSTLY_ERRORS.slice(3) as string[];
 
 // Footer des deux faces — la même chaîne dans /miftah.html et MiftahCard (garde-fou check:miftah)
-export const FOOTER_RECTO_AR = 'مفتاح المنهجية · كنز العلوم · الوجه الأول — المفتاح (10 عناصر) · يكفي وحده للأغلبية';
+export const FOOTER_RECTO_AR = 'مفتاح المنهجية · كنز العلوم · الوجه الأول — المفتاح (11 عنصرًا) · يكفي وحده للأغلبية';
 export const FOOTER_VERSO_AR = 'مفتاح المنهجية · كنز العلوم · الوجه الثاني — المفتاح+ · لا يحتاجه أحد في اليوم الأول';
+
+// Annexe PRO — الملحق (page 3 de la fiche, décision 2026-09-07, docs/MARQUE.md §12ter)
+// Profils « يستهدف الامتياز » uniquement, distribuée sur demande. Trois outils récupérés
+// de la dérivée interne « المفتاح PRO » (10 pages, auditée : zéro barème, nom de matière
+// erroné) — réécrits sous la marque et reliés au barème (cases 📝 المصحح).
+export const MIFTAH_ANNEXE_AR = 'المفتاح PRO';
+export const ANNEXE = {
+  ruleAr: 'لا أبحث عن جواب فقط؛ بل أبني جوابًا تُظهر فيه الأدلة كيف وصلتُ إلى النتيجة.',
+  forceTitleAr: 'قوة الكلام = قوة الدليل',
+  forceRows: [
+    ['ملاحظة مباشرة', '«تُظهر الوثيقة…» / «نلاحظ أن…»'],
+    ['علاقة بين متغيرين', '«توجد علاقة بين … و…»'],
+    ['دليل يدعم فكرة', '«تشير النتائج إلى…»'],
+    ['أدلة قوية ومتوافقة', '«تسمح النتائج بالاستنتاج أن…»'],
+    ['اختبار فرضية', '«تُدعَم / تُرفض الفرضية وفق النتائج والشروط»'],
+  ],
+  causalAr: 'لا أكتب «X يسبب Y» لمجرد أن X وY تغيّرا معًا — السببية تحتاج تصميمًا تجريبيًا (شاهد + شروط مضبوطة). الارتباط وحده = علاقة لا سبب.',
+  forceCorrectorAr: 'مبالغة الخاتمة (سبب بلا تصميم تجريبي) = نقطة الفهم تضيع ولو كانت الخاتمة علمية صحيحة. «تُظهر الوثيقة» بلا رقم محدد = استخراج ناقص.',
+  experimentQuestionsAr: [
+    ['🧪 ماذا غيّرنا؟', 'المتغيّر المُختبَر'],
+    ['📏 ماذا قِسنا؟', 'المتغيّر المُقاس'],
+    ['⚖️ ما الشاهد؟', 'الحالة المرجعية للمقارنة'],
+    ['🔒 ماذا أبقينا ثابتًا؟', 'الشروط المضبوطة'],
+  ],
+  experimentFormulaAr: 'تغيير واحد + قياس واحد + شاهد + شروط ثابتة = تجربة صالحة',
+  experimentCorrectorAr: 'سؤال تجربة بلا المتغيّر المُختبَر + الشاهد = نصف النقطة. وصف البروتوكول بلا النتيجة المتوقعة = لا يُحتسب تحليلًا.',
+  hypothesisTitleAr: 'الفرضية — تصنيع يُختبَر (حدّاد 3 ← 4)',
+  hypothesisTemplateAr: 'نقترح أن …… لأن ……، ويمكن اختبارها بدراسة أثر …… على …… مع اعتماد …… كشاهد.',
+  hypothesisChecksAr: [
+    'هل النتيجة متوافقة مع ما تتنبأ به الفرضية؟',
+    'هل الشاهد يسمح بالمقارنة؟',
+    'هل يمكن استبعاد تفسير بديل معقول؟',
+    'هل الأدلة كافية للحكم المطلوب؟',
+  ],
+  hypothesisCorrectorAr: 'فرضية بلا آلية («لأنّ» فارغة) = نصف النقطة. فرضية بلا تجربة قابلة (بلا شاهد/أثر) = صفر — التصنيع ليس أمنية (الحدّاد، الوجه الثاني).',
+} as const;
+export const FOOTER_ANNEXE_AR = 'مفتاح المنهجية · كنز العلوم · الملحق — المفتاح PRO · قوة الدليل لمن يستهدف الامتياز';

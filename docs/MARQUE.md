@@ -302,3 +302,30 @@ Chaque dent nomme désormais **le geste physique qu'on fait avec une clé** :
 ### En attente
 - Vérification collision finale de تَبَصَّر contre les 2 sujets 2025 complets (non présents dans le workspace — à livrer par l'owner).
 - Réconciliation examen 60 min → 4h30 (7b) — après D3, pas avant.
+
+## §12ter — Annexe PRO (addendum 2026-09-07)
+
+**Décision (owner « GO ») :** la fiche gagne une **3e page** — « **المفتاح PRO** » (annexe), dans `public/miftah.html` + `MiftahCard.tsx`, **distribuée sur demande uniquement**, profil « يستهدف الامتياز » seulement. Version fiche **3.1 → 3.2**.
+
+**Origine (tracée) :** 4 éléments récupérés de la **dérivée interne** « المفتاح PRO » (10 pages, générée par IA, auditée le 09-07 : zéro barème, nom de matière erroné « علوم الطبيعة والحياة » = la série, pas la matière, marque non contrôlée). Réécrits **sous la marque** et **reliés au barème** — chaque section porte sa case 📝 المصحح, ce que la dérivée n'avait pas.
+
+### Contenu (lettres suite de la carte : ذ، ر، س)
+
+| Section | Contenu | Barème (case 📝) |
+|---|---|---|
+| **ذ — قوة الكلام = قوة الدليل** | Table 5 niveaux de langue selon la force de la preuve + **règle rouge de causalité** (« X يسبب Y » interdit sans design expérimental) | Mبالغة الخاتمة (cause sans design) = point de compréhension perdu, même conclusion scientifiquement juste |
+| **ر — التجربة : 4 أسئلة** | Variable manipulée / mesurée / témoin / constant + formule « تغيير واحد + قياس واحد + شاهد + شروط ثابتة » | Question d'expérience sans variable manipulée + témoin = ½ point |
+| **س — الفرضية : تصنيع يُختبَر** | Template « نقترح أن … لأن … + اختبار + شاهد » + 4 contrôles (élimination de l'alternative) | Hypothèse sans mécanisme = ½ ; hypothèse non testable (sans témoin/affect) = 0 — fabrication ≠ vœu (écho حدّad verso) |
+
+### Règles
+
+- **Nom** : « **المفتاح PRO** » = nom d'usage + étiquette d'extension `PRO` (autorisée dans l'annexe uniquement — ≠ `MIFTAH` latin verrouillé, ≠ « مفتاح الكنز »).
+- **Matière** : « علوم الحياة والأرض » — le nom de série est **banni** (garde-fou check:miftah, anti-régression sur l'erreur de la dérivée).
+- **Noyau** : niveau amritat **≈18 → ≈21** (+ ذ، ر، س) dans la table des niveaux (fiche + spec `LEVELS`).
+- **Parité** : contenu centralisé dans `miftahSpec.ts` (`ANNEXE`, `FOOTER_ANNEXE_AR`, `MIFTAH_ANNEXE_AR`) ; la carte React rend depuis les constantes, la fiche HTML porte les chaînes identiques ; bloc §12ter dans `check-miftah`.
+
+### Réparations de parité incluses (constatées pendant l'implémentation)
+
+1. **Footer recto** : « (10 عناصر) » → « (11 عنصرًا) » — contradiction interne corrigée (note enseignant et table disaient déjà 11).
+2. **`LEVELS` spec obsolète** (10 / ≈13 / ≈17) → alignée sur la fiche (11 / ≈14 / ≈21).
+3. **`SPECIAL_FORMS` spec sans الحدّاد** → entrée `hamad` ajoutée (source unique ; l'import dans la vue compilateur est mort — non rendu, pas de changement d'affichage app).

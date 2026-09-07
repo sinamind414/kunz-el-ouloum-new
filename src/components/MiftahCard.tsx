@@ -5,7 +5,8 @@
 import React from 'react';
 import {
   MIFTAH_VERSION, MIFTAH_NAME_AR, MIFTAH_NAME_OFFICIAL_AR,
-  FOOTER_RECTO_AR, FOOTER_VERSO_AR, RECTO_ERRORS, VERSO_ERRORS,
+  FOOTER_RECTO_AR, FOOTER_VERSO_AR, FOOTER_ANNEXE_AR,
+  RECTO_ERRORS, VERSO_ERRORS, ANNEXE,
 } from '../data/miftahSpec';
 
 export default function MiftahCard() {
@@ -141,11 +142,37 @@ export default function MiftahCard() {
         <h3><span className="num">ك</span> شحذ المفتاح — تدريب 60 ثانية</h3>
         <div className="miftah-box miftah-teal">تمرّ أمامي <b>12 تعليمة قصيرة كاملة</b> (لا أفعال معزولة)، لكل واحدة ثانيتان: <b>🚪 قفل؟</b> ثم <b>📥 من أين؟</b> ثم <b>⚙️ أي حركة؟</b>.<br/>أمثلة: «اذكر من الوثيقة 2 العناصر…» (قفل/وثيقة/📷) · «اذكر مراحل…» (لا قفل/🧠) · «فسّر بالاعتماد على معلوماتك والشكل 3…» (قفل/مختلط/🎬) · «اقترح فرضيتين بالاستعانة بالوثيقة 1 ومعلوماتك…» (قفل/مختلط/🔨).<br/><b>الهدف: 12/12 على ثلاثة أيام مختلفة</b> قبل أي تحرير كامل. في التطبيق: يُفتح بعد هذا الشرط <b>التدريب الموجَّه (المرحلة 2)</b> والشارة «حامل المفتاح»، وتُنشر بطاقة <b>المفتاح+</b> بعد تثبيت النواة على ثلاثة أنواع مختلفة من الأسئلة.</div>
         <h3><span className="num">📊</span> ما أحمله حسب مستواي</h3>
-        <table className="lvl"><thead><tr><th>الملف</th><th>البطاقة</th><th style={{width:110}}>العناصر</th></tr></thead><tbody><tr><td>متعثّر</td><td>المفتاح كاملا (أ → هـ)</td><td className="c">11</td></tr><tr><td>متوسط</td><td>المفتاح + و، ز، ط</td><td className="c">≈ 14</td></tr><tr><td>يستهدف الامتياز</td><td>المفتاح+ كاملا — لكن لا شيء يُستدعى في آن واحد</td><td className="c">≈ 18</td></tr></tbody></table>
+        <table className="lvl"><thead><tr><th>الملف</th><th>البطاقة</th><th style={{width:110}}>العناصر</th></tr></thead><tbody><tr><td>متعثّر</td><td>المفتاح كاملا (أ → هـ)</td><td className="c">11</td></tr><tr><td>متوسط</td><td>المفتاح + و، ز، ط</td><td className="c">≈ 14</td></tr><tr><td>يستهدف الامتياز</td><td>المفتاح+ + الملحق (ذ، ر، س) — لا شيء يُستدعى في آن واحد</td><td className="c">≈ 21</td></tr></tbody></table>
         <h3><span className="num">📝</span> الخطآن المتبقيان — خلاصة مصحح (1-3 على الوجه الأول)</h3>
         <div className="miftah-box miftah-red"><ol start={4} style={{margin:0, paddingRight:22}}>{VERSO_ERRORS.map(e => { const i = e.indexOf(' — '); return <li key={e}><b>{e.slice(0, i)}</b> — {e.slice(i + 3)}</li>; })}</ol></div>
         <footer>{FOOTER_VERSO_AR} · <span className="latin">4 dents · 2 portes · une réponse qui ouvre le point</span></footer>
       </div>
+        {/* ANNEXE — PRO (docs/MARQUE.md §12ter) : page 3, amritat uniquement, sur demande */}
+        <div className="miftah-page miftah-break">
+          <div className="miftah-brand">
+            <div>
+              <h1>🔑 المفتاح<span style={{color:'var(--gold)'}}>PRO</span></h1>
+              <div className="miftah-tag">قوة الدليل والتجريب — لمن يستهدف الامتياز، بعد إتقان الوجهين الأول والثاني</div>
+            </div>
+            <div className="app latin" style={{textAlign:'right'}}><b>كنز العلوم</b> · Kunz El Ouloum<br/>v{MIFTAH_VERSION} · annexe</div>
+          </div>
+          <span className="miftah-card-label plus">الملحق · يُوزَّع عند الطلب فقط — للامتياز</span>
+          <h2>🔬 المفتاح PRO — {ANNEXE.forceTitleAr}</h2>
+          <div className="miftah-box miftah-gold"><b>القاعدة الذهبية:</b> {ANNEXE.ruleAr}</div>
+          <h3><span className="num">ذ</span> {ANNEXE.forceTitleAr}</h3>
+          <table><thead><tr><th style={{width:'44%'}}>نوع الدليل</th><th>اللغة التي أستعملها</th></tr></thead><tbody>{ANNEXE.forceRows.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
+          <div className="miftah-box miftah-red"><b>🔴 قاعدة حمراء:</b> {ANNEXE.causalAr}</div>
+          <div className="miftah-corr-note"><b>📝 المصحح:</b> {ANNEXE.forceCorrectorAr}</div>
+          <h3><span className="num">ر</span> التجربة — 4 أسئلة قبل أي تحليل</h3>
+          <div className="miftah-check">{ANNEXE.experimentQuestionsAr.map(([q, r]) => <div key={q}>{q} ← <b>{r}</b></div>)}</div>
+          <div className="miftah-sent"><b>{ANNEXE.experimentFormulaAr}</b></div>
+          <div className="miftah-corr-note"><b>📝 المصحح:</b> {ANNEXE.experimentCorrectorAr}</div>
+          <h3><span className="num">س</span> {ANNEXE.hypothesisTitleAr}</h3>
+          <div className="miftah-box miftah-gold"><b>القالب:</b> «{ANNEXE.hypothesisTemplateAr}»</div>
+          <div className="miftah-check">{ANNEXE.hypothesisChecksAr.map(c => <div key={c}>{c}</div>)}</div>
+          <div className="miftah-corr-note"><b>📝 المصحح:</b> {ANNEXE.hypothesisCorrectorAr}</div>
+          <footer>{FOOTER_ANNEXE_AR} · <span className="latin">4 dents · 2 portes · une réponse qui ouvre le point</span></footer>
+        </div>
     </div>
   );
 }
