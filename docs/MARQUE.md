@@ -241,7 +241,7 @@ partir de données dispersées — jamais « décrire » ni « expliquer » quan
 
 | La dent | 📷 الصورة | 🎬 الفيلم | 🔨 الحدّاد |
 |---|---|---|---|
-| 🔍 تعرّف | الفعل: وصفي | الفعل: تفسيري | الفعل: إنشائي (لا جواب واحد) |
+| 🔍 تَبَصَّر | الفعل: وصفي | الفعل: تفسيري | الفعل: إنشائي (لا جواب واحد) |
 | 🔑 أدخل | من الوثيقة فقط | وثيقة + معلومات | **كل المعطيات المتاحة**، دون استثناء |
 | 🔄 أدر | **مُتجاوَزة** | ربط عادي (سبب موجود) | **تصنيع**: دمج معطيات متفرقة في منطق جديد |
 | 🔓 افتح | ملاحظة/استنتاج بسيط | استنتاج يفسّر «لماذا» | **المنتَج المُصنَّع**: فرضية/اقتراح/توصية، مبرَّر منطقيا |
@@ -252,13 +252,13 @@ Chaque dent nomme désormais **le geste physique qu'on fait avec une clé** :
 
 | # | 🔒 Ancien | 🔑 Nouveau | Le geste | Ce qu'on y fait (inchangé) |
 |---|---|---|---|---|
-| 1 | اِقْرَأْ | **🔍 تعرّف** | Je reconnais la forme du verrou | Entourer le verbe, souligner les mots-clés |
+| 1 | اِقْرَأْ | **🔍 تَبَصَّر** | Je reconnais la forme du verrou | Entourer le verbe, souligner les mots-clés |
 | 2 | اِجْمَعْ | **🔑 أدخل** | J'insère la clé dans la serrure | Extraire données/chiffres/unités du document |
 | 3 | اِرْبِطْ | **🔄 أدر** | Je tourne la clé | Lier la donnée à la mécanique du cours |
 | 4 | اِخْتِمْ | **🔓 افتح** | La serrure s'ouvre | La phrase de conclusion |
 
 **Phrase-mnémotechnique unique (figée, `KEY_MNEMONIC_AR`) :**
-> **تعرّف · أدخل · أدر · افتح — أربع حركات، لا أكثر، وينفتح القفل.**
+> **تَبَصَّر · أدخل · أدر · افتح — أربع حركات، لا أكثر، وينفتح القفل.**
 
 **Note enseignant :** le contenu pédagogique de chaque dent reste identique — un élève déjà formé
 à l'ancien vocabulaire s'adapte en une session grâce au tableau ci-dessus.
@@ -275,3 +275,30 @@ Chaque dent nomme désormais **le geste physique qu'on fait avec une clé** :
 - **Fiche + carte** : dents renommées, 3 portes, mnémonique — garde-fou `check:miftah` §12 (anciens noms bannis).
 - **D3** : le protocole (10 élèves) s'applique **avec les nouveaux noms** — le test n'ayant pas encore
   d'exécution, aucune re-test de noms n'est due. « 4 dents à T+24 h » reste valable (4 dents, 4 nouveaux noms).
+
+## 12bis. Addendum 2026-09-07 — carte imprimée « 2 portes + famille », noyau 10→11, dent 1 = تَبَصَّر
+
+**Déclencheur :** critique post-livraison (09-07) — 2 constats vérifiés dans les fichiers + 1 argument de catégorie :
+
+1. **Catégorie** : une porte répond « d'où vient la matière ? », une famille répond « que produis-je ? ». Faire de حدّad une 3e case de décision est une impureté de catégorie au niveau imprimable. Données BAC 2025 : **12/12** items حدّad ont un قفل — la fabrication monte toujours sur un document, elle n'ouvre jamais un autre trajet d'entrée.
+2. **Collision (vérifiée dans le produit)** : la dent تعرّف ↔ le verbe عَرِّفْ (`verb_define_v1` + drill m01/m02 « عرّف الإنزيم / المناعة النوعية » + démo Phase 0 affichée sur le même écran) — à un point près, un piège structurel.
+3. **Noyau** : le « 10 » gelé avait été maintenu en gonflant le périmètre (note enseignant : « 10 éléments (les 3 بوابات y sont) »). Le re-compte honnête donne **11**. Le chiffre est dégelé explicitement.
+
+### Décisions (09-07)
+
+| # | Décision | Raison |
+|---|---|---|
+| 1 | **Carte imprimée (recto) = 2 portes de décision + ligne « عائلتي »** (📷/🎬/🔨 = reconnaissance, pas décision — non comptée, convention de l'ancien switch) | Sous stress, l'élève décide 2 fois ; la famille se regarde |
+| 2 | **L'app garde ses 3 portes** (drill, cascade stage 3, verdict 4 pastilles) | Instrument d'entraînement et de mesure : sans lui, la confusion اشرح/اقترح ne serait visible qu'à la cotation (tardive, diffuse) |
+| 3 | **حدّad = 3e forme spéciale au verso** (à côté de الحساب / شجرة النسب : 2 = toutes les données, 3 = fabrication, 4 = produit justifié) | Cohérent v3 (habillage des 4 mêmes dents), coût mémoire nul pour le faible |
+| 4 | **Noyau 10 → 11, dégelé et écrit** (+1 = porte du المصدر ; la ligne famille non comptée). Note enseignant + table des niveaux (11 / ≈14 / ≈18) | Le chiffre gelé était maintenu en gonflant le périmètre — on l'enterre explicitement |
+| 5 | **Dent 1 : تعرّف → تَبَصَّر** (les 3 autres noms et la structure de la mnémonique restent) | Collision عَرِّفْ vérifiée. Critère du nom : zéro homonyme dans les 12 cartes verbes + zéro verbe d'examen standard + geste physique. Alternative écartée : أمسك (geste plus faible) |
+
+### Arbitre — D3 (exécution owner, 10 élèves), 2 métriques ajoutées
+
+- **(a) Récitation du modèle carte en 10 s** (le test de transmission) : si échec → la carte devient plus simple encore (famille masquée, 2 portes seules).
+- **(b) Score sur les 3 questions حدّad réelles 2025 vs corrigé officiel** : si bas → le soubassement 2ب 🔨 (أدر+افتch ensemble, 7b) passe devant tout le reste.
+
+### En attente
+- Vérification collision finale de تَبَصَّر contre les 2 sujets 2025 complets (non présents dans le workspace — à livrer par l'owner).
+- Réconciliation examen 60 min → 4h30 (7b) — après D3, pas avant.

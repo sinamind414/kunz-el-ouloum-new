@@ -19,7 +19,7 @@ export interface BoussoleStep {
 export const BOUSSOLE_STEPS: BoussoleStep[] = [
   {
     num: 1,
-    ar: 'تعرّف',
+    ar: 'تَبَصَّر',
     word: 'أحدد فعل الأداء والكلمات المفتاحية',
     wordAr: 'أحدد الفعل',
     whereAr: 'المسودة فقط',
@@ -81,7 +81,7 @@ export function getStep(id: 1 | 2 | 3 | 4): BoussoleStep | undefined {
 
 export const REGLE_D_OR_AR = '« لا خاتمةَ قبل حُجّة، ولا حُجّةَ قبل مُعطى، ولا مُعطى قبلَ فَهْمِ السؤال »';
 
-export const TIME_RULE_AR = 'الربع الأول: تعرّف + أدخل · النصف: أدر · الربع الأخير: افتح + الفحص';
+export const TIME_RULE_AR = 'الربع الأول: تَبَصَّر + أدخل · النصف: أدر · الربع الأخير: افتح + الفحص';
 
 export const FINGERS_RITUAL_AR = 'الإصبع ≈ الخطوة 1-2-3-4 تحت الطاولة';
 
@@ -125,7 +125,7 @@ export const ERROR_ADDRESS_MAP: Record<string, '1' | '2' | '3' | '4' | 'switch'>
 
 export function errorAddressAr(addr: '1' | '2' | '3' | '4' | 'switch'): string {
   const map: Record<typeof addr, string> = {
-    1: '١ تعرّف',
+    1: '١ تَبَصَّر',
     2: '٢ أدخل',
     3: '٣ أدر',
     4: '٤ افتح',
@@ -281,7 +281,7 @@ export const AID_LEVELS: NavigatorGrade[] = [
 ];
 
 export const TIME_RULES = {
-  quart: 'الرُّبع الأول: تعرّف + أدخل',
+  quart: 'الرُّبع الأول: تَبَصَّر + أدخل',
   half: 'النِّصف: أدر (أو الكتابة إن كان مغلقًا)',
   quarter: 'الرُّبع الأخير: افتح + الفحص',
 };
@@ -334,7 +334,7 @@ export interface BoussoleCap {
 
 export const BOUSSOLE_CAPS: BoussoleCap[] = [
   {
-    id: 1, num: 1, ar: 'تعرّف', word: 'أحدد الفعل', color: '#1d4ed8', colorSoft: '#3b82f6',
+    id: 1, num: 1, ar: 'تَبَصَّر', word: 'أحدد الفعل', color: '#1d4ed8', colorSoft: '#3b82f6',
     questionAr: 'ما المطلوب؟', verbAr: 'حَلِّلْ / فَسِّرْ', gestureAr: '👇 4 أضراس',
     stepsAr: ['حدد الفعل', 'سَبّب الكلمات'],
     desc: 'نوتيّ — أولى الرحلات — واصل الإبحار لتكتسب الرتب',

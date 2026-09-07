@@ -42,14 +42,14 @@ export const MIFTAH_NOMENCLATURE = {
   bawaba2: 'البوابة ٢ — المصدر (وثيقة أم مختلط؟)',
   bawaba3: 'البوابة ٣ — الحركة (📷 أم 🎬 أم 🔨؟)',
   s0: 'اِفهم',
-  s1: 'تعرّف',
+  s1: 'تَبَصَّر',
   s2: 'أدخل',
   s3: 'أدر',
   s4: 'افتح',
 } as const;
 
 // Phrase-mnémotechnique unique (MARQUE §12) — le geste physique de la clé
-export const KEY_MNEMONIC_AR = 'تعرّف · أدخل · أدر · افتح — أربع حركات، لا أكثر، وينفتح القفل.';
+export const KEY_MNEMONIC_AR = 'تَبَصَّر · أدخل · أدر · افتح — أربع حركات، لا أكثر، وينفتح القفل.';
 
 // Les 3 mouvements de la porte 3 (MARQUE §12) — le 🔨 حدّاد est l'angle mort corrigé
 export const MOVEMENTS = {
@@ -70,7 +70,7 @@ export const STEP0 = {
 // Les 4 dents — Update 2026-09-06 (MARQUE §12) : chaque dent nomme le GESTE d'une clé.
 // Contenu pédagogique (actionAr/correctorAr) inchangé — seul le nom change.
 export const ASNAN = [
-  { id: 1 as const, nameAr: 'تعرّف', iconAr: '🔍', actionAr: 'أطوّق الفعل · أسطّر الكلمات المفتاحية · أرقّم إجابتي برقم السؤال', correctorAr: 'إجابة بلا رقم أو تحت رقم خاطئ = 0. الفعل الخاطئ = تفقد نقطة الفعل كاملة.' },
+  { id: 1 as const, nameAr: 'تَبَصَّر', iconAr: '🔍', actionAr: 'أطوّق الفعل · أسطّر الكلمات المفتاحية · أرقّم إجابتي برقم السؤال', correctorAr: 'إجابة بلا رقم أو تحت رقم خاطئ = 0. الفعل الخاطئ = تفقد نقطة الفعل كاملة.' },
   { id: 2 as const, nameAr: 'أدخل', iconAr: '🔑', actionAr: 'أستخرج من الوثيقة أرقاما + وحدات + اتجاه التغيّر', correctorAr: 'نقطة الاستخراج للرقم مع وحدته. «يرتفع» وحدها = نصف نقطة. رقم بلا وحدة = خطأ.' },
   { id: 3 as const, nameAr: 'أدر', iconAr: '🔄', noteAr: 'إن سمح الفعل', actionAr: 'أربط المعطى بالسبب/الآلية من الدرس: «لأنّ…»', correctorAr: 'ربط بلا معطى = نصف النقطة. معطى بلا ربط والفعل يطلبه = نصف النقطة.' },
   { id: 4 as const, nameAr: 'افتح', iconAr: '🔓', actionAr: 'جملة واحدة تجيب حرفيا على الكلمات التي سطّرتُها في السنّ 1', correctorAr: 'خاتمة غائبة = نقطة ضائعة. خاتمة لا تحوي كلمات السؤال = لا تُقرأ.' },

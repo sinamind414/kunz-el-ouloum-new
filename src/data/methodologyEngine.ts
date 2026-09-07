@@ -241,10 +241,10 @@ import { STEP0 as MIFTAH_STEP0 } from './miftahSpec';
 export type StepId = 1 | 2 | 3 | 4;
 export type MiftahStepId = 0 | 1 | 2 | 3 | 4;
 // Update 2026-09-06 (docs/MARQUE.md §12) — les 4 dents nomment le GESTE PHYSIQUE d'une clé :
-// 🔍 تعرّف (reconnaître le verrou) · 🔑 أدخل (insérer) · 🔄 أدر (tourner) · 🔓 افتح (la serrure s'ouvre).
+// 🔍 تَبَصَّر (reconnaître le verrou) · 🔑 أدخل (insérer) · 🔄 أدر (tourner) · 🔓 افتح (la serrure s'ouvre).
 // Contenu pédagogique inchangé — seul le nom change (tableau de migration MARQUE §12).
-export const STEP_NAMES_AR: Record<StepId, string> = { 1: 'تعرّف', 2: 'أدخل', 3: 'أدر', 4: 'افتح' };
-export const MIFTAH_STEP_NAMES_AR: Record<MiftahStepId, string> = { 0: MIFTAH_STEP0.nameAr, 1: 'تعرّف', 2: 'أدخل', 3: 'أدر', 4: 'افتح' };
+export const STEP_NAMES_AR: Record<StepId, string> = { 1: 'تَبَصَّر', 2: 'أدخل', 3: 'أدر', 4: 'افتح' };
+export const MIFTAH_STEP_NAMES_AR: Record<MiftahStepId, string> = { 0: MIFTAH_STEP0.nameAr, 1: 'تَبَصَّر', 2: 'أدخل', 3: 'أدر', 4: 'افتح' };
 export type Switch = 'open' | 'closed';
 export type Step3Mode = 'none' | 'confront' | 'explain' | 'hypothesis' | 'dual';
 export type SpecialFormat = 'compare' | 'diagram' | 'hypothesis' | 'text' | null;
