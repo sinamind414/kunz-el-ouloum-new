@@ -190,6 +190,19 @@ mustNot(verso, 'علوم الطبيعة والحياة', 'fiche : nom de série 
 mustNot(card, 'علوم الطبيعة والحياة', 'carte : nom de série ≠ matière banni');
 must(spec, "hamad: {", 'spec : SPECIAL_FORMS + الحدّاد (parité verso)');
 must(spec, "countAr: '≈ 21'", 'spec : LEVELS amritat ≈ 21 (parité fiche)');
+console.log('\n§ v3.3 (docs/MARQUE.md §12quater) — collision close + import V4.1 au niveau contenu');
+must(spec, "MIFTAH_VERSION = '3.3'", 'spec : version 3.3');
+must(spec, 'TOOTH3_ROUTE_AR', 'spec : route dent 3');
+must(spec, 'GOLDEN_FORMULA_AR', 'spec : formule dorée');
+must(verso, 'معطى ← مقارنة ← علاقة ← تفسير', 'fiche verso : route dent 3 (ز)');
+must(verso, 'تُظهر الوثيقة …، وبمقارنة', 'fiche verso : formule dorée (ز)');
+must(card, '{GOLDEN_FORMULA_AR}', 'carte : formule dorée depuis la spec');
+must(card, '{TOOTH3_ROUTE_AR}', 'carte : route dent 3 depuis la spec');
+must(verso, '3</b> = <b>المعالجة</b>', 'fiche verso : حدّad en 3 phases (données/montage/produit)');
+must(card, '3</b> = <b>المعالجة</b>', 'carte : حدّad 3 phases (parité fiche)');
+must(spec, '3 = المعالجة', 'spec : SPECIAL_FORMS.hamad 3 phases');
+mustNot(html, 'V4.1', 'fiche : « V4.1 » banni (version fork non adoptée)');
+mustNot(card, 'V4.1', 'carte : « V4.1 » banni');
 
 if (failures > 0) {
   console.error(`\n✗ ${failures} échec(s) — réaligner fiche/spec/carte sur docs/MARQUE.md`);

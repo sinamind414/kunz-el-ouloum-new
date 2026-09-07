@@ -329,3 +329,55 @@ Chaque dent nomme désormais **le geste physique qu'on fait avec une clé** :
 1. **Footer recto** : « (10 عناصر) » → « (11 عنصرًا) » — contradiction interne corrigée (note enseignant et table disaient déjà 11).
 2. **`LEVELS` spec obsolète** (10 / ≈13 / ≈17) → alignée sur la fiche (11 / ≈14 / ≈21).
 3. **`SPECIAL_FORMS` spec sans الحدّاد** → entrée `hamad` ajoutée (source unique ; l'import dans la vue compilateur est mort — non rendu, pas de changement d'affichage app).
+
+## §12quater — v3.3 : collision close + import V4.1 au niveau contenu (2026-09-07)
+
+### A. Verdict de collision — DÉCISION CLOSE (sujets BAC 2025 réels, les 2 sujets)
+
+Transcription au workspace : `uploads/bac2025-svt-sciences-experimentales.txt` (owner, 09-07).
+
+| Test | Résultat |
+|---|---|
+| تَبَصَّر (toutes formes) dans les instructions des 2 sujets | **0 occurrence** → renommage validé |
+| Ancient nom تعرّف | **Instruction réelle** (M2-E1-1 « تعرّف على المركبات A–D' ») → la collision qui a motivé le renommage du 09-07 existait bel et bien |
+| أدخل / أدر / افتح comme instructions | 0 occurrence — les 4 noms de dents sont propres face à l'examen réel |
+
+**Décision 5 du §12bis est close : تَبَصَّر reste la dent 1.** Veto owner sur le nom : non exercé à ce jour.
+
+### B. Validation par l'examen 2025 (les chiffres qui comptent)
+
+- **Cycle حدّad = 08/20 = 40 % de chaque sujet** (exercice 3 des deux sujets : اقترح فرضية → تأكد/ناقش → قدم/وضّح). Cible banque smith 25–30 % : validée, urgente.
+- **« ومعلوماتك/ومعارفك » (source mixte) dans 8 des 15 instructions** → la décision 2 colonnes (بوابة 2 : مختلط) est validée par le réel.
+- **Le barème note le LIEN (الربط) séparément** (0.5–1.0/question) → la dent 3 (أدر) est le cœur de l'examen → justifie la route + formule dorée importées en (C).
+- **Barème = points par élément scientifique** (0.25/0.5/1.0) + tolérances explicites (« يقبل أي فرضية وجيهة », « كل طريقة تؤدي إلى نفس النتيجة ») + aucune règle « numéro = 0 » → voir (E) : le ton des cases 📝 passe en v3.4.
+
+### C. Import V4.1 — au niveau CONTENU, pas en pages
+
+| Actif V4.1 | Disposition v3.3 |
+|---|---|
+| 1. حدّad en 3 phases | **Intégré** : ligne ح = `2 = البيانات · 3 = المعالجة · 4 = المنتج حسب التعليمة` (fiche + carte + spec) |
+| 2. Route dent 3 + الصيغة الذهبية | **Intégré** : section ز (verso), 1 ligne — le pont document ↔ leçon |
+| 3. قوة العبارة = قوة الدليل | **Déjà dans l'annexe** (ذ) — l'analyse externe le redécouvrait sans le savoir |
+| 4. المخطط + test « لأنّ » | **Reporté** (espace A4). Validé par l'examen (2 instructions « وضّح في مخطط ») — candidat v3.4 |
+
+**« 2 pages » (fusion annexe → verso) : REJETÉ — calcul physique.** Verso ≈ pleine page par design (calibré 10.4 px) + annexe ≈ pleine page = 72–80 lignes vs ≈ 44 lignes/page A4 (marges 8 mm, corps 10.4 px, interlignage 1.58) → débordement en page 4. L'imprimable = le produit : on ne livre pas une page 4 à 3 lignes. **La structure 3 pages v3.2 est conservée** ; si l'owner exige 2 pages, il doit nommer l'élément verrouillé à couper (refusé de trancher seul).
+
+### D. Audit de l'analyse externe (celle jointe au sujet 09-07)
+
+L'analyse lit une version **pré-annexe** (elle nomme les dents « Observer/Extraire/Traiter/Conclure » — ni nos noms ni V4.1) :
+- **~50 % redécouverte de l'annexe v3.2** (règle de causalité, force de la preuve, 4 questions d'expérience, hiérarchie 4 niveaux) — elle était déjà écrite, dans la page 3.
+- **~25 % neuf et valable** → v3.4 : enrichissement dent 2 recto (conditions + variable étudiée/mesurée + témoin), « تتكرر في كل سؤال » explicite (keynote V4.1), la démarche en cycle (7b).
+- **~15 % correction acceptée** : le ton « loi du barème » des cases 📝 — le vrai barème 2025 = par élément + tolérances → v3.4.
+- **~10 % mauvaise lecture** : « étape RELier manquante » — c'est la dent 3 (أدر), elle existe.
+- **Rejeté** : renommer les dents (le check collision vient de prouver les 4 noms propres face au réel) ; l'architecture 5 niveaux → 7b (la carte reste un outil de secours, pas une théorie générale).
+
+### E. v3.4 — en attente de GO
+
+1. Dent 2 recto enrichie : `+ الشروط + المتغيّر المدروس/المقاس + الشاهد إن وُجد` (boîte V4.1, validée par l'examen).
+2. « تتكرر في كل سؤال » — ajoutée au mnémonique figé (trace de décision requise, décision 5 §12bis).
+3. Ton 📝 : « lois » → « ce que le mصحح retranche réellement » (barème 2025 = éléments + tolérances ; la numérotation reste une règle de présentation, pas de notation).
+4. Section المخطط (2 instructions d'examen réelles « وضّح في مخطط ») — place à trouver selon l'espace.
+
+### F. Réparations
+
+- Header recto HTML **v3.1 → v3.3** : bug hérité de 489715b (l'édition du header recto n'avait pas pris — le check `must(html, 'v3.2')` était satisfait par le header verso ; le garde-fou vérifie maintenant la version par header).

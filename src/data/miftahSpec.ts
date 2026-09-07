@@ -4,7 +4,7 @@
 // Marque : docs/MARQUE.md est le document de décision (noms, phrase-récit, placement).
 //         Le garde-fou `npm run check:miftah` prouve la cohérence fiche ↔ spec ↔ carte.
 
-export const MIFTAH_VERSION = '3.2' as const;
+export const MIFTAH_VERSION = '3.3' as const;
 // Nom d'usage (UI, bouche de l'élève) — jamais autre chose
 export const MIFTAH_NAME_AR = 'المفتاح';
 // Nom officiel (documents légaux/CGU, argumentaire) — jamais abrégé
@@ -109,7 +109,7 @@ export const SPECIAL_FORMS = {
   hamad: {
     labelAr: 'الحدّاد',
     cueAr: 'اقترح / برّر / ناقض / قدّم حلا',
-    teethAr: '2 = كل المعطيات المتاحة (الوثيقة + معلوماتي) · 3 = التصنيع: دمج المعطيات المتفرقة في منطق جديد · 4 = المنتج المُبرَّر (فرضية / علاج / توصية)',
+    teethAr: '2 = البيانات: كل المعطيات اللازمة (الوثيقة + معلوماتي)، لا نسخ شامل · 3 = المعالجة: مقارنة، علاقة، تفسير أو مناقشة · 4 = المنتج: حسب التعليمة (فرضية / تبرير / توصية / مخطط)',
     correctorAr: 'إعادة الملاحظة بدل التصنيع = صفر. فرضية بلا آلية = نصف النقطة.',
   },
 } as const;
@@ -217,4 +217,8 @@ export const ANNEXE = {
   ],
   hypothesisCorrectorAr: 'فرضية بلا آلية («لأنّ» فارغة) = نصف النقطة. فرضية بلا تجربة قابلة (بلا شاهد/أثر) = صفر — التصنيع ليس أمنية (الحدّاد، الوجه الثاني).',
 } as const;
+// V4.1 asset #2 (audit 09-07) — le pont document ↔ leçon : rendu dans le verso (ز)
+export const TOOTH3_ROUTE_AR = 'معطى ← مقارنة ← علاقة ← تفسير';
+export const GOLDEN_FORMULA_AR = '«تُظهر الوثيقة …، وبمقارنة … نلاحظ …، ويُفسَّر ذلك بـ …»';
+
 export const FOOTER_ANNEXE_AR = 'مفتاح المنهجية · كنز العلوم · الملحق — المفتاح PRO · قوة الدليل لمن يستهدف الامتياز';
